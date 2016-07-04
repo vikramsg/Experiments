@@ -11,7 +11,7 @@ program cuBLAS_example
 
   integer, parameter :: nelems = 500000
   integer, parameter :: Np = 16, Nvar = 4, Nflux = 16
-  integer, parameter :: chunkSize = 100
+  integer, parameter :: chunkSize = 50
 
   type mesh2d
       real(c_double) :: u(Np, Nvar, nelems)
@@ -26,9 +26,14 @@ program cuBLAS_example
 
   type(mesh2d)     :: mesh
 
-  integer(c_int)      :: i, j, k, iter, rep
+  integer(c_int)   :: i, j, k, iter, rep
 
+  real(c_double)   :: t1, t2
 
+  call CPU_TIME(t1)
+
+  !$OMP PARALLEL DO 
+  do rep = 1, 10
   do i = 1, nelems
       do j = 1, Nvar
           do k = 1, Np
@@ -49,13 +54,15 @@ program cuBLAS_example
         phi(j, k) = k*j + k + j
     end do
   end do
+  end do
+  !$END PARALLEL DO !NOWAIT
 
 
   !$acc enter data copyin(mesh)
   !$acc enter data copyin(Lgrad, phi)
   !$acc enter data create(uelem_tmp, ucorr_tmp, ugrad_tmp)
 
-  do rep = 1, 100 
+  do rep = 1, 10 
       do iter = 1, nelems/chunkSize
     
           !$acc parallel loop present(mesh, mesh%u, uelem_tmp)
@@ -115,6 +122,10 @@ program cuBLAS_example
    !$acc exit data delete(uelem_tmp, ugrad_tmp, ucorr_tmp)
    !$acc exit data delete(Lgrad, phi)
    !$acc exit data delete(mesh)
+
+   call CPU_TIME(t2)
+
+   print*, 'Time taken', t2-t1
 
 
 end program cuBLAS_example
