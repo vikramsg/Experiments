@@ -53,7 +53,7 @@ program cuBLAS_example
   !$END PARALLEL DO 
 
   !$OMP PARALLEL DO PRIVATE(i, j, k, uelem_tmp, ucorr_tmp)
-  do rep = 1, 10 
+  do rep = 1, 30 
       do iter = 1, nelems/chunkSize
 
           do i = 1, chunkSize 
