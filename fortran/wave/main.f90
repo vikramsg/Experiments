@@ -18,6 +18,10 @@ program main
 
     call solution(numPoints)
 
+    call init()
+
+    call solver()
+
 
     call shutdown()
 
