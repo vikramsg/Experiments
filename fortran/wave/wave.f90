@@ -6,8 +6,11 @@ module wave
     implicit none
 
     integer(c_int) :: nCells
+    integer(c_int) :: nFaces
 
+    !u is at cell centers
     real(c_double), allocatable :: u(:)
+    !x is at boundaries
     real(c_double), allocatable :: x(:)
 
 
@@ -17,15 +20,20 @@ module wave
         !Create simple 1D uniform mesh with number of points
         !and domain bounds
         subroutine mesh(n, startX, endX)
-            integer(c_int), intent(in) :: n!number of points
+            integer(c_int), intent(in) :: n!number of edge points
             real(c_double), intent(in) :: startX, endX!Domain bounds
 
             integer(c_int) :: i
             real(c_double) :: h
 
-            allocate(x(n))
+
+            nFaces = n
+            nCells = nFaces - 1
+
+            allocate(x(nFaces))
 
             nCells = n
+            nFaces = n + 1
 
             h = (endX - startX)/n
 
@@ -35,18 +43,12 @@ module wave
 
         end subroutine mesh
 
-        !Create solution container with number of points
-        subroutine solution(n)
-            integer(c_int), intent(in) :: n!number of points
-
-            allocate(u(n))
-
-        end subroutine solution
-
         !Initialize solution
         subroutine init
 
             integer(c_int) :: i
+
+            allocate(u(nCells))
 
             do i = 1, nCells
                 if (x(i) .ge. 0) then
@@ -68,30 +70,70 @@ module wave
         subroutine step
 
             real(c_double) :: fRight, fLeft
-            real(c_double) :: uRight, uLeft
-            real(c_double) :: duRight, duLeft
-            real(c_double) :: musclSigma 
 
-            integer(c_int) :: i
+            integer(c_int) :: i, left, rght
 
-            do i = 1+1, nCells-1
-                call uGrad(x(i-1), x(i), u(i-1), u(i), duLeft )
-                call uGrad(x(i), x(i+1), u(i), u(i+1), duRight)
+            do i = 1 + 1 + 1, nFaces - 1 - 1 
+                left = i - 1 !Cell index on the left
+                rght = i + 1
 
-                call minMod(duLeft, duRight, musclSigma)
-
-                uLeft = u(i) - musclSigma*(x(i+1) - x(i))/2.0
-                uRight= u(i) + musclSigma*(x(i) - x(i-1))/2.0
+                !Get soln at left and right cell of this face
+                call getReconstructedSoln(left,  1.0_c_double, uLeft)
+                call getReconstructedSoln(rght, -1.0_c_double, uRght)
 
                 call getFlux(uLeft, fLeft)
-                call getFlux(uRight, fRight)
+                call getFlux(uRght, fRght)
 
-!                call RusanovFlux(fLeft, fRight)
+!                call RusanovFlux(fLeft, fRight, uLeft, uRght)
             end do
 
         end subroutine step
 
-        subroutine 
+        subroutine RusanovFlux(fLeft, fRght, uLeft, uRght, fCommon)
+            real(c_double), intent(in)  :: fLeft, fRight, uLeft, uRght 
+            real(c_double), intent(out) :: fCommon 
+
+
+        end subroutine RusanovFlux
+
+
+
+        !Get reconstructed soln at specified location inside cell
+        !Location is normalized to [-1, 1]
+        subroutine getReconstructedSoln(cellNo, location, soln)
+            real(c_double), intent(in)  :: location 
+            integer(c_int), intent(in)  :: cellNo 
+            real(c_double), intent(out) :: soln
+
+            real(c_double) :: h 
+            real(c_double) :: duLeft, duRght 
+            real(c_double) :: xLeft_1,  xLeft_2
+            real(c_double) :: xRght_1,  xRght_2
+            real(c_double) :: musclSigma 
+
+            if ((location .gt. 1) .or. (location .lt. -1)) then
+                print*, "Location has to be in [-1, 1]"
+                stop
+            end if
+
+            !Get cell center location
+            xLeft_1 = 0.5*(x(cellNo - 1) + x(cellNo))
+            xLeft_2 = 0.5*(x(cellNo) + x(cellNo + 1))
+
+            xRght_1 = 0.5*(x(cellNo)     + x(cellNo + 1))
+            xRght_2 = 0.5*(x(cellNo + 1) + x(cellNo + 2))
+
+            !Get cell dimension
+            h = x(cellNo + 1) - x(cellNo)
+
+            call uGrad(xLeft_1, xLeft_2, u(cellNo - 1), u(cellNo), duLeft )
+            call uGrad(xRght_1, xRght_2, u(cellNo), u(cellNo + 1), duRght)
+
+            call minMod(duLeft, duRght, musclSigma)
+
+            soln = u(cellNo) + musclSigma*(location - 0) * h/(2.0_c_double)
+
+        end subroutine getReconstructedFlux
 
         subroutine getFlux(u, f)
             real(c_double), intent(in)  :: u
@@ -103,7 +145,6 @@ module wave
 
 
         subroutine minMod(x, y, mnMod)
-
             real(c_double), intent(in)  :: x, y
             real(c_double), intent(out) :: mnMod
 
@@ -114,7 +155,6 @@ module wave
             else
                 mnMod = 0
             end if
-
         end subroutine minMod
 
 

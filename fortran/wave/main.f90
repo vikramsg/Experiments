@@ -16,8 +16,6 @@ program main
 
     call mesh(numPoints, startX, stopX)
 
-    call solution(numPoints)
-
     call init()
 
     call solver()
