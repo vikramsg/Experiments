@@ -42,6 +42,8 @@ program acc_coarray
     end do
     !$acc end kernels
 
+    sync all()
+
     !$acc host_data use_device(z)
     z(1)[1] = z(1)[2]
     !$acc end host_data
