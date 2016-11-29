@@ -1,30 +1,25 @@
+  !> Main program to create grid and calculate error for derivative
+  program template
+  
+    use subroutines
+  
+    implicit none  
 
+    integer(c_int) :: nele_x ! Number of elements in x
+    integer(c_int) :: order  ! Polynomial order 
+    real(c_double) :: startX, stopX 
 
-program main
+    real(c_double) :: stopT 
 
-    use wave
-    use iso_c_binding 
+    ! 1D domain 
+    startX = 0; stopX = 40
 
+    ! Echo print your input to make sure it is correct
+    write(*,*) 'Your 1D domain is from ', startX, ' to ', stopX
 
-    integer(c_int) :: numPoints
-    real(c_double) :: startX, stopX
+    order = 1
+    do nele_x = 40, 40 
+        call validate_derivative(nele_x, startX, stopX, order)
+    end do
 
-
-    numPoints = 50
-    startX    = -1.0
-    stopX     =  1.0
-
-    call mesh(numPoints, startX, stopX)
-
-    call init()
-
-    call solver()
-
-
-    call shutdown()
-
-
-end program main
-
-
-
+  end program template
