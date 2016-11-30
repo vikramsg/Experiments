@@ -1,3 +1,6 @@
 old
 *.x
 *.o
+*.swp
+*.mod
+*.out

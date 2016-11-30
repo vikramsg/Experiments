@@ -1,6 +1,6 @@
   
   !> Module to defined data types and some constants
-  MODULE types_vars
+  module types_vars
       use iso_c_binding
     ! Symbolic names for kind types of single- and double-precison reals
     INTEGER, PARAMETER :: SP = KIND(1.0_c_float)
@@ -16,7 +16,7 @@
     REAL(DP), PARAMETER :: pi    = 3.141592653589793238462643383279502884197_c_double
     REAL(DP), PARAMETER :: pio2  = 1.57079632679489661923132169163975144209858_c_double
     REAL(DP), PARAMETER :: twopi = 6.283185307179586476925286766559005768394_c_double
-  END MODULE types_vars
+  end module types_vars
 
   module polynomial
 
@@ -66,67 +66,96 @@
   end module polynomial
 
 
-  MODULE subroutines
-    USE types_vars
+  module subroutines
+    use types_vars
+    implicit none
 
-    CONTAINS
+    contains
 
-    !> Subroutine to make simple 1D grid
-    !! @param nptsx num. of points
-    !! @param startX, stopX starting and ending location
-    !! @param x array containing grid points
-    subroutine make_grid(nele_x, startX, stopX, Np, x_nodes, x)
-        implicit none
+        !> Subroutine to initialize solution on the FR grid
+        !! @param nele_x: Number of elements in grid
+        !! @param Np: Number of points in each cell
+        !! @param x, u: location of FR grid points and soln vec
+        subroutine init_sol(nele_x, Np, x, u)
+            integer(c_int), intent(in)  :: nele_x, Np
+            real(c_double), intent(out) :: x(:, :), u(:, :)
 
-        integer(c_int), intent(in)  :: nele_x, Np
-        real(c_double), intent(in)  :: startX, stopX 
-        real(c_double), intent(in)  :: x_nodes(Np) 
+            integer(c_int) :: i, j 
 
-        real(c_double), intent(out) :: x(:, :)
+            do i = 1, nele_x
+                do j = 1, Np
+                    u(j, i) = sin(2*pi*x(j, i)/40.0)
+                end do
+            end do
+ 
+        end subroutine init_sol
 
-        integer(c_int) :: i 
-        real(c_double) :: dx, temp_x(nele_x + 1) 
+        !> Subroutine to make simple 1D grid
+        !! @param nptsx num. of points
+        !! @param startX, stopX starting and ending location
+        !! @param x array containing grid points
+        subroutine make_grid(nele_x, startX, stopX, Np, x_nodes, x)
+            integer(c_int), intent(in)  :: nele_x, Np
+            real(c_double), intent(in)  :: startX, stopX 
+            real(c_double), intent(in)  :: x_nodes(Np) 
+    
+            real(c_double), intent(out) :: x(:, :)
+    
+            integer(c_int) :: i, j 
+            real(c_double) :: dx, temp_x(nele_x + 1) 
+    
+            ! Grid spacing
+            dx = (stopX - startX)/FLOAT(nele_x)
+    
+            ! Generate grid
+            do i = 1, nele_x + 1 
+                temp_x(i) = startX + (i-1)*dx
+            end do
+    
+            ! Generate grid
+            do i = 1, nele_x
+                do j = 1, Np
+                    x(j, i) = 0.5*(1 - x_nodes(j))*temp_x(i)    &
+                              + 0.5*(1 + x_nodes(j))*temp_x(i+1) 
+                end do
+            end do
 
-        ! Grid spacing
-        dx = (stopX - startX)/FLOAT(nele_x)
-
-        ! Generate grid
-        do i = 1, nele_x + 1 
-            temp_x(i) = startX + (i-1)*dx
-        end do
-
-        write(*, *) temp_x
-
-    end subroutine make_grid
-
-
-    !> Subroutine to validate 2nd and 4th order derivatives
-    !! @param nptsx number of points
-    !! @param startX, stopX starting and ending location of grid
-    !! @param max2nd max4th maximum error for 2nd and 4th order derivative
-    subroutine validate_derivative(nele_x, startX, stopX, order)
-        
-        use polynomial
-
-        implicit none
-
-        integer(c_int), intent(in)  :: nele_x, order
-        real(c_double), intent(in)  :: startX, stopX 
-
-        real(c_double) :: x(order + 1, nele_x) ! x co-ordinates
-        real(c_double) :: x_nodes(order + 1)   ! intra cell nodes 
-
-        integer(c_int) :: Np 
-
-        Np = order + 1
-
-        call cell_coordi(order, x_nodes)
-
-        call make_grid(nele_x, startX, stopX, Np, x_nodes, x)
-
-    end subroutine validate_derivative
+        end subroutine make_grid
 
 
-  END MODULE subroutines
+        !> Subroutine to validate 2nd and 4th order derivatives
+        !! @param nptsx number of points
+        !! @param startX, stopX starting and ending location of grid
+        !! @param max2nd max4th maximum error for 2nd and 4th order derivative
+        subroutine validate_derivative(nele_x, startX, stopX, order)
+            
+            use polynomial
+    
+            implicit none
+    
+            integer(c_int), intent(in)  :: nele_x, order
+            real(c_double), intent(in)  :: startX, stopX 
+    
+            real(c_double) :: x_nodes(order + 1)   ! intra cell nodes 
+            real(c_double) :: x(order + 1, nele_x) ! x co-ordinates
+            real(c_double) :: u(order + 1, nele_x) ! x co-ordinates
+    
+            integer(c_int) :: Np 
+    
+            Np = order + 1
+    
+            call cell_coordi(order, x_nodes)
+    
+            call make_grid(nele_x, startX, stopX, Np, x_nodes, x)
+    
+            call init_sol(nele_x, Np, x, u)
+    
+            write(*, *) u
+    
+        end subroutine validate_derivative
+
+
+
+  end module subroutines
 
 
