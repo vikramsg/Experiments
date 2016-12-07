@@ -22,21 +22,35 @@ def get_ns_3d():
 
     dimension = 2
 
+    v = (rho*smp.sin(x[0])*smp.cos(x[1])*smp.exp(-2*(mu/rho)*t),
+          -rho*smp.cos(x[0])*smp.sin(x[1])*smp.exp(-2*(mu/rho)*t),
+         )
+    p = (rho/4.0)*(smp.cos(2*x[0]) + smp.cos(2*x[1]))*smp.exp(-4.0*(mu/rho)*t)
+
+    ke = 0
+    for i in v:
+        ke = ke + 0.5*i*i
+
     u = (rho,
           rho*smp.sin(x[0])*smp.cos(x[1])*smp.exp(-2*(mu/rho)*t),
            -rho*smp.cos(x[0])*smp.sin(x[1])*smp.exp(-2*(mu/rho)*t),
+            p/(gamma - 1) + rho*ke
          )
 
     rho = u[0]
-
-    p = (rho/4.0)*(smp.cos(2*x[0]) + smp.cos(2*x[1]))*smp.exp(-4.0*(mu/rho)*t)
-
-
-    #Divergence of rho*velocity
+    #velocity
     v = ()
     for i in range(1, dimension + 1):
         v = v + (u[i]/rho, )
+
+    p = (rho/4.0)*(smp.cos(2*x[0]) + smp.cos(2*x[1]))*smp.exp(-4.0*(mu/rho)*t)
+
+    #Divergence of velocity
     div = get_divergence(v, x, dimension)
+
+    ke = 0
+    for i in v:
+        ke = ke + 0.5*i*i
 
     #Momentum
     f_inv = smp.zeros(dimension, dimension) + p*smp.eye(dimension)
