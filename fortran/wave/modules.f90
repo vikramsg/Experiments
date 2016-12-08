@@ -35,11 +35,12 @@
   module polynomial
 
       use types_vars
+      implicit none
 
       contains
 
           !> Suborutine to evaluate legendre basis derivative at a point 
-          !! @param mode: Particular mode whose interpolation is required
+          !! @param mode: Order or mode whose derivative is required
           !! @param r: location where evaluation is required
           !! @param f: interpolated value
           recursive subroutine get_legendre_d(r, mode, f)
@@ -51,18 +52,14 @@
               real(c_double) :: p1, p2
               integer(c_int) :: j 
 
-              if (mode .eq. 1) then
-                  f = zero
-              else
-                  if ((r .gt. -one) .and. (r .lt. one)) then
-                      call get_legendre(r, mode    , p1)
-                      call get_legendre(r, mode - 1, p2)
-                      f = ((mode - 1)*(r*p1 - p2))/(r**2 - one)
-                  else if (abs(r - (-one)) .lt. epsilon(one)) then
-                      f = (-one)**(mode - 2)*half*(mode - 1)*(mode)
-                  else if (abs(r - one) .lt. epsilon(one)) then
-                      f = half*(mode - 1)*mode
-                  end if
+              if ((r .gt. -one) .and. (r .lt. one)) then
+                  call get_legendre(r, mode      , p1)
+                  call get_legendre(r, mode - 1  , p2)
+                  f = ((mode)*(r*p1 - p2))/(r**two - one)
+              else if (abs(r - (-one)) .lt. epsilon(one)) then
+                  f = (-one)**(mode - one)*half*(mode)*(mode + one)
+              else if (abs(r - one) .lt. epsilon(one)) then
+                  f = half*(mode)*(mode + one)
               end if
 
           end subroutine get_legendre_d
@@ -78,21 +75,21 @@
 
               real(c_double), intent(out) :: f 
 
-              real(c_double) :: p1, p2
+              real(c_double) :: p0, p1
               integer(c_int) :: j 
 
-              p1 = one 
-              p2 = r
+              p0 = one 
+              p1 = r
 
-              if (mode .eq. 1) then
+              if      (mode .eq. 0) then
+                  f = p0
+              else if (mode .eq. 1) then
                   f = p1
-              else if (mode .eq. 2) then
-                  f = p2
               else
-                  do j = 3, mode 
-                      f = ((two*(j - two) + one)*r*p2 - (j - two)*p1)/((j-two) + one)
-                      p1 = p2
-                      p2 = f
+                  do j = 2, mode 
+                      f = ((two*(j - one) + one)*r*p1 - (j - one)*p0)/((j-one) + one)
+                      p0 = p1
+                      p1 = f
                   end do
               end if
 
@@ -126,7 +123,7 @@
 
           !> Suborutine to evaluate lagrange interpolant derivative
           !! @param n_pts: number of points of input array(nodes)
-          !! @param mode: Particular mode whose interpolation is required
+          !! @param mode: Particular mode whose derivative is required
           !! @param r: location where interpolation is required
           !! @param nodes: vector of nodes 
           !! @param f: interpolated co-efficient at r for derivative 
@@ -183,7 +180,7 @@
                   call get_lagrange_d(x(i), i, x, order + 1, f)
               end do
 
-              call get_legendre(fourth, 3, f)
+              call get_legendre(fourth, 2, f)
               if (abs(f - (-0.40625_c_double)) .gt. epsilon(one)) then
                   write(*, *) "Error: Legendre basis is incorrect"
                   stop
@@ -191,7 +188,7 @@
 
               do i = 1, 7
                   r = -one + i*fourth
-                  call get_legendre_d(r, 4, f)
+                  call get_legendre_d(r, 3, f)
                   temp = half*(five*three*r*r - three)
                   if (abs(f - temp) .gt. epsilon(one)) then
                       write(*, *) "Error: Legendre derivative is incorrect"
@@ -241,7 +238,215 @@
 
           end subroutine cell_coordi
 
+
+          !> Subroutine to create Lagrange differentiation matrix 
+          !! @param npts: Number of Lagrange points 
+          !! @param nodes: location of points
+          !! @param lad_d: differentiation matrix
+          subroutine lagr_d_matrix(npts, nodes, lag_d)
+              integer(c_int), intent(in)     :: npts
+              real(c_double), intent(in)     :: nodes(npts) 
+
+              real(c_double), intent(out)    :: lag_d(npts, npts) 
+
+              integer(c_int)   :: i, j 
+
+              do i = 1, npts
+                  do j = 1, npts
+                      call get_lagrange_d(nodes(j), i, nodes, npts, lag_d(j, i))
+                  end do
+              end do
+
+          end subroutine lagr_d_matrix
+
+          !> Subroutine to create Legendre differentiation matrix 
+          !! @param order: order of Legendre polynomial
+          !! @param npts: Number of points where derivative is required
+          !! @param nodes: location of points where deri. is required
+          !! @param lege_d: differentiation matrix
+          subroutine lege_d_matrix(order, npts, nodes, lege_d)
+              integer(c_int), intent(in)     :: order, npts
+              real(c_double), intent(in)     :: nodes(npts) 
+
+              real(c_double), intent(out)    :: lege_d(npts) 
+
+              integer(c_int)   :: i, j 
+
+              do i = 1, npts
+                  call get_legendre_d(nodes(i), order, lege_d(i))
+              end do
+
+          end subroutine lege_d_matrix
+
+          !> Subroutine to create Left Radau differentiation matrix 
+          !! @param order: order of Legendre polynomial
+          !! @param npts: Number of points where derivative is required
+          !! @param nodes: location of points where deri. is required
+          !! @param g_l: differentiation matrix
+          subroutine left_radau_d(order, npts, nodes, g_l)
+              integer(c_int), intent(in)     :: order, npts
+              real(c_double), intent(in)     :: nodes(npts) 
+
+              real(c_double), intent(out)    :: g_l(npts) 
+
+              real(c_double)  :: temp1(npts), temp2(npts) 
+
+              call lege_d_matrix(order    , npts, nodes, temp1)
+              call lege_d_matrix(order + 1, npts, nodes, temp2)
+
+              g_l = (-one)**(order) * (temp1 - temp2)/(two)
+
+          end subroutine left_radau_d
+
+          !> Subroutine to create Right Radau differentiation matrix 
+          !! @param order: order of Legendre polynomial
+          !! @param npts: Number of points where derivative is required
+          !! @param nodes: location of points where deri. is required
+          !! @param g_l: differentiation matrix
+          subroutine right_radau_d(order, npts, nodes, g_r)
+              integer(c_int), intent(in)     :: order, npts
+              real(c_double), intent(in)     :: nodes(npts) 
+
+              real(c_double), intent(out)    :: g_r(npts) 
+
+              real(c_double)  :: temp1(npts), temp2(npts) 
+
+              call lege_d_matrix(order    , npts, nodes, temp1)
+              call lege_d_matrix(order + 1, npts, nodes, temp2)
+
+              g_r = half*(temp1 + temp2)
+
+          end subroutine right_radau_d
+
+          subroutine test_matrix
+              real(c_double), allocatable :: x(:), deri(:, :) 
+              real(c_double), allocatable :: deri1(:) 
+
+              integer(c_int)    :: order, npts, i
+
+              real(c_double)    :: f, r, temp 
+
+              order = 3
+              npts  = order + 1 
+
+              allocate(x(npts))
+              allocate(deri(npts, npts))
+              allocate(deri1(npts))
+
+              call gauss_nodes(order, x)
+
+              call lagr_d_matrix(npts, x, deri)
+
+              call lege_d_matrix(order, npts, x, deri1)
+
+              call left_radau_d(order, npts, x, deri1)
+!              call right_radau_d(order, npts, x, deri)
+
+              do i = 1, npts 
+!                  write(*, *) deri(i, :) 
+              end do
+!              write(*, *) deri1
+!              write(*, *) x
+!              write(*, *) matmul(deri, x)
+
+              deallocate(x)
+              deallocate(deri)
+              deallocate(deri1)
+
+
+          end subroutine test_matrix
+
   end module polynomial
+
+  module operators 
+
+      use types_vars
+      use polynomial
+      implicit none
+
+      contains
+
+
+          subroutine get_jacob(nele_x, npts, order, x, x_r)
+              integer(c_int), intent(in)     :: order, nele_x, npts
+              real(c_double), intent(in)     :: x(npts, nele_x) 
+
+              real(c_double), intent(out)    :: x_r(npts, nele_x) 
+
+              integer(c_int)  :: i, j 
+              real(c_double)  :: nodes(order + 1) 
+
+              call gauss_nodes(order, nodes)
+              do i = 1, nele_x
+                  do j = 1, npts
+                      x_r(j, i) = (x(npts, i) - x(1, i))/(nodes(order + 1) - nodes(1))
+                  end do
+              end do
+
+          end subroutine get_jacob
+
+          subroutine get_derivative(nele_x, npts, x, u, du)
+              integer(c_int), intent(in)     :: nele_x, npts
+              real(c_double), intent(in)     :: x(npts, nele_x) 
+              real(c_double), intent(in)     :: u(npts, nele_x) 
+
+              real(c_double), intent(out)    :: du(npts, nele_x) 
+
+              real(c_double)  :: x_r(npts, nele_x) !Jacobian
+
+              integer(c_int)  :: order 
+              real(c_double)  :: nodes(npts)
+              real(c_double)  :: deri(npts, npts)
+              integer(c_int)  :: i, j 
+
+              order = npts - 1
+
+              call gauss_nodes(order, nodes)
+              call get_jacob(nele_x, npts, order, x, x_r)
+
+              call lagr_d_matrix(npts, nodes, deri)
+              do i = 1, nele_x
+                  du(:, i) = matmul(deri, u(:, i))/x_r(:, i)
+              end do
+
+          end subroutine get_derivative
+
+
+  end module operators 
+
+
+  module plot_data
+
+      use types_vars
+
+      contains
+
+          subroutine plot_sol(nele, np, x, u, du)
+              integer(c_int), intent(in)  :: nele, Np
+              real(c_double), intent(in)  :: x(:, :), u(:, :)
+              real(c_double), intent(in)  :: du(:, :)
+            
+              integer(c_int)       :: i, j 
+              character(len=256)   :: filename
+    
+              filename='out.dat'
+    
+              OPEN(10,file=filename,status='replace')
+    
+              do i = 1, nele
+                  do j = 1, np
+                      WRITE(10,*) x(j, i), u(j, i), du(j, i)
+                  end do
+              end do
+    
+              CLOSE(10)
+    
+    
+          end subroutine plot_sol
+
+  end module plot_data
+
+
 
 
   module subroutines
@@ -262,7 +467,7 @@
 
             do i = 1, nele_x
                 do j = 1, Np
-                    u(j, i) = sin(two*pi*x(j, i)/40*one)
+                    u(j, i) = sin(two*pi*x(j, i)/(four*ten))
                 end do
             end do
  
@@ -293,8 +498,8 @@
             ! Generate grid
             do i = 1, nele_x
                 do j = 1, Np
-                    x(j, i) = half*(1 - x_nodes(j))*temp_x(i)    &
-                              + half*(1 + x_nodes(j))*temp_x(i+1) 
+                    x(j, i) = half*(one - x_nodes(j))*temp_x(i)    &
+                              + half*(one + x_nodes(j))*temp_x(i+1) 
                 end do
             end do
 
@@ -308,6 +513,8 @@
         subroutine validate_derivative(nele_x, startX, stopX, order)
             
             use polynomial
+            use plot_data
+            use operators
     
             implicit none
     
@@ -316,11 +523,13 @@
     
             real(c_double) :: x_nodes(order + 1)   ! intra cell nodes 
             real(c_double) :: x(order + 1, nele_x) ! x co-ordinates
-            real(c_double) :: u(order + 1, nele_x) ! x co-ordinates
+            real(c_double) :: u(order + 1, nele_x) ! soln vector 
+            real(c_double) :: du(order + 1, nele_x) ! derivative vector 
     
             integer(c_int) :: Np 
     
             call test_poly()
+            call test_matrix()
 
             Np = order + 1
 
@@ -329,8 +538,10 @@
             call make_grid(nele_x, startX, stopX, Np, x_nodes, x)
     
             call init_sol(nele_x, Np, x, u)
-    
-!            write(*, *) x
+
+            call get_derivative(nele_x, np, x, u, du)
+
+            call plot_sol(nele_x, Np, x, u, du)
     
         end subroutine validate_derivative
 
