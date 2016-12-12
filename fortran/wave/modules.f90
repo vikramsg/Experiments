@@ -238,6 +238,28 @@
 
           end subroutine cell_coordi
 
+          !> Subroutine to create Lagrange vector 
+          !! to interpolate to flux points
+          !! @param npts: Number of Lagrange points 
+          !! @param nodes: location of points
+          !! @param lag_flux_l: interpolation vector at left flux point
+          !! @param lag_flux_r: interpolation vector at right flux point
+          subroutine lagr_flux_matrix(npts, nodes, lag_flux_l, lag_flux_r)
+              integer(c_int), intent(in)     :: npts
+              real(c_double), intent(in)     :: nodes(npts) 
+
+              real(c_double), intent(out)    :: lag_flux_l(npts) 
+              real(c_double), intent(out)    :: lag_flux_r(npts) 
+
+              integer(c_int)   :: i, j 
+
+              do i = 1, npts
+                  call get_lagrange( one, i, nodes, npts, lag_flux_l(i))
+                  call get_lagrange(-one, i, nodes, npts, lag_flux_r(i))
+              end do
+
+          end subroutine lagr_flux_matrix
+
 
           !> Subroutine to create Lagrange differentiation matrix 
           !! @param npts: Number of Lagrange points 
@@ -322,6 +344,9 @@
               real(c_double), allocatable :: x(:), deri(:, :) 
               real(c_double), allocatable :: deri1(:) 
 
+              real(c_double), allocatable :: temp1(:) 
+              real(c_double), allocatable :: temp2(:) 
+
               integer(c_int)    :: order, npts, i
 
               real(c_double)    :: f, r, temp 
@@ -332,6 +357,8 @@
               allocate(x(npts))
               allocate(deri(npts, npts))
               allocate(deri1(npts))
+              allocate(temp1(npts))
+              allocate(temp2(npts))
 
               call gauss_nodes(order, x)
 
@@ -348,10 +375,17 @@
 !              write(*, *) deri1
 !              write(*, *) x
 !              write(*, *) matmul(deri, x)
+          
+              call lagr_flux_matrix(npts, x, temp1, temp2)
+
+!              write(*, *) temp1
+!              write(*, *) temp2
 
               deallocate(x)
               deallocate(deri)
               deallocate(deri1)
+              deallocate(temp1)
+              deallocate(temp2)
 
 
           end subroutine test_matrix
@@ -366,7 +400,12 @@
 
       contains
 
-
+          !> Get Jacobian of 1D mesh
+          !! We calculate Jacobian assuming a simple 1D mesh
+          !! @param nele_x: Number of elements in grid
+          !! @param npts: Number of points in each cell
+          !! @param order: Order of polynomial 
+          !! @param x, x_r: location of FR grid points and Jacobian vec
           subroutine get_jacob(nele_x, npts, order, x, x_r)
               integer(c_int), intent(in)     :: order, nele_x, npts
               real(c_double), intent(in)     :: x(npts, nele_x) 
@@ -385,6 +424,31 @@
 
           end subroutine get_jacob
 
+          !> Get Roe flux 
+          !! @param f_l, f_r: Left and right flux
+          !! @param f_I: Interaction or common flux
+          subroutine get_roe_flux(u_l, u_r, f_l, f_r, f_I)
+              real(c_double), intent(in)     :: u_l, u_r 
+              real(c_double), intent(in)     :: f_l, f_r 
+
+              real(c_double), intent(out)    :: f_I
+
+              real(c_double) :: a, temp
+
+              if (abs(u_l - u_r) .gt. epsilon(one)) then
+                  a = (f_l - f_r)/(u_l - u_r)
+                  f_I = half*(f_l + f_r - abs(a)*(u_r - u_l) ) 
+              else
+                  if(u_l .gt. zero) then
+                      f_I = f_l
+                  else
+                      f_I = f_r
+                  end if
+              end if
+
+          end subroutine get_roe_flux
+
+
           subroutine get_derivative(nele_x, npts, x, u, du)
               integer(c_int), intent(in)     :: nele_x, npts
               real(c_double), intent(in)     :: x(npts, nele_x) 
@@ -393,6 +457,13 @@
               real(c_double), intent(out)    :: du(npts, nele_x) 
 
               real(c_double)  :: x_r(npts, nele_x) !Jacobian
+
+              real(c_double)  :: lagr_l(npts) !Interpolation vector left flux point 
+              real(c_double)  :: flux_l !Left flux
+              real(c_double)  :: lagr_r(npts) !Interpolation vector right flux point 
+              real(c_double)  :: flux_r !Right flux
+
+              real(c_double)  :: f_I_l, f_I_r !Left and right interation flux
 
               integer(c_int)  :: order 
               real(c_double)  :: nodes(npts)
@@ -407,6 +478,14 @@
               call lagr_d_matrix(npts, nodes, deri)
               do i = 1, nele_x
                   du(:, i) = matmul(deri, u(:, i))/x_r(:, i)
+              end do
+
+              call lagr_flux_matrix(npts, x, lagr_l, lagr_r)
+
+              !Get left and right flux at each face
+              do i = 2, nele_x
+                  flux_l = dot_product(lagr_l, u(:, i - 1)) 
+                  flux_r = dot_product(lagr_r, u(:, i    )) 
               end do
 
           end subroutine get_derivative
