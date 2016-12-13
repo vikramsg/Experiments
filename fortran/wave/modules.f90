@@ -254,8 +254,8 @@
               integer(c_int)   :: i, j 
 
               do i = 1, npts
-                  call get_lagrange( one, i, nodes, npts, lag_flux_l(i))
-                  call get_lagrange(-one, i, nodes, npts, lag_flux_r(i))
+                  call get_lagrange( one, i, nodes, npts, lag_flux_r(i))
+                  call get_lagrange(-one, i, nodes, npts, lag_flux_l(i))
               end do
 
           end subroutine lagr_flux_matrix
@@ -316,7 +316,7 @@
               call lege_d_matrix(order    , npts, nodes, temp1)
               call lege_d_matrix(order + 1, npts, nodes, temp2)
 
-              g_l = (-one)**(order) * (temp1 - temp2)/(two)
+              g_l = (-one)**(order) * half*(temp1 - temp2)
 
           end subroutine left_radau_d
 
@@ -458,6 +458,9 @@
 
               real(c_double)  :: x_r(npts, nele_x) !Jacobian
 
+              real(c_double)  :: g_l(npts) !Left radau derivative
+              real(c_double)  :: g_r(npts) !Right radau derivative
+
               real(c_double)  :: lagr_l(npts) !Interpolation vector left flux point 
               real(c_double)  :: flux_l !Left flux
               real(c_double)  :: lagr_r(npts) !Interpolation vector right flux point 
@@ -477,17 +480,75 @@
 
               call lagr_d_matrix(npts, nodes, deri)
               do i = 1, nele_x
-                  du(:, i) = matmul(deri, u(:, i))/x_r(:, i)
+                  du(:, i) = matmul(deri, u(:, i))
               end do
 
-              call lagr_flux_matrix(npts, x, lagr_l, lagr_r)
+              call left_radau_d(order,  npts, nodes, g_l)
+              call right_radau_d(order, npts, nodes, g_r)
+
+              call lagr_flux_matrix(npts, nodes, lagr_l, lagr_r)
 
               !Get left and right flux at each face
-              do i = 2, nele_x
-                  flux_l = dot_product(lagr_l, u(:, i - 1)) 
-                  flux_r = dot_product(lagr_r, u(:, i    )) 
+              do i = 2, nele_x - 1
+                  !Get interaction flux at left face
+                  flux_l = dot_product(lagr_r, u(:, i - 1)) 
+                  flux_r = dot_product(lagr_l, u(:, i    )) 
+
+                  call get_roe_flux(flux_l, flux_r, flux_l, flux_r, f_I_l)
+                  
+                  !Get interaction flux at right face
+                  flux_l = dot_product(lagr_r, u(:, i    )) 
+                  flux_r = dot_product(lagr_l, u(:, i + 1)) 
+
+                  call get_roe_flux(flux_l, flux_r, flux_l, flux_r, f_I_r)
+
+                  !Get interaction flux at cell boundaries 
+                  flux_r = dot_product(lagr_r, u(:, i)) 
+                  flux_l = dot_product(lagr_l, u(:, i)) 
+
+                  du(:, i) = du(:, i) + (f_I_l - flux_l)*g_l + (f_I_r - flux_r)*g_r 
               end do
 
+              !Periodic boundary Left
+              !Get interaction flux at left face
+              flux_l = dot_product(lagr_r, u(:, nele_x)) 
+              flux_r = dot_product(lagr_l, u(:, 1     )) 
+
+              call get_roe_flux(flux_l, flux_r, flux_l, flux_r, f_I_l)
+              
+              !Get interaction flux at right face
+              flux_l = dot_product(lagr_r, u(:, 1    )) 
+              flux_r = dot_product(lagr_l, u(:, 1 + 1)) 
+
+              call get_roe_flux(flux_l, flux_r, flux_l, flux_r, f_I_r)
+
+              !Get interaction flux at cell boundaries 
+              flux_r = dot_product(lagr_r, u(:, 1)) 
+              flux_l = dot_product(lagr_l, u(:, 1)) 
+
+              du(:, nele_x) = du(:, nele_x) + (f_I_l - flux_l)*g_l + (f_I_r - flux_r)*g_r 
+
+              !Periodic boundary Right 
+              !Get interaction flux at left face
+              flux_l = dot_product(lagr_r, u(:, nele_x - 1)) 
+              flux_r = dot_product(lagr_l, u(:, nele_x    )) 
+
+              call get_roe_flux(flux_l, flux_r, flux_l, flux_r, f_I_l)
+              
+              !Get interaction flux at right face
+              flux_l = dot_product(lagr_r, u(:, nele_x)) 
+              flux_r = dot_product(lagr_l, u(:, 1     )) 
+
+              call get_roe_flux(flux_l, flux_r, flux_l, flux_r, f_I_r)
+
+              !Get interaction flux at cell boundaries 
+              flux_r = dot_product(lagr_r, u(:, nele_x)) 
+              flux_l = dot_product(lagr_l, u(:, nele_x)) 
+
+              du(:, 1) = du(:, 1) + (f_I_l - flux_l)*g_l + (f_I_r - flux_r)*g_r 
+
+              !Transform derivative to physical space                  
+              du(:, 1:nele_x) = du(:, 1:nele_x)/x_r(:, 1:nele_x)
           end subroutine get_derivative
 
 
