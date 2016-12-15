@@ -32,365 +32,7 @@
 
   end module types_vars
 
-  module polynomial
 
-      use types_vars
-      implicit none
-
-      contains
-
-          !> Suborutine to evaluate legendre basis derivative at a point 
-          !! @param mode: Order or mode whose derivative is required
-          !! @param r: location where evaluation is required
-          !! @param f: interpolated value
-          recursive subroutine get_legendre_d(r, mode, f)
-              integer(c_int), intent(in)  :: mode 
-              real(c_double), intent(in)  :: r
-
-              real(c_double), intent(out) :: f 
-
-              real(c_double) :: p1, p2
-              integer(c_int) :: j 
-
-              if ((r .gt. -one) .and. (r .lt. one)) then
-                  call get_legendre(r, mode      , p1)
-                  call get_legendre(r, mode - 1  , p2)
-                  f = ((mode)*(r*p1 - p2))/(r**two - one)
-              else if (abs(r - (-one)) .lt. epsilon(one)) then
-                  f = (-one)**(mode - one)*half*(mode)*(mode + one)
-              else if (abs(r - one) .lt. epsilon(one)) then
-                  f = half*(mode)*(mode + one)
-              end if
-
-          end subroutine get_legendre_d
-
-
-          !> Suborutine to evaluate legendre basis at a point 
-          !! @param mode: Order or mode whose interpolation is required
-          !! @param r: location where evaluation is required
-          !! @param f: interpolated value
-          subroutine get_legendre(r, mode, f)
-              integer(c_int), intent(in)  :: mode 
-              real(c_double), intent(in)  :: r
-
-              real(c_double), intent(out) :: f 
-
-              real(c_double) :: p0, p1
-              integer(c_int) :: j 
-
-              p0 = one 
-              p1 = r
-
-              if      (mode .eq. 0) then
-                  f = p0
-              else if (mode .eq. 1) then
-                  f = p1
-              else
-                  do j = 2, mode 
-                      f = ((two*(j - one) + one)*r*p1 - (j - one)*p0)/((j-one) + one)
-                      p0 = p1
-                      p1 = f
-                  end do
-              end if
-
-          end subroutine get_legendre
-
-
-          !> Suborutine to evaluate lagrange interpolant
-          !! @param n_pts: number of points of input array(nodes)
-          !! @param mode: Particular mode whose interpolation is required
-          !! @param r: location where interpolation is required
-          !! @param nodes: vector of nodes 
-          !! @param f: interpolation co-efficient at r 
-          subroutine get_lagrange(r, mode, nodes, n_pts, f)
-              integer(c_int), intent(in)  :: n_pts, mode 
-              real(c_double), intent(in)  :: r, nodes(:) 
-
-              real(c_double), intent(out) :: f 
-
-              integer(c_int) :: j 
-
-              f = one
-
-              do j = 1, n_pts
-                  if (j .ne. mode) then
-                      f = f*(r - nodes(j))/(nodes(mode) - nodes(j))
-                  end if
-              end do
-
-          end subroutine get_lagrange
-
-
-          !> Suborutine to evaluate lagrange interpolant derivative
-          !! @param n_pts: number of points of input array(nodes)
-          !! @param mode: Particular mode whose derivative is required
-          !! @param r: location where interpolation is required
-          !! @param nodes: vector of nodes 
-          !! @param f: interpolated co-efficient at r for derivative 
-          subroutine get_lagrange_d(r, mode, nodes, n_pts, f)
-              integer(c_int), intent(in)  :: n_pts, mode 
-              real(c_double), intent(in)  :: r, nodes(:) 
-
-              real(c_double), intent(out) :: f 
-
-              real(c_double) :: temp1, temp2 
-              integer(c_int) :: i, j 
-
-              f = zero 
-
-              do i = 1, n_pts
-                  outer: if (i .ne. mode) then
-                      temp1 = one
-                      temp2 = one
-
-                      do j = 1, n_pts
-                          if ( (j .ne. mode) .and. (j .ne. i)) then
-                              temp1 = temp1*(r - nodes(j))
-                          end if
-
-                          if ( j .ne. mode) then
-                              temp2 = temp2*(nodes(mode) - nodes(j))
-                          end if
-                      end do
-
-                      f = f + temp1/temp2 
-
-                  end if outer
-              end do
-
-          end subroutine get_lagrange_d
-
-
-          !> Subroutine that tests polynomials 
-          subroutine test_poly()
-              real(c_double)    :: x(4) 
-              integer(c_int)    :: order, i
-
-              real(c_double)    :: f, r, temp 
-
-              order = 3
-              call gauss_nodes(order, x)
-
-              do i = 1, order + 1
-                  call get_lagrange(x(i), i, x, order + 1, f)
-                  if (abs(f - one) .gt. epsilon(one)) then
-                      write(*, *) "Error: Lagrange basis is incorrect"
-                      stop
-                  end if
-                  call get_lagrange_d(x(i), i, x, order + 1, f)
-              end do
-
-              call get_legendre(fourth, 2, f)
-              if (abs(f - (-0.40625_c_double)) .gt. epsilon(one)) then
-                  write(*, *) "Error: Legendre basis is incorrect"
-                  stop
-              end if
-
-              do i = 1, 7
-                  r = -one + i*fourth
-                  call get_legendre_d(r, 3, f)
-                  temp = half*(five*three*r*r - three)
-                  if (abs(f - temp) .gt. epsilon(one)) then
-                      write(*, *) "Error: Legendre derivative is incorrect"
-                      stop
-                  end if
-              end do
- 
-          end subroutine test_poly
-
-
-          !> Subroutine that returns Gauss Nodes
-          !! @param order: order of polynomial
-          !! @param x: nodes in [-1,1] cell
-          subroutine gauss_nodes(order, x)
-
-              integer(c_int), intent(in)  :: order
-              real(c_double), intent(out) :: x(:) 
-
-              integer(c_int) :: Np  ! Number of points in 1D
-
-              Np = order + 1
-
-              if (Np .eq. 2) then
-                  x(1) = -one/sqrt(three)
-                  x(2) =  one/sqrt(three) 
-              else if (Np .eq. 3) then
-                  x(1) = -one/sqrt(five3rd)
-                  x(2) =  zero 
-                  x(3) =  one/sqrt(five3rd)
-              else if (Np .eq. 4) then
-                  x(1) = -sqrt(three/seven + two/seven*sqrt(six/five))
-                  x(2) = -sqrt(three/seven - two/seven*sqrt(six/five))
-                  x(3) =  sqrt(three/seven - two/seven*sqrt(six/five))
-                  x(4) =  sqrt(three/seven + two/seven*sqrt(six/five))
-              end if
-
-          end subroutine gauss_nodes
-
-          !> Subroutine that wraps node generation
-          !! @param order: order of polynomial
-          !! @param x: nodes in [-1,1] cell
-          subroutine cell_coordi(order, x)
-              integer(c_int), intent(in)     :: order
-              real(c_double), intent(inout)  :: x(:) 
-
-              call gauss_nodes(order, x)
-
-          end subroutine cell_coordi
-
-          !> Subroutine to create Lagrange vector 
-          !! to interpolate to flux points
-          !! @param npts: Number of Lagrange points 
-          !! @param nodes: location of points
-          !! @param lag_flux_l: interpolation vector at left flux point
-          !! @param lag_flux_r: interpolation vector at right flux point
-          subroutine lagr_flux_matrix(npts, nodes, lag_flux_l, lag_flux_r)
-              integer(c_int), intent(in)     :: npts
-              real(c_double), intent(in)     :: nodes(npts) 
-
-              real(c_double), intent(out)    :: lag_flux_l(npts) 
-              real(c_double), intent(out)    :: lag_flux_r(npts) 
-
-              integer(c_int)   :: i, j 
-
-              do i = 1, npts
-                  call get_lagrange( one, i, nodes, npts, lag_flux_r(i))
-                  call get_lagrange(-one, i, nodes, npts, lag_flux_l(i))
-              end do
-
-          end subroutine lagr_flux_matrix
-
-
-          !> Subroutine to create Lagrange differentiation matrix 
-          !! @param npts: Number of Lagrange points 
-          !! @param nodes: location of points
-          !! @param lad_d: differentiation matrix
-          subroutine lagr_d_matrix(npts, nodes, lag_d)
-              integer(c_int), intent(in)     :: npts
-              real(c_double), intent(in)     :: nodes(npts) 
-
-              real(c_double), intent(out)    :: lag_d(npts, npts) 
-
-              integer(c_int)   :: i, j 
-
-              do i = 1, npts
-                  do j = 1, npts
-                      call get_lagrange_d(nodes(j), i, nodes, npts, lag_d(j, i))
-                  end do
-              end do
-
-          end subroutine lagr_d_matrix
-
-          !> Subroutine to create Legendre differentiation matrix 
-          !! @param order: order of Legendre polynomial
-          !! @param npts: Number of points where derivative is required
-          !! @param nodes: location of points where deri. is required
-          !! @param lege_d: differentiation matrix
-          subroutine lege_d_matrix(order, npts, nodes, lege_d)
-              integer(c_int), intent(in)     :: order, npts
-              real(c_double), intent(in)     :: nodes(npts) 
-
-              real(c_double), intent(out)    :: lege_d(npts) 
-
-              integer(c_int)   :: i, j 
-
-              do i = 1, npts
-                  call get_legendre_d(nodes(i), order, lege_d(i))
-              end do
-
-          end subroutine lege_d_matrix
-
-          !> Subroutine to create Left Radau differentiation matrix 
-          !! @param order: order of Legendre polynomial
-          !! @param npts: Number of points where derivative is required
-          !! @param nodes: location of points where deri. is required
-          !! @param g_l: differentiation matrix
-          subroutine left_radau_d(order, npts, nodes, g_l)
-              integer(c_int), intent(in)     :: order, npts
-              real(c_double), intent(in)     :: nodes(npts) 
-
-              real(c_double), intent(out)    :: g_l(npts) 
-
-              real(c_double)  :: temp1(npts), temp2(npts) 
-
-              call lege_d_matrix(order    , npts, nodes, temp1)
-              call lege_d_matrix(order + 1, npts, nodes, temp2)
-
-              g_l = (-one)**(order) * half*(temp1 - temp2)
-
-          end subroutine left_radau_d
-
-          !> Subroutine to create Right Radau differentiation matrix 
-          !! @param order: order of Legendre polynomial
-          !! @param npts: Number of points where derivative is required
-          !! @param nodes: location of points where deri. is required
-          !! @param g_l: differentiation matrix
-          subroutine right_radau_d(order, npts, nodes, g_r)
-              integer(c_int), intent(in)     :: order, npts
-              real(c_double), intent(in)     :: nodes(npts) 
-
-              real(c_double), intent(out)    :: g_r(npts) 
-
-              real(c_double)  :: temp1(npts), temp2(npts) 
-
-              call lege_d_matrix(order    , npts, nodes, temp1)
-              call lege_d_matrix(order + 1, npts, nodes, temp2)
-
-              g_r = half*(temp1 + temp2)
-
-          end subroutine right_radau_d
-
-          subroutine test_matrix
-              real(c_double), allocatable :: x(:), deri(:, :) 
-              real(c_double), allocatable :: deri1(:) 
-
-              real(c_double), allocatable :: temp1(:) 
-              real(c_double), allocatable :: temp2(:) 
-
-              integer(c_int)    :: order, npts, i
-
-              real(c_double)    :: f, r, temp 
-
-              order = 3
-              npts  = order + 1 
-
-              allocate(x(npts))
-              allocate(deri(npts, npts))
-              allocate(deri1(npts))
-              allocate(temp1(npts))
-              allocate(temp2(npts))
-
-              call gauss_nodes(order, x)
-
-              call lagr_d_matrix(npts, x, deri)
-
-              call lege_d_matrix(order, npts, x, deri1)
-
-              call left_radau_d(order, npts, x, deri1)
-!              call right_radau_d(order, npts, x, deri)
-
-              do i = 1, npts 
-!                  write(*, *) deri(i, :) 
-              end do
-!              write(*, *) deri1
-!              write(*, *) x
-!              write(*, *) matmul(deri, x)
-          
-              call lagr_flux_matrix(npts, x, temp1, temp2)
-
-!              write(*, *) temp1
-!              write(*, *) temp2
-
-              deallocate(x)
-              deallocate(deri)
-              deallocate(deri1)
-              deallocate(temp1)
-              deallocate(temp2)
-
-
-          end subroutine test_matrix
-
-  end module polynomial
 
   module operators 
 
@@ -448,13 +90,136 @@
 
           end subroutine get_roe_flux
 
+          !> Get centered flux 
+          !! @param f_l, f_r: Left and right flux
+          !! @param f_I: Interaction or common flux
+          subroutine get_centered_flux(u_l, u_r, f_l, f_r, f_I)
+              real(c_double), intent(in)     :: u_l, u_r 
+              real(c_double), intent(in)     :: f_l, f_r 
 
+              real(c_double), intent(out)    :: f_I
+
+              f_I = half*(f_l + f_r)
+
+          end subroutine get_centered_flux
+
+          !> Subroutine to get discont. flux at flux points 
+          !! It assumes periodic boundary conditions for now
+          !! @param nele_x: number of elements
+          !! @param extrapol_mat: extraopolation matrix to flux points 
+          !! @param f: f at solution points 
+          !! @param f_d: extrapolated discontinuous flux 
+          subroutine get_flux_disc_f(nele_x, extrapol_mat, f, f_d)
+              integer(c_int), intent(in)     :: nele_x
+              real(c_double), intent(in)     :: extrapol_mat(:, :) 
+              real(c_double), intent(in)     :: f(:, :) 
+
+              real(c_double), intent(out)    :: f_d(:, :) 
+
+              integer(c_int) :: i 
+
+              do i = 1, nele_x
+                  f_d(:, i) = matmul(extrapol_mat, f(:, i))
+              end do
+
+
+          end subroutine get_flux_disc_f
+
+
+          !> Subroutine to get second derivative
+          !! It assumes periodic boundary conditions for now
+          !! @param nele_x: number of elements
+          !! @param order: order of interpolating polynomial 
+          !! @param npts: number of points in each element
+          !! @param x: solution points vector
+          !! @param u: solution vector
+          !! @param du: derivative vector 
+          subroutine get_derivative_2(nele_x, order, npts, x, u, du)
+              integer(c_int), intent(in)     :: nele_x, npts, order
+              real(c_double), intent(in)     :: x(npts, nele_x) 
+              real(c_double), intent(in)     :: u(npts, nele_x) 
+
+              real(c_double), intent(out)    :: du(npts, nele_x) 
+
+              real(c_double)  :: x_r(npts, nele_x) !Jacobian
+
+              real(c_double)  :: g_l(npts) !Left radau derivative
+              real(c_double)  :: g_r(npts) !Right radau derivative
+
+              real(c_double)  :: flux_f(2, nele_x) !Flux at cell edge
+
+              real(c_double)  :: lagr_l(npts) !Interpolation vector left flux point 
+              real(c_double)  :: flux_l !Left flux
+              real(c_double)  :: lagr_r(npts) !Interpolation vector right flux point 
+              real(c_double)  :: flux_r !Right flux
+
+              real(c_double)  :: extrap_flux(2, npts) !Extrapolation matrix for flux points
+
+              real(c_double)  :: f_I_l, f_I_r !Left and right interation flux
+
+              real(c_double)  :: nodes(npts)
+              real(c_double)  :: deri(npts, npts)
+              integer(c_int)  :: i, j 
+
+              call gauss_nodes(order, nodes)
+              call get_jacob(nele_x, npts, order, x, x_r)
+
+              call lagr_d_matrix(npts, nodes, deri)
+              
+              call left_radau_d(order,  npts, nodes, g_l)
+              call right_radau_d(order, npts, nodes, g_r)
+
+              call lagr_flux_matrix(npts, nodes, lagr_l, lagr_r)
+              extrap_flux(1, :) = lagr_l 
+              extrap_flux(2, :) = lagr_r 
+
+              do i = 1, nele_x
+                  du(:, i) = matmul(deri, u(:, i)) !Get discontinuous derivative
+              end do
+
+              call get_flux_disc_f(nele_x, extrap_flux, u, flux_f) !Get discontinuous flux at flux point
+
+              do i = 2, nele_x - 1
+                  call get_centered_flux(flux_f(2, i-1), flux_f(1, i), flux_f(2, i-1), flux_f(1, i), f_I_l)
+
+                  call get_centered_flux(flux_f(2, i), flux_f(1, i+1), flux_f(2, i), flux_f(1, i+1), f_I_r)
+              
+                  du(:, i) = du(:, i) + (f_I_l - flux_f(1, i))*g_l +  (f_I_r - flux_f(2, i))*g_r
+              end do
+
+              !At left boundary
+              call get_centered_flux(flux_f(2, nele_x), flux_f(1, 1), flux_f(2, nele_x), flux_f(1, 1), f_I_l)
+              call get_centered_flux(flux_f(2, 1), flux_f(1, 1+1), flux_f(2, 1), flux_f(1, 1+1), f_I_r)
+                  
+              du(:, 1) = du(:, 1) + (f_I_l - flux_f(1, 1))*g_l +  (f_I_r - flux_f(2, 1))*g_r
+              
+              !At right boundary
+              call get_centered_flux(flux_f(2, nele_x-1), flux_f(1, nele_x), flux_f(2, nele_x -1 ), flux_f(1, nele_x), f_I_l)
+              call get_centered_flux(flux_f(2, nele_x), flux_f(1, 1), flux_f(2, nele_x), flux_f(1, 1), f_I_r)
+                  
+              du(:, nele_x) = du(:, nele_x) + (f_I_l - flux_f(1, nele_x))*g_l +  (f_I_r - flux_f(2, nele_x))*g_r
+
+              !Transform derivative to physical space                  
+              du(:, 1:nele_x) = du(:, 1:nele_x)/x_r(:, 1:nele_x)
+          end subroutine get_derivative_2
+
+
+
+          !> Subroutine to get first derivative
+          !! It assumes periodic boundary conditions for now
+          !! @param nele_x: number of elements
+          !! @param npts: number of points in each element
+          !! @param x: solution points vector
+          !! @param u: solution vector
+          !! @param du: derivative vector 
           subroutine get_derivative(nele_x, npts, x, u, du)
               integer(c_int), intent(in)     :: nele_x, npts
               real(c_double), intent(in)     :: x(npts, nele_x) 
               real(c_double), intent(in)     :: u(npts, nele_x) 
 
               real(c_double), intent(out)    :: du(npts, nele_x) 
+
+              integer(c_int)  :: order 
 
               real(c_double)  :: x_r(npts, nele_x) !Jacobian
 
@@ -468,7 +233,6 @@
 
               real(c_double)  :: f_I_l, f_I_r !Left and right interation flux
 
-              integer(c_int)  :: order 
               real(c_double)  :: nodes(npts)
               real(c_double)  :: deri(npts, npts)
               integer(c_int)  :: i, j 
@@ -479,6 +243,7 @@
               call get_jacob(nele_x, npts, order, x, x_r)
 
               call lagr_d_matrix(npts, nodes, deri)
+              
               do i = 1, nele_x
                   du(:, i) = matmul(deri, u(:, i))
               end do
@@ -495,7 +260,7 @@
                   flux_r = dot_product(lagr_l, u(:, i    )) 
 
                   call get_roe_flux(flux_l, flux_r, flux_l, flux_r, f_I_l)
-                  
+
                   !Get interaction flux at right face
                   flux_l = dot_product(lagr_r, u(:, i    )) 
                   flux_r = dot_product(lagr_l, u(:, i + 1)) 
@@ -515,7 +280,7 @@
               flux_r = dot_product(lagr_l, u(:, 1     )) 
 
               call get_roe_flux(flux_l, flux_r, flux_l, flux_r, f_I_l)
-              
+
               !Get interaction flux at right face
               flux_l = dot_product(lagr_r, u(:, 1    )) 
               flux_r = dot_product(lagr_l, u(:, 1 + 1)) 
@@ -526,7 +291,7 @@
               flux_r = dot_product(lagr_r, u(:, 1)) 
               flux_l = dot_product(lagr_l, u(:, 1)) 
 
-              du(:, nele_x) = du(:, nele_x) + (f_I_l - flux_l)*g_l + (f_I_r - flux_r)*g_r 
+              du(:, 1) = du(:, 1) + (f_I_l - flux_l)*g_l + (f_I_r - flux_r)*g_r 
 
               !Periodic boundary Right 
               !Get interaction flux at left face
@@ -545,12 +310,11 @@
               flux_r = dot_product(lagr_r, u(:, nele_x)) 
               flux_l = dot_product(lagr_l, u(:, nele_x)) 
 
-              du(:, 1) = du(:, 1) + (f_I_l - flux_l)*g_l + (f_I_r - flux_r)*g_r 
+              du(:, nele_x) = du(:, nele_x) + (f_I_l - flux_l)*g_l + (f_I_r - flux_r)*g_r 
 
               !Transform derivative to physical space                  
               du(:, 1:nele_x) = du(:, 1:nele_x)/x_r(:, 1:nele_x)
           end subroutine get_derivative
-
 
   end module operators 
 
@@ -604,28 +368,43 @@
             real(c_double), intent(out) :: x(:, :), u(:, :)
 
             integer(c_int) :: i, j 
+            real(c_double) :: x_l, x_r 
 
+            !!!!!!!!!!!!!!!!!!!!!!!
+            !sine wave
             do i = 1, nele_x
                 do j = 1, Np
-                    u(j, i) = sin(two*pi*x(j, i)/(four*ten))
+                    u(j, i) = sin(two*pi*x(j, i)/(one))
                 end do
             end do
- 
+
+!            x_l = four/ten 
+!            x_r = six/ten
+!            !Delta function
+!            do i = 1, nele_x
+!                do j = 1, Np
+!                    u(j, i) = 0 
+!                    if ((x(j, i) .le. x_r) .and. (x(j, i) .ge. x_l)) then
+!                        u(j, i) = hundred*(x(j, i)-x_l)*(x_r-x(j, i))
+!                    end if
+!                end do
+!            end do
+
         end subroutine init_sol
 
         !> Subroutine to make simple 1D grid
         !! @param nptsx num. of points
         !! @param startX, stopX starting and ending location
         !! @param x array containing grid points
-        subroutine make_grid(nele_x, startX, stopX, Np, x_nodes, x)
+        subroutine make_grid(nele_x, startX, stopX, Np, x_nodes, x, dx)
             integer(c_int), intent(in)  :: nele_x, Np
             real(c_double), intent(in)  :: startX, stopX 
             real(c_double), intent(in)  :: x_nodes(Np) 
     
-            real(c_double), intent(out) :: x(:, :)
+            real(c_double), intent(out) :: x(:, :), dx
     
             integer(c_int) :: i, j 
-            real(c_double) :: dx, temp_x(nele_x + 1) 
+            real(c_double) :: temp_x(nele_x + 1) 
     
             ! Grid spacing
             dx = (stopX - startX)/FLOAT(nele_x)
@@ -646,10 +425,10 @@
         end subroutine make_grid
 
 
-        !> Subroutine to validate 2nd and 4th order derivatives
+        !> Subroutine to validate FR derivative
         !! @param nptsx number of points
         !! @param startX, stopX starting and ending location of grid
-        !! @param max2nd max4th maximum error for 2nd and 4th order derivative
+        !! @param order: order of polynomial
         subroutine validate_derivative(nele_x, startX, stopX, order)
             
             use polynomial
@@ -661,30 +440,92 @@
             integer(c_int), intent(in)  :: nele_x, order
             real(c_double), intent(in)  :: startX, stopX 
     
+            real(c_double) :: dx ! Characteristic length of cell 
+
             real(c_double) :: x_nodes(order + 1)   ! intra cell nodes 
             real(c_double) :: x(order + 1, nele_x) ! x co-ordinates
             real(c_double) :: u(order + 1, nele_x) ! soln vector 
             real(c_double) :: du(order + 1, nele_x) ! derivative vector 
     
-            integer(c_int) :: Np 
+            integer(c_int) :: Np, i 
     
             call test_poly()
             call test_matrix()
+            call fun_matrix()
 
             Np = order + 1
 
             call cell_coordi(order, x_nodes)
     
-            call make_grid(nele_x, startX, stopX, Np, x_nodes, x)
+            call make_grid(nele_x, startX, stopX, Np, x_nodes, x, dx)
     
             call init_sol(nele_x, Np, x, u)
 
             call get_derivative(nele_x, np, x, u, du)
 
+            write(*, *) du(:, 1)
+
+            call get_derivative_2(nele_x, order, np, x, u, du)
+
+            write(*, *) du(:, 1)
+
             call plot_sol(nele_x, Np, x, u, du)
     
         end subroutine validate_derivative
 
+
+
+        !> Subroutine to solve wave equation 
+        !! @param nptsx number of points
+        !! @param startX, stopX starting and ending location of grid
+        !! @param stopT: stop time 
+        !! @param order: order of polynomial
+        !! @param nu: CFL value
+        subroutine wave_solver(nele_x, startX, stopX, stopT, order, nu)
+            use polynomial
+            use plot_data
+            use operators
+    
+            implicit none
+    
+            integer(c_int), intent(in)  :: nele_x, order
+            real(c_double), intent(in)  :: startX, stopX 
+            real(c_double), intent(in)  :: stopT 
+            real(c_double), intent(in)  :: nu 
+    
+            real(c_double) :: dx ! Characteristic length of cell 
+            real(c_double) :: dt ! time spacing 
+
+            real(c_double) :: x_nodes(order + 1)   ! intra cell nodes 
+            real(c_double) :: x(order + 1, nele_x) ! x co-ordinates
+            real(c_double) :: u(order + 1, nele_x) ! soln vector 
+            real(c_double) :: u_new(order + 1, nele_x) ! soln vector 
+            real(c_double) :: du(order + 1, nele_x) ! derivative vector 
+    
+            integer(c_int) :: Np !Number of points in a cell 
+
+            integer(c_int) :: steps, num_steps  !Iterator for time, number of steps
+ 
+            Np = order + 1
+
+            call cell_coordi(order, x_nodes) !Get intra-cell co-ordis
+
+            call make_grid(nele_x, startX, stopX, Np, x_nodes, x, dx) !Get grid and char. len
+
+            dt = nu*dx/(2*order + 1) !Assuming wave speed = 1
+            num_steps = stopT/dt
+
+            call init_sol(nele_x, Np, x, u)
+
+            do steps = 1, num_steps 
+                call get_derivative(nele_x, np, x, u, du)
+
+                u = u - dt*du
+            end do
+
+            call plot_sol(nele_x, Np, x, u, du)
+
+        end subroutine wave_solver
 
 
   end module subroutines

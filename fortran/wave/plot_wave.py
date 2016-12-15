@@ -34,8 +34,12 @@ plt.plot(xv1, yv1, color = "blue", linewidth =  2.5, \
          linestyle = "-" )
 plt.plot(xv1, yv2, color = "blue", linewidth =  2.5, \
          linestyle = "dotted")
-plt.plot(exv1, eyv1, color = "red", linewidth =  2.5, \
-         linestyle = "dashed")
+#plt.plot(exv1, eyv1, color = "red", linewidth =  2.5, \
+#         linestyle = "dashed")
+
+print(np.max(yv1))
+
+plt.ylim([-7, 7])
 
 #plt.title('n = '+str(n)+', cfl = '+str(cfl))
 #plt.xlabel('x')

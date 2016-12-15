@@ -6,9 +6,12 @@ LDFLAGS =
 
 all = $(EXE)
 
-test.x: modules.o main.o
+test.x: polynomial.o modules.o main.o
 	$(FC) -o $@ $^  $(LDFLAGS)
 	
+polynomial.o: polynomial.f90
+	$(FC) -o $@ -c $^  $(LDFLAGS)
+
 modules.o: modules.f90
 	$(FC) -o $@ -c $^  $(LDFLAGS)
 	
