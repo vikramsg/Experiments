@@ -25,8 +25,10 @@ yv1 = np.array(y1)
 yv2 = np.array(y2)
 
 exv1  = xv1 
-coeff = (2*np.pi/(40.0))
-eyv1  = coeff*np.cos(coeff*exv1)
+coeff = (2*np.pi/(1.0))
+#eyv1  = -coeff*coeff*np.sin(coeff*exv1)
+c = 100; alpha = 0.02; L = 1; t = 10
+eyv1  =  c*np.exp((-alpha*np.pi**2*t)/(L**2))*np.sin(np.pi*exv1/L)
 
 
 # now, plot the data:

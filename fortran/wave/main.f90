@@ -28,7 +28,7 @@
     order = 1
     do nele_x = 40, 40 
         call validate_derivative(nele_x, startX, stopX, order)
-!        call wave_solver(nele_x, startX, stopX, stopT, order, nu)
+        call wave_solver(nele_x, startX, stopX, stopT, order, nu)
     end do
 
   end program template
