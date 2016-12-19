@@ -216,8 +216,6 @@
                 u = u - dt*du
             end do
 
-            write(*, *) u(:, 10:15)
-
             call plot_sol(nele_x, Np, x, u, du)
 
         end subroutine wave_solver
@@ -267,7 +265,7 @@
           
             call get_jacob(nele_x, Np, order, x, x_r)
 
-            dt = nu*dx*dx/((2*order + 1)**2) !Assuming wave speed = 1
+            dt = nu*dx*dx/((two*order + one)**two) 
             num_steps = stopT/dt
 
             call init_sol(nele_x, Np, x, u)
@@ -276,14 +274,19 @@
             call fr_run%init_operators(order, Np, nele_x, x_r)
 
 !            do steps = 1, num_steps 
-            do steps = 1, 1 
+            do steps = 1, 10
 
                 call fr_run%get_sec_deri(x, u, du)
 
                 u = u + dt*du
             end do
 
-!            call plot_sol(nele_x, Np, x, u, du)
+            !Finalize FR class
+            call fr_run%kill_all()
+
+            write(*, *) u(:, 10:15)
+
+            call plot_sol(nele_x, Np, x, u, du)
 
         end subroutine diff_solver
 
