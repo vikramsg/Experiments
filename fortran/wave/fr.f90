@@ -187,30 +187,53 @@
           !! right now only implemented periodic condition
           !! @param nele_x: number of elements
           !! @param k: parameter for selecting flux type 0 for upwind, 1 for centered
+          !! @param bnd: Parameter for bound. condn. 1 for imposing boundary and 0 for extrapolating 
           !! @param flux_f: flux at face 
           !! @param f_I: interaction flux at face 
-          subroutine get_boundary_flux(this, nele_x, k, flux_f, f_I)
+          subroutine get_boundary_flux(this, nele_x, k, bnd, flux_f, f_I)
               class(fr), intent(inout)   :: this
 
               integer(c_int), intent(in)     :: nele_x
               real(c_double), intent(in)     :: k 
+              integer(c_int), intent(in)     :: bnd 
               real(c_double), intent(in)     :: flux_f(2, nele_x) 
 
               real(c_double), intent(out)    :: f_I(2, nele_x) 
 
               real(c_double)  :: extrap_flux(2, this%npts) !Extrapolation matrix for flux points
 
-              !At left boundary
-              call get_interaction_flux(flux_f(2, nele_x), flux_f(1, 1), &
-                                        flux_f(2, nele_x), flux_f(1, 1), k, f_I(1, 1))
-              call get_interaction_flux(flux_f(2, 1), flux_f(1, 1+1), &
-                                        flux_f(2, 1), flux_f(1, 1+1), k, f_I(2, 1))
-                  
-              !At right boundary
-              call get_interaction_flux(flux_f(2, nele_x-1), flux_f(1, nele_x), &
-                                    flux_f(2, nele_x -1 ), flux_f(1, nele_x), k, f_I(1, nele_x))
-              call get_interaction_flux(flux_f(2, nele_x), flux_f(1, 1), &
-                                    flux_f(2, nele_x), flux_f(1, 1), k, f_I(2, nele_x))
+              if (bnd .eq. one) then
+!                  !!!!!!!!!!!!!!!!!!!!!!!
+!                  !Periodic boundary conditions
+!                  !At left boundary
+!                  call get_interaction_flux(flux_f(2, nele_x), flux_f(1, 1), &
+!                                            flux_f(2, nele_x), flux_f(1, 1), k, f_I(1, 1))
+!                  call get_interaction_flux(flux_f(2, 1), flux_f(1, 1+1), &
+!                                            flux_f(2, 1), flux_f(1, 1+1), k, f_I(2, 1))
+!                      
+!                  !At right boundary
+!                  call get_interaction_flux(flux_f(2, nele_x-1), flux_f(1, nele_x), &
+!                                        flux_f(2, nele_x -1 ), flux_f(1, nele_x), k, f_I(1, nele_x))
+!                  call get_interaction_flux(flux_f(2, nele_x), flux_f(1, 1), &
+!                                        flux_f(2, nele_x), flux_f(1, 1), k, f_I(2, nele_x))
+!                  !!!!!!!!!!!!!!!!!!!!!!!
+                  !Homogeneous boundary conditions
+                  !At left boundary
+                  f_I(1, 1) = zero
+                  call get_interaction_flux(flux_f(2, 1), flux_f(1, 1+1), &
+                                            flux_f(2, 1), flux_f(1, 1+1), k, f_I(2, 1))
+                      
+                  !At right boundary
+                  call get_interaction_flux(flux_f(2, nele_x-1), flux_f(1, nele_x), &
+                                        flux_f(2, nele_x -1 ), flux_f(1, nele_x), k, f_I(1, nele_x))
+                  f_I(2, nele_x) = zero
+               else if (bnd .eq. zero) then
+                   f_I(:, 1)      = flux_f(:, 1)
+                   f_I(:, nele_x) = flux_f(:, nele_x)
+               else
+                   write(*, *) "Error: Incorrect boundary option"
+                   stop
+               end if
                   
           end subroutine get_boundary_flux
 
@@ -251,15 +274,17 @@
           !! @param npts: number of points in each element
           !! @param x: solution points vector
           !! @param k: parameter for selecting flux type 0 for upwind, 1 for centered
+          !! @param bnd: Parameter for bound. condn. 1 for imposing boundary and 0 for extrapolating 
           !! @param u: solution vector
           !! @param du: derivative vector 
-          subroutine get_derivative(this, nele_x, x, k, u, du)
+          subroutine get_derivative(this, nele_x, x, k, bnd, u, du)
               class(fr), intent(inout)   :: this
 
               integer(c_int), intent(in)     :: nele_x
               real(c_double), intent(in)     :: x(this%npts, nele_x) 
               real(c_double), intent(in)     :: u(this%npts, nele_x) 
               real(c_double), intent(in)     :: k !parameter for selecting flux type 0 for upwind, 1 for centered
+              integer(c_int), intent(in)     :: bnd 
 
               real(c_double), intent(out)    :: du(this%npts, nele_x) 
 
@@ -280,7 +305,7 @@
 
               call this%get_disc_flux_f(nele_x, u, flux_f) !Get discontinuous flux at flux point
 
-              call this%get_boundary_flux(nele_x, k, flux_f, f_I)
+              call this%get_boundary_flux(nele_x, k, bnd, flux_f, f_I)
 
               call this%get_inter_flux(nele_x, k, flux_f, f_I)
 
@@ -312,11 +337,14 @@
 
               real(c_double) :: du_temp(this%npts, this%nele_x) 
               real(c_double) :: k !Parameter for correction, 0 for upwind, 1 for central 
+              integer(c_int) :: bnd !Parameter for bound. condn. 1 for imposing boundary and 0 for extrapolating 
 
-              k = one          
-              call this%get_derivative(this%nele_x, x, k,  u, du_temp)
-              k = zero
-              call this%get_derivative(this%nele_x, x, k, du_temp, du)
+              bnd = one 
+              k   = one 
+              call this%get_derivative(this%nele_x, x, k, bnd, u, du_temp)
+              bnd = zero 
+              k   = one
+              call this%get_derivative(this%nele_x, x, k, bnd, du_temp, du)
 
           end subroutine get_sec_deri
 
@@ -335,9 +363,11 @@
               real(c_double), intent(out)    :: du(this%npts, this%nele_x) 
 
               real(c_double) :: k !Parameter for correction, 0 for upwind, 1 for central 
+              integer(c_int) :: bnd !Parameter for bound. condn. 1 for imposing boundary and 0 for extrapolating 
 
+              bnd = one
               k = zero
-              call this%get_derivative(this%nele_x, x, k, u, du)
+              call this%get_derivative(this%nele_x, x, k, bnd, u, du)
 
           end subroutine get_first_deri
 

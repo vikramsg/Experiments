@@ -90,7 +90,7 @@
             !sine wave
             do i = 1, nele_x
                 do j = 1, Np
-                    u(j, i) = sin(two*pi*x(j, i)/(one))
+                    u(j, i) = hundred*sin(pi*x(j, i)/(one))
                 end do
             end do
 
@@ -108,18 +108,24 @@
 
         end subroutine init_sol
 
-        subroutine exact_sol_sin_diff(nptsx, x, c, L, alpha, t, u_ex)
+        subroutine exact_sol_sin_diff(nele, npts, x, c, L, alpha, t, u_ex, du_ex)
 
-            integer(c_int), intent(in)  :: nptsx
+            integer(c_int), intent(in)  :: nele, npts
             real(c_double), intent(in)  :: c, L, t, alpha
-            real(c_double), intent(in)  :: x(0:nptsx)
-            real(c_double), intent(out) :: u_ex(0:nptsx)
+            real(c_double), intent(in)  :: x(:, :)
+            real(c_double), intent(out) :: u_ex(:, :)
+            real(c_double), intent(out) :: du_ex(:, :)
     
-            integer(c_int) :: i 
+            integer(c_int) :: i, j 
     
-            do i = 0, nptsx
-                u_ex(i) = c*exp((-alpha*pi**2*t)/L**2)*sin(pi*(x(i)/L))
+            do i = 1, nele
+                do j = 1, npts
+                    u_ex(j, i) = c*exp((-alpha*pi**2*t)/L**2)*sin(pi*(x(j, i)/L))
+                    du_ex(j, i) = -c*(pi/L)*(pi/L)*exp((-alpha*pi**2*t)/L**2)*sin(pi*(x(j, i)/L))
+                end do
             end do
+
+
     
     
         end subroutine exact_sol_sin_diff 
@@ -254,6 +260,11 @@
             integer(c_int) :: Np !Number of points in a cell 
 
             integer(c_int) :: steps, num_steps  !Iterator for time, number of steps
+            integer(c_int) :: i, j 
+
+            real(c_double) :: u_ex(order + 1, nele_x) ! exact soln vector 
+            real(c_double) :: du_ex(order + 1, nele_x) ! exact soln vector 
+            real(c_double) :: fr_error
 
             type(fr)       :: fr_run
 
@@ -266,25 +277,39 @@
             call get_jacob(nele_x, Np, order, x, x_r)
 
             dt = nu*dx*dx/((two*order + one)**two) 
-            num_steps = stopT/dt
+            num_steps = ten/dt
+            write(*, *) dt, num_steps
 
             call init_sol(nele_x, Np, x, u)
 
             !Initializing FR class
             call fr_run%init_operators(order, Np, nele_x, x_r)
 
-!            do steps = 1, num_steps 
-            do steps = 1, 10
+            do steps = 1, num_steps 
 
                 call fr_run%get_sec_deri(x, u, du)
 
-                u = u + dt*du
+                u = u + dt*(two/hundred)*du
             end do
 
             !Finalize FR class
             call fr_run%kill_all()
 
-            write(*, *) u(:, 10:15)
+            call exact_sol_sin_diff(nele_x, Np, x, hundred, one, (two/hundred), num_steps*dt, u_ex, du_ex)
+
+            fr_error = sum(abs(u - u_ex))/(nele_x*Np)
+
+            write(*, *) fr_error
+    
+            OPEN(10,file='diff.dat',status='replace')
+    
+            do i = 1, nele_x 
+                do j = 1, Np
+                    WRITE(10,*) x(j, i), u(j, i), u_ex(j, i), du(j, i), du_ex(j, i)
+                end do
+            end do
+    
+            CLOSE(10)
 
             call plot_sol(nele_x, Np, x, u, du)
 
