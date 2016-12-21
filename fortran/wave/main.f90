@@ -2,7 +2,7 @@
   program template
   
     use subroutines
-  
+
     implicit none  
 
     integer(c_int) :: nele_x ! Number of elements in x
@@ -17,19 +17,19 @@
     startX = 0; stopX = one 
 
     ! CFL value
-    nu  = two/ten 
+    nu  = nine/ten !+ one 
 
     !Stop Time
-    stopT = half 
+    stopT = ten 
 
     ! Echo print your input to make sure it is correct
     write(*,*) 'Your 1D domain is from ', startX, ' to ', stopX
 
-    order = 2
-    do nele_x = 10, 10
+    order = 3
+    do nele_x = 50, 50
 !        call validate_derivative(nele_x, startX, stopX, order)
-!        call wave_solver(nele_x, startX, stopX, stopT, order, nu)
-        call diff_solver(nele_x, startX, stopX, stopT, order, nu)
+        call wave_solver(nele_x, startX, stopX, stopT, order, nu)
+!        call diff_solver(nele_x, startX, stopX, stopT, order, nu)
     end do
 
   end program template

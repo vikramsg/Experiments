@@ -1,6 +1,6 @@
 EXE = test.x
 
-FC = gfortran
+FC = gfortran -g -fcheck=all -fbounds-check
 
 LDFLAGS =
 

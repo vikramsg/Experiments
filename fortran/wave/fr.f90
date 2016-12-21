@@ -3,6 +3,7 @@
 
       use types_vars
       use polynomial
+
       implicit none
 
       type :: fr
@@ -70,11 +71,13 @@
 
               real(c_double), intent(in) :: x_r(:, :) 
 
-              real(c_double) :: nodes(this%order + 1) 
+              real(c_double), allocatable :: nodes(:) 
 
               this%order  = order
               this%npts   = npts
               this%nele_x = nele_x 
+
+              allocate(nodes(this%npts))
 
               allocate(this%lagr_deri(this%npts, this%npts))
 
@@ -97,6 +100,8 @@
 
               call lagr_flux_matrix(this%npts, nodes, this%lagr_l, this%lagr_r)
 
+              deallocate(nodes)
+
           end subroutine init_operators 
 
 
@@ -114,21 +119,21 @@
           !! k = 0 gives fully upwind, k = 1 center
           !! @param f_l, f_r: Left and right flux
           !! @param f_I: Interaction or common flux
-          subroutine get_interaction_flux(u_l, u_r, f_l, f_r, k, f_I)
+          subroutine get_interaction_flux(u_l, u_r, f_l, f_r, k, f_In)
 
               real(c_double), intent(in)     :: u_l, u_r 
               real(c_double), intent(in)     :: f_l, f_r, k 
 
-              real(c_double), intent(out)    :: f_I
+              real(c_double), intent(out)    :: f_In
 
               real(c_double) :: a, temp
 
               if (abs(u_l - u_r) .gt. epsilon(one)) then
                   a = (f_l - f_r)/(u_l - u_r)
-                  f_I = a*half*(u_l + u_r) 
-                  f_I = f_I - abs(a)*(1-k)*half*(u_r - u_l)
+                  f_In = a*half*(u_l + u_r) 
+                  f_In = f_In - abs(a)*(1-k)*half*(u_r - u_l)
               else
-                  f_I = half*(f_l + f_r) - (1-k)*(f_r - f_l) 
+                  f_In = half*(f_l + f_r) - (1-k)*(f_r - f_l) 
               end if
 
           end subroutine get_interaction_flux
@@ -203,30 +208,30 @@
               real(c_double)  :: extrap_flux(2, this%npts) !Extrapolation matrix for flux points
 
               if (bnd .eq. one) then
-!                  !!!!!!!!!!!!!!!!!!!!!!!
-!                  !Periodic boundary conditions
-!                  !At left boundary
-!                  call get_interaction_flux(flux_f(2, nele_x), flux_f(1, 1), &
-!                                            flux_f(2, nele_x), flux_f(1, 1), k, f_I(1, 1))
-!                  call get_interaction_flux(flux_f(2, 1), flux_f(1, 1+1), &
-!                                            flux_f(2, 1), flux_f(1, 1+1), k, f_I(2, 1))
-!                      
-!                  !At right boundary
-!                  call get_interaction_flux(flux_f(2, nele_x-1), flux_f(1, nele_x), &
-!                                        flux_f(2, nele_x -1 ), flux_f(1, nele_x), k, f_I(1, nele_x))
-!                  call get_interaction_flux(flux_f(2, nele_x), flux_f(1, 1), &
-!                                        flux_f(2, nele_x), flux_f(1, 1), k, f_I(2, nele_x))
-!                  !!!!!!!!!!!!!!!!!!!!!!!
-                  !Homogeneous boundary conditions
+                  !!!!!!!!!!!!!!!!!!!!!!!
+                  !Periodic boundary conditions
                   !At left boundary
-                  f_I(1, 1) = zero
+                  call get_interaction_flux(flux_f(2, nele_x), flux_f(1, 1), &
+                                            flux_f(2, nele_x), flux_f(1, 1), k, f_I(1, 1))
                   call get_interaction_flux(flux_f(2, 1), flux_f(1, 1+1), &
                                             flux_f(2, 1), flux_f(1, 1+1), k, f_I(2, 1))
                       
                   !At right boundary
                   call get_interaction_flux(flux_f(2, nele_x-1), flux_f(1, nele_x), &
                                         flux_f(2, nele_x -1 ), flux_f(1, nele_x), k, f_I(1, nele_x))
-                  f_I(2, nele_x) = zero
+                  call get_interaction_flux(flux_f(2, nele_x), flux_f(1, 1), &
+                                        flux_f(2, nele_x), flux_f(1, 1), k, f_I(2, nele_x))
+                  !!!!!!!!!!!!!!!!!!!!!!!
+!                  !Homogeneous boundary conditions
+!                  !At left boundary
+!                  f_I(1, 1) = zero
+!                  call get_interaction_flux(flux_f(2, 1), flux_f(1, 1+1), &
+!                                            flux_f(2, 1), flux_f(1, 1+1), k, f_I(2, 1))
+!                      
+!                  !At right boundary
+!                  call get_interaction_flux(flux_f(2, nele_x-1), flux_f(1, nele_x), &
+!                                        flux_f(2, nele_x -1 ), flux_f(1, nele_x), k, f_I(1, nele_x))
+!                  f_I(2, nele_x) = zero
                else if (bnd .eq. zero) then
                    f_I(:, 1)      = flux_f(:, 1)
                    f_I(:, nele_x) = flux_f(:, nele_x)
@@ -327,13 +332,13 @@
           !! @param x: solution points vector
           !! @param u: solution vector
           !! @param du: second derivative vector 
-          subroutine get_sec_deri(this, x, u, du)
+          function get_sec_deri(this, x, u) result(du)
               class(fr), intent(inout)   :: this
 
               real(c_double), intent(in)     :: x(this%npts, this%nele_x) 
               real(c_double), intent(in)     :: u(this%npts, this%nele_x) 
 
-              real(c_double), intent(out)    :: du(this%npts, this%nele_x) 
+              real(c_double) :: du(this%npts, this%nele_x) 
 
               real(c_double) :: du_temp(this%npts, this%nele_x) 
               real(c_double) :: k !Parameter for correction, 0 for upwind, 1 for central 
@@ -343,10 +348,10 @@
               k   = one 
               call this%get_derivative(this%nele_x, x, k, bnd, u, du_temp)
               bnd = zero 
-              k   = one
+              k   = one 
               call this%get_derivative(this%nele_x, x, k, bnd, du_temp, du)
 
-          end subroutine get_sec_deri
+          end function get_sec_deri
 
 
           !> Subroutine to get first derivative
@@ -354,13 +359,13 @@
           !! @param x: solution points vector
           !! @param u: solution vector
           !! @param du: second derivative vector 
-          subroutine get_first_deri(this, x, u, du)
+          function get_first_deri(this, x, u) result(du)
               class(fr), intent(inout)   :: this
 
               real(c_double), intent(in)     :: x(this%npts, this%nele_x) 
               real(c_double), intent(in)     :: u(this%npts, this%nele_x) 
 
-              real(c_double), intent(out)    :: du(this%npts, this%nele_x) 
+              real(c_double) :: du(this%npts, this%nele_x) 
 
               real(c_double) :: k !Parameter for correction, 0 for upwind, 1 for central 
               integer(c_int) :: bnd !Parameter for bound. condn. 1 for imposing boundary and 0 for extrapolating 
@@ -369,7 +374,7 @@
               k = zero
               call this%get_derivative(this%nele_x, x, k, bnd, u, du)
 
-          end subroutine get_first_deri
+          end function get_first_deri
 
 
 
