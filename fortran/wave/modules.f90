@@ -103,25 +103,25 @@
             integer(c_int) :: i, j 
             real(c_double) :: x_l, x_r 
 
-!            !!!!!!!!!!!!!!!!!!!!!!!
-!            !sine wave
-!            do i = 1, nele_x
-!                do j = 1, Np
-!                    u(j, i) = hundred*sin(pi*x(j, i)/(one))
-!                end do
-!            end do
-
-            x_l = four/ten 
-            x_r = six/ten
-            !Delta function
+            !!!!!!!!!!!!!!!!!!!!!!!
+            !sine wave
             do i = 1, nele_x
                 do j = 1, Np
-                    u(j, i) = 0 
-                    if ((x(j, i) .le. x_r) .and. (x(j, i) .ge. x_l)) then
-                        u(j, i) = hundred*(x(j, i)-x_l)*(x_r-x(j, i))
-                    end if
+                    u(j, i) = hundred*sin(pi*x(j, i)/(one))
                 end do
             end do
+
+!            x_l = four/ten 
+!            x_r = six/ten
+!            !Delta function
+!            do i = 1, nele_x
+!                do j = 1, Np
+!                    u(j, i) = 0 
+!                    if ((x(j, i) .le. x_r) .and. (x(j, i) .ge. x_l)) then
+!                        u(j, i) = hundred*(x(j, i)-x_l)*(x_r-x(j, i))
+!                    end if
+!                end do
+!            end do
 
         end subroutine init_sol
 

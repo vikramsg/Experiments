@@ -41,7 +41,7 @@ plt.plot(xv1, yv2, color = "blue", linewidth =  2.5, \
 
 print(np.max(yv1))
 
-plt.ylim([-0.5, 1.25])
+plt.ylim([-0.5, 100])
 
 #plt.title('n = '+str(n)+', cfl = '+str(cfl))
 #plt.xlabel('x')

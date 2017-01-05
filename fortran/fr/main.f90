@@ -27,9 +27,7 @@
 
     order = 2
     do nele_x = 10, 10
-!        call validate_derivative(nele_x, startX, stopX, order)
-!        call wave_solver(nele_x, startX, stopX, stopT, order, nu)
-        call diff_solver(nele_x, startX, stopX, stopT, order, nu)
+        call validate_derivative(nele_x, startX, stopX, order)
     end do
 
   end program template
