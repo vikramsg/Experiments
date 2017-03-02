@@ -67,6 +67,8 @@ def get_euler_3d(x, t, gamma, R, mu, Pr, u):
     resi =  [0, 0, 0, 0, 0]
     for i, resi_i in enumerate(resi):
         resi[i] = u_t[i] + f_inv_x[i] + g_inv_y[i] + h_inv_z[i]
+        print(resi[i].simplify())
+
 
 def get_cns_3d(x, t, gamma, R, mu, Pr, u): 
     assert(len(u) == 5)
@@ -222,6 +224,61 @@ def get_cns_3d(x, t, gamma, R, mu, Pr, u):
         print(resi_i.simplify())
 
 
+
+def get_euler_2d(x, t, gamma, R, mu, Pr, u): 
+    Cv     = R/(gamma - 1)
+    Cp     = Cv + R 
+    v      = [0, 0] #Velocity
+    rho    = u[0]
+    v[0]   = u[1]/rho
+    v[1]   = u[2]/rho
+
+    T      = (u[3]/rho - 0.5*(v[0]*v[0] + v[1]*v[1]))/Cv
+    p      = rho*R*T
+
+    ##########################
+    #Inviscid
+    ##########################
+    #x Inviscid flux
+    f_inv =  [0, 0, 0, 0]
+    f_inv[0] = rho*v[0]
+    f_inv[1] = rho*v[0]*v[0] + p
+    f_inv[2] = rho*v[0]*v[1]
+    f_inv[3] = (u[3] + p)*v[0] 
+
+    #y Inviscid flux
+    g_inv =  [0, 0, 0, 0]
+    g_inv[0] = rho*v[1]
+    g_inv[1] = rho*v[1]*v[0]
+    g_inv[2] = rho*v[1]*v[1] + p
+    g_inv[3] = (u[3] + p)*v[1] 
+
+    #Time derivative
+    u_t =  [0, 0, 0, 0]
+    for i, u_i in enumerate(u):
+        u_t[i] = smp.diff(u[i], t)
+
+    #x derivative of inviscid flux
+    f_inv_x =  [0, 0, 0, 0]
+    for i, f_i in enumerate(f_inv):
+        f_inv_x[i] = smp.diff(f_inv[i], x[0])
+
+    #y derivative of inviscid flux
+    g_inv_y =  [0, 0, 0, 0]
+    for i, g_i in enumerate(g_inv):
+        g_inv_y[i] = smp.diff(g_inv[i], x[1])
+
+    #Residual
+    resi =  [0, 0, 0, 0]
+    for i, resi_i in enumerate(resi):
+        resi[i] = (u_t[i] + f_inv_x[i] + g_inv_y[i])
+
+    for i, resi_i in enumerate(resi):
+#        print(resi_i.evalf(subs = {t:0, x[0]:0.5, x[1]:-0.3}))
+        print(resi_i.simplify())
+
+
+
 def get_cns_2d(x, t, gamma, R, mu, Pr, u): 
     Cv     = R/(gamma - 1)
     Cp     = Cv + R 
@@ -352,7 +409,8 @@ def smooth_density_2d():
     u[2] = u[0]*v[1]
     u[3] = p/(gamma - 1) + 0.5*u[0]*(v[0]*v[0] + v[1]*v[1]) 
 
-    get_cns_2d(x, t, gamma, R, mu, Pr, u)
+#    get_cns_2d(x, t, gamma, R, mu, Pr, u)
+    get_euler_2d(x, t, gamma, R, mu, Pr, u)
 
 
 def hifiles_cns_2d():
@@ -380,8 +438,9 @@ def hifiles_cns_2d():
     u[1] =  smp.sin(k*(x[0] + x[1]) - om*t) + a
     u[2] =  smp.sin(k*(x[0] + x[1]) - om*t) + a
     u[3] = (smp.sin(k*(x[0] + x[1]) - om*t) + a)**2
-
+    
     get_cns_2d(x, t, gamma, R, mu, Pr, u)
+#    get_euler_2d(x, t, gamma, R, mu, Pr, u)
 
 def hifiles_cns_3d():
     '''
@@ -404,19 +463,15 @@ def hifiles_cns_3d():
 
     #Conserved variables
     u    =  [0, 0, 0, 0, 0]
-#    u[0] =  smp.sin(k*(x[0] + x[1] + x[2]) - om*t) + a
-#    u[1] =  smp.sin(k*(x[0] + x[1] + x[2]) - om*t) + a
-#    u[2] =  smp.sin(k*(x[0] + x[1] + x[2]) - om*t) + a
-#    u[3] =  smp.sin(k*(x[0] + x[1] + x[2]) - om*t) + a
-#    u[4] = (smp.sin(k*(x[0] + x[1] + x[2]) - om*t) + a)**2
     u[0] =  smp.sin(k*(x[0] + x[1] + x[2]) - om*t) + a
     u[1] =  smp.sin(k*(x[0] + x[1] + x[2]) - om*t) + a
     u[2] =  smp.sin(k*(x[0] + x[1] + x[2]) - om*t) + a
     u[3] =  smp.sin(k*(x[0] + x[1] + x[2]) - om*t) + a
     u[4] = (smp.sin(k*(x[0] + x[1] + x[2]) - om*t) + a)**2
 
+#    get_cns_3d(x, t, gamma, R, mu, Pr, u)
+    get_euler_3d(x, t, gamma, R, mu, Pr, u)
 
-    get_cns_3d(x, t, gamma, R, mu, Pr, u)
 
 def smooth_density_3d():
     '''
@@ -452,9 +507,10 @@ def smooth_density_3d():
 
 
 def problem_mms():
-    smooth_density_2d()
+#    smooth_density_2d()
 #    smooth_density_3d()
-#    hifiles_cns_3d()
+#    hifiles_cns_2d()
+    hifiles_cns_3d()
 
 
 
