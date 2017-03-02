@@ -1,6 +1,6 @@
 EXE = test.x
 
-FC = gfortran -g -fcheck=all -fbounds-check
+FC = gfortran -g -fbacktrace -ffpe-trap=zero,overflow,underflow -fcheck=all -fbounds-check
 
 LDFLAGS =
 

@@ -17,7 +17,7 @@
     startX = -one; stopX = one 
 
     ! CFL value
-    nu  = three/ten !+ one 
+    nu  = two/ten !+ one 
 
     !Stop Time
     stopT = one 

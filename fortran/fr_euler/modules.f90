@@ -80,25 +80,63 @@
 
       contains
 
-          subroutine plot_sol(np, nele, x, u, du)
-              integer(c_int), intent(in)  :: nele, Np
+          subroutine plot_sol(x, u, n, time)
               real(c_double), intent(in)  :: x(:, :), u(:, :, :)
-              real(c_double), intent(in)  :: du(:, :, :)
+              integer(c_int), intent(in)  :: n 
+              real(c_double), intent(in)  :: time 
             
-              integer(c_int)       :: i, j 
+              integer(c_int)       :: i, j, nele, np
+              real(c_double)       :: u1, u2, u3, k, om, a 
               character(len=256)   :: filename
-    
-              filename='out.dat'
+              character(len=256)   :: res 
+
+              np   = size(x, 1)
+              nele = size(x, 2)
+
+
+              write (res, '(i0.2)') n ! converting number to string using a 'internal file'
+
+              filename='out.'//trim(res)
     
               OPEN(10,file=filename,status='replace')
     
               do i = 1, nele
                   do j = 1, np
-                      WRITE(10,*) x(j, i), u(1, j, i), du(1, j, i)
+                      WRITE(10, 101) x(j, i), u(1, j, i), u(2, j, i), u(3, j, i)
                   end do
               end do
     
               CLOSE(10)
+
+              filename='exact.'//trim(res)
+    
+              OPEN(10,file=filename,status='replace')
+
+              k  = pi
+              om = pi
+              a  = nine
+    
+              do i = 1, nele
+                  do j = 1, np
+                      u1 = sin(k*x(j, i) - om*time) + a
+                      u2 = sin(k*x(j, i) - om*time) + a      
+                      u3 =(sin(k*x(j, i) - om*time) + a)**2  
+                      WRITE(10, 101) x(j, i), u1, u2, u3
+                  end do
+              end do
+      
+    
+!              do i = 1, nele
+!               do j = 1, np
+!                   rho = one + two*tenth*sin(pi*(x(j, i) - time)) 
+!
+!                   WRITE(10, 101) x(j, i), rho, rho, rho
+!                  end do
+!              end do
+ 
+              CLOSE(10)
+
+101           format (4e15.5)
     
     
           end subroutine plot_sol
@@ -107,17 +145,20 @@
 
 
   module solution 
+
     use types_vars
     use const_data
     use class_fr
     use operators
     use util
 
+    implicit none
+
       type soln2d
 
            integer(c_int) :: nele_x, npts, order, Nvar
 
-           real(c_double) :: global_s_max
+           real(c_double) :: global_s_max, time
 
            real(c_double), allocatable :: x(:, :), u(:, :, :)
 
@@ -130,6 +171,9 @@
            real(c_double), allocatable :: rght_c(:) !! 
 
            real(c_double), allocatable :: inv_rhs(:, :, :)
+           real(c_double), allocatable :: rhs(:, :, :)
+
+           real(c_double), allocatable :: source_rhs(:, :, :)
 
            contains
 
@@ -138,7 +182,10 @@
                procedure, pass :: init_sol 
 
                procedure, pass :: get_euler_flux
+
                procedure, pass :: get_rhs 
+               procedure, pass :: get_inv_rhs 
+               procedure, pass :: get_source_rhs 
 
                procedure, pass :: destructor
 
@@ -179,9 +226,18 @@
                     stat=allo_stat, errmsg=err_msg)  !soln vec
            call assert(allo_stat .eq. 0, err_msg)
 
+           allocate(this%rhs(this%Nvar, np, nele_x), &
+                    stat=allo_stat, errmsg=err_msg)  !inviscid rhs
+           call assert(allo_stat .eq. 0, err_msg)
+
            allocate(this%inv_rhs(this%Nvar, np, nele_x), &
                     stat=allo_stat, errmsg=err_msg)  !inviscid rhs
            call assert(allo_stat .eq. 0, err_msg)
+
+           allocate(this%source_rhs(this%Nvar, np, nele_x), &
+                    stat=allo_stat, errmsg=err_msg)  !inviscid rhs
+           call assert(allo_stat .eq. 0, err_msg)
+
 
            allocate(this%deri(np, np), &
                     stat=allo_stat, errmsg=err_msg)  !derivative matrix
@@ -219,7 +275,9 @@
            if (allocated(this%u)) deallocate(this%u)
            if (allocated(this%deri)) deallocate(this%deri)
            if (allocated(this%extrap)) deallocate(this%extrap)
+           if (allocated(this%rhs)) deallocate(this%rhs)
            if (allocated(this%inv_rhs)) deallocate(this%inv_rhs)
+           if (allocated(this%source_rhs)) deallocate(this%source_rhs)
        end subroutine destructor 
 
 
@@ -266,9 +324,11 @@
 
            real(c_double) :: a, k 
 
+           real(c_double) :: u, v, v_sq, p, rho, x 
+
            integer(c_int) :: i, j 
 
-           a = three 
+           a = nine
            k = pi
 
            do i = 1, this%nele_x
@@ -279,6 +339,23 @@
                end do
            end do
 
+!           u = one
+!           p = one
+!
+!           do i = 1, this%nele_x
+!               do j = 1, this%npts
+!                   x   = this%x(j, i)
+!                   rho = one + two*tenth*sin(pi*(x)) 
+!
+!                   v_sq = u**2 
+!
+!                   this%u(1, j, i) = rho
+!                   this%u(2, j, i) = rho*u
+!                   this%u(3, j, i) = p/(gamma - 1) + half*rho*v_sq  !E_t
+!               end do
+!           end do
+
+
         end subroutine init_sol
 
 
@@ -287,11 +364,11 @@
         !! @param f_I: Interaction or common flux
         subroutine get_lax_flux(u_l, u_r, f_l, f_r, s_max, f_In)
 
-            real(c_double), intent(in)     :: u_l, u_r 
-            real(c_double), intent(in)     :: f_l, f_r
+            real(c_double), intent(in)     :: u_l(:), u_r(:)
+            real(c_double), intent(in)     :: f_l(:), f_r(:)
             real(c_double), intent(in)     :: s_max ! max characteristic speed 
 
-            real(c_double), intent(out)    :: f_In
+            real(c_double), intent(out)    :: f_In(:)
 
             f_In = half*(f_l + f_r) 
             f_In = f_In - s_max*half*(u_r - u_l)
@@ -333,7 +410,7 @@
 
 
 
-        subroutine get_rhs(this)
+        subroutine get_inv_rhs(this)
            class(soln2d), intent(inout) :: this
 
            real(c_double) :: f_vec(this%Nvar, this%npts) 
@@ -342,9 +419,12 @@
 
            real(c_double) ::   f_d(this%Nvar, 2, this%nele_x) !! Discontinuous flux at edge 
            real(c_double) ::   f_I(this%Nvar, 2, this%nele_x) !! Interaction flux at edge 
+           real(c_double) ::     s(           2, this%nele_x) !! characteristic speed 
            real(c_double) ::  df_x(this%Nvar, this%npts, this%nele_x) 
 
-           real(c_double) ::  u, a, s_max 
+           real(c_double) ::  fu_l(this%Nvar) !! Left flux on edge 
+           real(c_double) ::  fu_r(this%Nvar) !! Left flux on edge 
+           real(c_double) ::  u_l, u_r, a_l, a_r, u, a, s_max 
 
            integer(c_int) :: i, j, var, Nvar
 
@@ -370,39 +450,109 @@
            f_I = zero
 
            do i = 2, this%nele_x - 1
-               do j = 1, Nvar 
-                   call get_lax_flux(u_d(j, 2, i - 1), u_d(j, 1, i    ), f_d(j, 2, i - 1), &
-                                 f_d(j, 1, i    ), s_max, f_I(j, 1, i))
-                   call get_lax_flux(u_d(j, 2, i    ), u_d(j, 1, i + 1), f_d(j, 2, i    ), &
-                                 f_d(j, 1, i + 1), s_max, f_I(j, 2, i))
-               end do
+               call this%get_euler_flux(u_d(:, 2, i - 1), fu_l(:), u_l, a_l)
+               call this%get_euler_flux(u_d(:, 1, i    ), fu_r(:), u_r, a_r)
+
+               s_max = max(abs(u_l) + a_l, abs(u_r) + a_r)
+               call get_lax_flux(u_d(:, 2, i - 1), u_d(:, 1, i    ), fu_l, &
+                   fu_r, s_max, f_I(:, 1, i))
+
+               call this%get_euler_flux(u_d(:, 2, i    ), fu_l(:), u_l, a_l)
+               call this%get_euler_flux(u_d(:, 1, i + 1), fu_r(:), u_r, a_r)
+
+               s_max = max(abs(u_l) + a_l, abs(u_r) + a_r)
+               call get_lax_flux(u_d(:, 2, i    ), u_d(:, 1, i + 1), fu_l, &
+                   fu_r, s_max, f_I(:, 2, i))
+
            end do
 
            !! Periodic boundary conditions
-           do j = 1, Nvar
-               call get_lax_flux(u_d(j, 2, this%nele_x), u_d(j, 1, 1), f_d(j, 2, this%nele_x), &
-                             f_d(j, 1, 1), s_max, f_I(j, 1, 1))
-               call get_lax_flux(u_d(j, 2, 1          ), u_d(j, 1, 2), f_d(j, 2, 1          ), &
-                             f_d(j, 1, 2), s_max, f_I(j, 2, 1))
+           call this%get_euler_flux(u_d(:, 2, this%nele_x), fu_l(:), u_l, a_l)
+           call this%get_euler_flux(u_d(:, 1, 1          ), fu_r(:), u_r, a_r)
 
+           s_max = max(abs(u_l) + a_l, abs(u_r) + a_r)
+           call get_lax_flux(u_d(:, 2, this%nele_x), u_d(:, 1, 1), fu_l, &
+               fu_r, s_max, f_I(:, 1, 1))
 
-               call get_lax_flux(u_d(j, 2, this%nele_x    ), u_d(j, 1, 1          ), &
-                            f_d(j, 2, this%nele_x    ),  f_d(j, 1, 1          ), s_max, f_I(j, 2, this%nele_x))
-               call get_lax_flux(u_d(j, 2, this%nele_x - 1), u_d(j, 1, this%nele_x), &
-                             f_d(j, 2, this%nele_x - 1), f_d(j, 1, this%nele_x), s_max, f_I(j, 1, this%nele_x))
-           end do
+           call this%get_euler_flux(u_d(:, 2, 1          ), fu_l(:), u_l, a_l)
+           call this%get_euler_flux(u_d(:, 1, 2          ), fu_r(:), u_r, a_r)
+
+           s_max = max(abs(u_l) + a_l, abs(u_r) + a_r)
+           call get_lax_flux(u_d(:, 2, 1          ), u_d(:, 1, 2), fu_l, &
+               fu_r, s_max, f_I(:, 2, 1))
+
+           call this%get_euler_flux(u_d(:, 2, this%nele_x), fu_l(:), u_l, a_l)
+           call this%get_euler_flux(u_d(:, 1, 1          ), fu_r(:), u_r, a_r)
+
+           s_max = max(abs(u_l) + a_l, abs(u_r) + a_r)
+           call get_lax_flux(u_d(:, 2, this%nele_x    ), u_d(:, 1, 1          ), &
+               fu_l, fu_r, s_max, f_I(:, 2, this%nele_x))
+
+           call this%get_euler_flux(u_d(:, 2, this%nele_x - 1), fu_l(:), u_l, a_l)
+           call this%get_euler_flux(u_d(:, 1, this%nele_x    ), fu_r(:), u_r, a_r)
+
+           s_max = max(abs(u_l) + a_l, abs(u_r) + a_r)
+           call get_lax_flux(u_d(:, 2, this%nele_x - 1), u_d(:, 1, this%nele_x), &
+               fu_l, fu_r, s_max, f_I(:, 1, this%nele_x))
 
            this%inv_rhs = zero
 
            do i = 1, this%nele_x 
                do j = 1, Nvar 
-                   this%inv_rhs(j, :, i) = df_x(j, :, i) + (f_I(j, 1, i) - f_d(j, 1, i))*this%left_c + &
-                                                           (f_I(j, 2, i) - f_d(j, 2, i))*this%rght_c 
+                   this%inv_rhs(j, :, i) = -(df_x(j, :, i) + (f_I(j, 1, i) - f_d(j, 1, i))*this%left_c + &
+                                                           (f_I(j, 2, i) - f_d(j, 2, i))*this%rght_c )
                
                    !           !Transform derivative to physical space                  
                    this%inv_rhs(j, :, i) = this%inv_rhs(j, :, i)/this%x_r(:, i)
                end do
            end do
+           do i = 1, this%nele_x 
+               do j = 1, this%npts
+!                   write(*, *) this%x(j, i), df_x(1, j, i)/this%x_r(j, i)
+!                   write(*, *) this%x(j, i),  (f_I(1, 1, i) - f_d(1, 1, i))
+!                   write(*, *) this%x(j, i),  (f_I(1, 2, i) - f_d(1, 2, i))
+!                   write(*, *) this%x(j, i),  this%inv_rhs(1, j, i) 
+               end do
+           end do
+
+
+        end subroutine get_inv_rhs 
+
+
+
+        subroutine get_source_rhs(this)
+           class(soln2d), intent(inout) :: this
+
+           real(c_double) :: time 
+           integer(c_int) :: i, j, var, Nvar
+
+           Nvar = this%Nvar
+           time = this%time
+
+           this%source_rhs = zero
+
+           do i = 1, this%nele_x 
+               this%source_rhs(1, :, i) = zero 
+               this%source_rhs(2, :, i) = pi*(-eight*tenth*sin(pi*(time - this%x(:, i))) + nine)* &  
+                                          cos(pi*(time - this%x(:, i))) 
+               this%source_rhs(3, :, i) = pi*(-eight*tenth*sin(pi*(time - this%x(:, i))) + nine)* &  
+                                          cos(pi*(time - this%x(:, i))) 
+           end do
+
+        end subroutine get_source_rhs 
+
+
+        subroutine get_rhs(this)
+           class(soln2d), intent(inout) :: this
+
+           integer(c_int) :: i, j 
+
+           this%rhs = zero
+
+           call this%get_inv_rhs
+           call this%get_source_rhs
+
+           this%rhs = this%inv_rhs + this%source_rhs
 
         end subroutine get_rhs 
 
@@ -450,7 +600,10 @@
     
             integer(c_int) :: Np !Number of points in a cell 
 
-            integer(c_int) :: steps, num_steps  !Iterator for time, number of steps
+            integer(c_int) :: steps !Iterator for time
+            integer(c_int) :: plot_n_step !plot every n steps
+
+            integer(c_int) :: i
 
             type(fr)       :: fr_run
         
@@ -465,9 +618,6 @@
             !Initializing FR class
             call fr_run%init_operators(order, Np, nele_x, x_r)
 
-            dt = (nu*dx/((2*order + 1)))/four !Assuming wave speed = 4
-            num_steps = int(stopT/dt)
-
             soln%Nvar = 1 + 2
 
             call soln%setup_sol_vec(nele_x, Np, order, x)
@@ -479,23 +629,32 @@
 
             call soln%init_sol
 
+            dt = (nu*dx/((2*order + 1)))/four !Assuming wave speed = 4
+
+            plot_n_step = 10
+
             time  = zero
             steps = zero
-            do 
+            do !i = 1, 1
+                soln%time = time
+
                 call soln%get_rhs
-                soln%u = soln%u - dt*soln%inv_rhs
-               
+                soln%u = soln%u + dt*soln%rhs
+
                 time = time + dt
                 write(*, *) steps, time, soln%global_s_max
             
                 dt = (nu*dx/((2*order + 1)))/(soln%global_s_max)
 
+                if (mod(steps, plot_n_step) .eq. 0) then
+                    call plot_sol(soln%x, soln%u, steps/plot_n_step, time)
+                end if
+
+
                 if (time .gt. stopT) stop
 
                 steps = steps + 1
             end do
-
-!            call plot_sol(Np, nele_x, x, soln%u, soln%u)
 
             !Finalize FR class
             call fr_run%kill_all()

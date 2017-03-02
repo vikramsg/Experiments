@@ -22,6 +22,7 @@
     REAL(DP), PARAMETER :: ten     = 10.0_c_double
     REAL(DP), PARAMETER :: hundred = 100.0_c_double
 
+    REAL(DP), PARAMETER :: tenth   = 0.1_c_double  
     REAL(DP), PARAMETER :: half    = 0.5_c_double  
     REAL(DP), PARAMETER :: fourth  = 0.25_c_double  
     REAL(DP), PARAMETER :: five3rd = 1.66666666666666666666667_c_double  
