@@ -279,6 +279,25 @@ def get_euler_2d(x, t, gamma, R, mu, Pr, u):
 
 
 
+def get_ns_2d(x, t, mu, u, v, p): 
+    resi =  [0, 0]
+        
+    resi[0] = (smp.diff(u, t) + u*smp.diff(u, x[0]) + v*smp.diff(u, x[1]) 
+                    - (-smp.diff(p, x[0]) + (mu)*(smp.diff(smp.diff(u, x[0]), x[0])
+                       + smp.diff(smp.diff(u, x[1]), x[1]) ) )         ) 
+
+    resi[1] = (smp.diff(v, t) + u*smp.diff(v, x[0]) + v*smp.diff(v, x[1]) 
+                    - (-smp.diff(p, x[1]) + (mu)*(smp.diff(smp.diff(v, x[0]), x[0])
+                       + smp.diff(smp.diff(v, x[1]), x[1]) ) )         ) 
+
+    print((resi[0] ).simplify())
+    print((resi[1] ).simplify())
+#    print(resi[0].simplify(), resi[1].simplify())
+
+
+
+
+
 def get_cns_2d(x, t, gamma, R, mu, Pr, u): 
     Cv     = R/(gamma - 1)
     Cp     = Cv + R 
@@ -504,13 +523,38 @@ def smooth_density_3d():
 #    get_euler_3d(x, t, gamma, R, mu, Pr, u)
     get_cns_3d(x, t, gamma, R, mu, Pr, u)
 
+def tgv_ns_2d():
+    '''
+    Create a manufactured solution for compressbile NS
+    '''
+    x = smp.DeferredVector('x')
+    t = smp.Symbol('t')
+
+    dimension = 2
+
+    gamma = 1.4               
+    mu    = 0.1               #Dynamic viscosity  
+    Pr    = 0.72              #Prandtl number
+    R     = 287               #Gas constant
+    Cv    = R/(gamma - 1)     #Gas constant
+
+    p =    (1/4.0)*(smp.cos(2*smp.pi*x[0]) + smp.cos(2*smp.pi*x[1]))*(smp.exp(-2*smp.pi*smp.pi*mu*t))**2
+
+    #Conserved variables
+    u  =  smp.sin(smp.pi*x[0])*smp.cos(smp.pi*x[1])*smp.exp(-2*smp.pi*smp.pi*mu*t)
+    v  = -smp.cos(smp.pi*x[0])*smp.sin(smp.pi*x[1])*smp.exp(-2*smp.pi*smp.pi*mu*t)
+    
+    get_ns_2d(x, t, mu, u, v, p)
+
+
 
 
 def problem_mms():
 #    smooth_density_2d()
 #    smooth_density_3d()
 #    hifiles_cns_2d()
-    hifiles_cns_3d()
+#    hifiles_cns_3d()
+    tgv_ns_2d()
 
 
 
