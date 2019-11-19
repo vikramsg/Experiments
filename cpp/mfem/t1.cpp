@@ -7,6 +7,9 @@ using namespace std;
 using namespace mfem;
 
 
+//  Initialize variables coefficient
+void init_function(const Vector &x, Vector &v);
+
 void getLengths(Vector &A, Vector &B, Vector &C, double &a, double &b, double &c);
 
 // Cosine of angle ABC
@@ -29,7 +32,7 @@ int main(int argc, char *argv[])
    StopWatch chrono;
 
    // 1. Parse command-line options.
-   const char *mesh_file = "t1_per.mesh";
+   const char *mesh_file = "para.mesh";
    int order = 0;
 
    // 2. Read the mesh from the given mesh file. We can handle triangular,
@@ -103,8 +106,17 @@ int main(int argc, char *argv[])
      }
 
    }
+   
+   VectorFunctionCoefficient u0(dim, init_function);
+   GridFunction u_sol(R_space);
+   u_sol.ProjectCoefficient(u0);
 
-
+   ElementTransformation *eltrans;
+   for (int i = 0; i < mesh->GetNE(); i++)
+   {
+     eltrans = mesh->GetElementTransformation(i);
+     double div = u_sol.GetDivergence(*eltrans);
+   }
 
    delete R_space;
    delete dg_fes;
@@ -113,6 +125,22 @@ int main(int argc, char *argv[])
 
    return 0;
 }
+
+
+
+//  Initialize variables coefficient
+void init_function(const Vector &x, Vector &v)
+{
+   //Space dimensions 
+   int dim = x.Size();
+
+   if (dim == 2)
+   {
+       v(0) = 0.0; 
+       v(1) = 0.0; 
+   }
+}
+
 
 
 
