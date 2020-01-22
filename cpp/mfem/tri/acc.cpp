@@ -11,7 +11,7 @@ using namespace mfem;
 void init_function(const Vector &x, Vector &v);
 
 // Initialize scalar
-double init_scalar(const Vector &x);
+void init_scalar(const int &nele, const Vector &x_ccn, Vector &sc);
 
 // Get velocity reconstruction
 void getPv(Mesh &mesh, FiniteElementSpace &R_space, FiniteElementSpace &dg_fes, int &order, 
@@ -73,8 +73,8 @@ int order             = 0; int np = order + 1;
 
 int main(int argc, char *argv[])
 {
-   const char *mesh_file = "para_50.mesh";
-   int ref_levels        = 1;
+   const char *mesh_file = "para_30.mesh";
+   int ref_levels        = 2;
    int ode_solver_type   = 2;
    double t_final        = 10. ;
    double dt             = 0.01 ;
@@ -108,53 +108,67 @@ int main(int argc, char *argv[])
    GridFunction ccn_gf(dg_fes);
    getCircumCenter(*mesh, *dg_fes, ccn_gf);
 
+   int nele = mesh->GetNE();
+
    // RT dofs include size of normal
    VectorFunctionCoefficient u0(dim, init_function);
    GridFunction vel_n(R_space);
    vel_n.ProjectCoefficient(u0);
 
    GridFunction scalar(sc_fes), rhs(sc_fes);
-   FunctionCoefficient sc0(init_scalar);
-   scalar.ProjectCoefficient(sc0);
+   init_scalar(nele, ccn_gf, scalar);
 
-   FE_Evolution adv(*R_space, *dg_fes, vel_n);
-
-   double t = 0.0;
-   adv.SetTime(t);
+   Vector area(nele); double tot_area = 0.;
+   for (int i = 0; i < nele; i++)
+   {
+       area[i]  = mesh->GetElementVolume(i);
+       tot_area = tot_area + area[i]; 
+   }
+ 
+   Vector vel_gf(ccn_gf.Size());
+   getPv(*mesh, *R_space, *dg_fes, order, vel_n, ccn_gf, area, vel_gf);
    
-   writeData(0,  t, *dg_fes, scalar);
-
+   for(int j = 0; j < nele; j++)
    {
-     ofstream msol("ref.mesh");
-     mesh->Print(msol);
+     vel_gf[j]        *= scalar[j];
+     vel_gf[nele + j] *= scalar[j];
+   }
+
+   GridFunction flux(R_space);
+   getPTransposev(*mesh, *R_space, *dg_fes, order, vel_gf, ccn_gf, flux);
+
+   double error = 0.;
+   Vector div(scalar.Size());
+   for (int i = 0; i < nele; i++)
+   {
+       ElementTransformation *T = dg_fes->GetElementTransformation(i);
+       div[i] = flux.GetDivergence(*T);
+       
+       double x_ccn = ccn_gf[i]; 
+       double y_ccn = ccn_gf[nele + i];
+
+       double ex = 0.; double fn = 0.;
+       {
+//         fn = exp( -50.*(x_ccn - 0.8)*(x_ccn - 0.8));
+//         ex = (-100.*x_ccn + 100*0.8)*exp( -50.*(x_ccn - 0.8)*(x_ccn - 0.8));
+         fn = sin(4.*M_PI* (x_ccn - 0.25) );
+         ex = 4.*M_PI*cos(4.*M_PI* (x_ccn - 0.25) );
+//         fn = 2.*sin(2.*M_PI* (x_ccn - 0.25) )*cos(2.*M_PI* ( x_ccn ) );
+//         ex = 2.*M_PI*cos(2.*M_PI* (x_ccn - 0.25) )*2.*cos(2.*M_PI* ( x_ccn ) ) - 
+//              2.*M_PI*sin(2.*M_PI* (x_ccn - 0.25) )*2.*sin(2.*M_PI* ( x_ccn ) ) ;
+
+
+         error += pow( div[i] - ex, 2 )*area[i];
+
+//          cout << i << "\t" << x_ccn  << "\t" << y_ccn << "\t" << div[i]  << "\t" << ex << "\t" << endl;
+//          cout << i << "\t" << div[i]  << "\t" << ex << "\t" << endl;
+//          cout << i  << "\t" << x_ccn << "\t" << y_ccn << "\t" << scalar[i]  << "\t" << fn << "\t" << endl;
+       }
+   }
+
+   cout << "h is " << sqrt(area[0]) << endl;
+   cout << "Error is " << error << endl;
  
-     ofstream osol("scalar_init.gf");
-     scalar.Save(osol);
-   }
-
-   int ti = 0;
-   bool done = false;
-   for (ti = 0; !done; )
-   {
-      double dt_real = min(dt, t_final - t);
-      Step(ode_solver_type, adv, dt_real, t, scalar);
-      ti++;
-      
-      done = (t >= t_final - 1e-8*dt);
-
-      cout << "time step: " << ti << ", time: " << t << endl;
-   }
-
-   writeData(ti, t, *dg_fes, scalar);
-
-   {
-     ofstream msol("ref.mesh");
-     mesh->Print(msol);
- 
-     ofstream osol("scalar.gf");
-     scalar.Save(osol);
-   }
-
    return 0;
 }
 
@@ -286,35 +300,28 @@ void init_function(const Vector &x, Vector &v)
 
    if (dim == 2)
    {
-       v[0] = 1.; 
+       v[0] = 1.;//2.*cos(2.*M_PI* (x[0] )); 
        v[1] = 0.0; 
    }
 }
 
 
 //  Initialize variables coefficient
-double init_scalar(const Vector &x)
+void init_scalar(const int &nele, const Vector &x_ccn, Vector &sc)
 {
-   //Space dimensions 
-   int dim = x.Size();
-
-   if (dim == 2)
+   Vector x(2);
+   for(int i = 0; i < nele; i++)
    {
-     double ori[2] = {0.9, 0.5};
-     double dist   = x.DistanceTo(ori);
+     x[0] = x_ccn[i];
+     x[1] = x_ccn[nele + i];
 
-//     if (abs(x[1] - 0.28) < .03)
-//       return exp( -50.*(x[0] - 0.8)*(x[0] - 0.8));
-//     else 
-//       return 0;
+     double scalar = 0.;
 
+//     scalar = exp( -50.*(x[0] - 0.8)*(x[0] - 0.8));
 
-     if (abs(x[1] - 0.28) < .03)
-       return sin(2.*M_PI* (x[0] - 0.25) );
-     else 
-       return 0;
-       
-     return 1.;
+     scalar = sin(4.*M_PI* (x[0] - 0.25) );
+ 
+     sc[i] = scalar;
    }
 
 }
@@ -392,6 +399,7 @@ void getPv(Mesh &mesh, FiniteElementSpace &R_space, FiniteElementSpace &dg_fes, 
    }
 
 }
+
 
 
 // Get P^T V 
