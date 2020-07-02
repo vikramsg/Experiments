@@ -1,20 +1,54 @@
 using PyPlot
 
-gamm = 1.4
+gamm    = 1.4
+
+# 1: exact sinusoidal solution
+# 2: Sod shock tube 
+problem = 2
+
+# 1: periodic
+# pseudo zero gradient
+bc      = 2
+
+# number of cells
+nx = 200 
 
 ##############################################
 ## Get initial condition 
 ##############################################
 function fn(nx, x)
 
-  p   = 1.0
-  vel = 1.0
-
   for i = 1:nx
-      u[       i] = 1.0 + 0.2*sin(pi*(x[i]))
-      u[  nx + i] = u[i]
-      u[2*nx + i] = p/(gamm - 1) + 0.5*u[i]*vel*vel
-  end
+
+    if problem == 1
+      rho = 1.0 + 0.2*sin(pi*(x[i]))
+      p   = 1.0
+      vel = 1.0
+  
+    elseif problem == 2
+      rho_L  = 1.
+      p_L    = 1.
+      
+      rho_R  = 0.125
+      p_R    = 0.1
+      
+      if (x[i] > 0)
+        rho = rho_R
+        p   = p_R
+      else
+        rho = rho_L
+        p   = p_L  
+      end
+
+      vel = 0.0
+  
+    end 
+
+    u[       i] = rho 
+    u[  nx + i] = rho*vel 
+    u[2*nx + i] = p/(gamm - 1) + 0.5*rho*vel*vel
+
+  end# FOR
 
   return u 
 
@@ -39,7 +73,7 @@ function euler_flux(u)
     p      = (gamm - 1.0)*(rho_E - 0.5*rho*v_sq)
 
     f[       i] = rho_V 
-    f[  nx + i] = rho*v_sq 
+    f[  nx + i] = rho*v_sq + p 
     f[2*nx + i] = (rho_E + p)*vel 
   end
 
@@ -75,6 +109,7 @@ function getLFFlux(u_L, u_R, f_L, f_R)
   return 0.5*( (f_L + f_R) - lambda*(u_R - u_L) )
 end 
 
+
 ####################################
 ## Get fluxes at face 
 ## Assume periodic boundary
@@ -86,10 +121,10 @@ function edge_flux(u, f)
   # Edge flux
   f_edge = zeros(3* (nx + 1) )
 
-    u_L    = zeros(3)
-    f_L    = zeros(3)
-    u_R    = zeros(3)
-    f_R    = zeros(3)
+  u_L    = zeros(3)
+  f_L    = zeros(3)
+  u_R    = zeros(3)
+  f_R    = zeros(3)
   for i=2:nx  
     u_L[1] = u[       i - 1]
     u_L[2] = u[  nx + i - 1]
@@ -107,56 +142,74 @@ function edge_flux(u, f)
     f_R[3] = f[2*nx + i]
 
     riem_flux = getLFFlux(u_L, u_R, f_L, f_R)
-    f_edge[       i] = riem_flux[1]
-    f_edge[  nx + i] = riem_flux[2] 
-    f_edge[2*nx + i] = riem_flux[3]
+    f_edge[             i] = riem_flux[1]
+    f_edge[   nx + 1  + i] = riem_flux[2] 
+    f_edge[2*(nx + 1) + i] = riem_flux[3]
   end
 
-  ####################################
-  #Periodic boundary
+  if bc == 1
+    ####################################
+    #Periodic boundary
+  
+    i = 1
+    u_L[1] = u[       nx   ]
+    u_L[2] = u[  nx + nx   ]
+    u_L[3] = u[2*nx + nx   ]
+    f_L[1] = f[       nx   ]
+    f_L[2] = f[  nx + nx   ]
+    f_L[3] = f[2*nx + nx   ]
+  
+    u_R[1] = u[       i]
+    u_R[2] = u[  nx + i]
+    u_R[3] = u[2*nx + i]
+    f_R[1] = f[       i]
+    f_R[2] = f[  nx + i]
+    f_R[3] = f[2*nx + i]
+  
+    riem_flux = getLFFlux(u_L, u_R, f_L, f_R)
+    f_edge[             i] = riem_flux[1]
+    f_edge[   nx + 1  + i] = riem_flux[2] 
+    f_edge[2*(nx + 1) + i] = riem_flux[3]
 
-  i = 1
-  u_L[1] = u[       nx   ]
-  u_L[2] = u[  nx + nx   ]
-  u_L[3] = u[2*nx + nx   ]
-  f_L[1] = f[       nx   ]
-  f_L[2] = f[  nx + nx   ]
-  f_L[3] = f[2*nx + nx   ]
+    i = nx + 1
+    u_L[1] = u[       i - 1]
+    u_L[2] = u[  nx + i - 1]
+    u_L[3] = u[2*nx + i - 1]
+    f_L[1] = f[       i - 1]
+    f_L[2] = f[  nx + i - 1]
+    f_L[3] = f[2*nx + i - 1]
+  
+    u_R[1] = u[       1]
+    u_R[2] = u[  nx + 1]
+    u_R[3] = u[2*nx + 1]
+    f_R[1] = f[       1]
+    f_R[2] = f[  nx + 1]
+    f_R[3] = f[2*nx + 1]
+  
+    riem_flux = getLFFlux(u_L, u_R, f_L, f_R)
+    f_edge[             i] = riem_flux[1]
+    f_edge[   nx + 1  + i] = riem_flux[2] 
+    f_edge[2*(nx + 1) + i] = riem_flux[3]
+  
+    ####################################
+  elseif bc == 2
+    i = 1
+    f_edge[             i] = f[        1] 
+    f_edge[   nx + 1  + i] = f[  nx +  1] 
+    f_edge[2*(nx + 1) + i] = f[2*nx +  1] 
 
-  u_R[1] = u[       i]
-  u_R[2] = u[  nx + i]
-  u_R[3] = u[2*nx + i]
-  f_R[1] = f[       i]
-  f_R[2] = f[  nx + i]
-  f_R[3] = f[2*nx + i]
+    i = nx + 1
+    f_edge[             i] = f[       nx] 
+    f_edge[   nx + 1  + i] = f[  nx + nx] 
+    f_edge[2*(nx + 1) + i] = f[2*nx + nx] 
 
-  riem_flux = getLFFlux(u_L, u_R, f_L, f_R)
-  f_edge[       i] = riem_flux[1]
-  f_edge[  nx + i] = riem_flux[2] 
-  f_edge[2*nx + i] = riem_flux[3]
-
-
-  i = nx + 1
-  u_L[1] = u[       i - 1]
-  u_L[2] = u[  nx + i - 1]
-  u_L[3] = u[2*nx + i - 1]
-  f_L[1] = f[       i - 1]
-  f_L[2] = f[  nx + i - 1]
-  f_L[3] = f[2*nx + i - 1]
-
-  u_R[1] = u[       1]
-  u_R[2] = u[  nx + 1]
-  u_R[3] = u[2*nx + 1]
-  f_R[1] = f[       1]
-  f_R[2] = f[  nx + 1]
-  f_R[3] = f[2*nx + 1]
-
-  riem_flux = getLFFlux(u_L, u_R, f_L, f_R)
-  f_edge[       i] = riem_flux[1]
-  f_edge[  nx + i] = riem_flux[2] 
-  f_edge[2*nx + i] = riem_flux[3]
-
-  ####################################
+  end
+      
+#  i = 1
+#  st  = string(i) * " " * string(f_edge[2*( nx + 1) + i]) * " " * string(f[2*( nx + 1) + i + 1]) 
+#  st1 = string(i) * " " * string(f[2*nx + i]) * " " * string(f[2*nx + i + 1]) 
+#  println(st)
+#  println(st1)
 
   return f_edge
 
@@ -168,23 +221,18 @@ end
 ####################################
 function getRHS(nx, dx, u)
   global f     = euler_flux(u)
-
   global f_edg = edge_flux(u, f)  
 
   rhs = zeros(3*nx)
   for i=1:nx  
-    rhs[       i] = (f_edg[       i + 1] - f_edg[       i] )/dx
-    rhs[  nx + i] = (f_edg[  nx + i + 1] - f_edg[  nx + i] )/dx
-    rhs[2*nx + i] = (f_edg[2*nx + i + 1] - f_edg[2*nx + i] )/dx
+    rhs[       i] = (f_edg[             i + 1] - f_edg[             i] )/dx
+    rhs[  nx + i] = (f_edg[   nx + 1  + i + 1] - f_edg[   nx + 1  + i] )/dx
+    rhs[2*nx + i] = (f_edg[2*(nx + 1) + i + 1] - f_edg[2*(nx + 1) + i] )/dx
+
   end
 
-#  println(rhs[1:nx])
-#  println(rhs[nx])
-#  println(f_edg[nx - 1])
-#  println(f_edg[nx])
-#  println(f_edg[nx + 1])
-#  println(f_edg[     1])
-#  println(f_edg[     2])
+#  st = string(rhs[nx + 1]) * " " * string(f_edg[nx + 1]) * " " * string(f_edg[nx + 1 + 1])
+#  println(st)
 
   return rhs
 end
@@ -202,10 +250,13 @@ function ssp_rk2(dt, nx, dx, fn, u)
 
 end
 
+####################################
+## Create 1D grid 
+####################################
 
 startX = -1.0
 stopX  =  1.0
-nx = 410;
+nx = 200;
 dx = (stopX - startX)/(nx);
 
 edg_grd = range(startX, length=nx+1, stop = stopX)
@@ -217,15 +268,13 @@ end
 ## Euler conserved variables in 1D
 u     = zeros(3*nx)
 
+## Initialize 
 global u     = fn(nx, x_grd)
-global rhs   = getRHS(nx, dx, u) 
 
-dt = 0.2*dx
-for j = 1:400
+## Select time step and run
+dt = 0.4*dx
+for j = 1:100 
 
-  # This is stupid. If I don't put the subscript
-  # Julia thinks this is a new variable and so
-  # changes size, so I have to put global
   global u = ssp_rk2(dt, nx, dx, getRHS, u)
 
 end
