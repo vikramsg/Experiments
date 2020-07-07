@@ -1,4 +1,3 @@
-using PyPlot
 
 gamm    = 1.4
 
@@ -11,7 +10,7 @@ problem = 2
 bc      = 2
 
 # number of cells
-nx = 200 
+nx = 1000
 
 ##############################################
 ## Get initial condition 
@@ -256,7 +255,6 @@ end
 
 startX = -1.0
 stopX  =  1.0
-nx = 200;
 dx = (stopX - startX)/(nx);
 
 edg_grd = range(startX, length=nx+1, stop = stopX)
@@ -273,13 +271,23 @@ global u     = fn(nx, x_grd)
 
 ## Select time step and run
 dt = 0.4*dx
-for j = 1:100 
+#for j = 1:100 
+#
+#  global u = ssp_rk2(dt, nx, dx, getRHS, u)
+#
+#end
 
+using Plots
+anim = Animation()
+for j = 1:500 
   global u = ssp_rk2(dt, nx, dx, getRHS, u)
 
+  if (j%10== 0)
+    plot(x_grd, u[1:nx], lw=4, legend=false)
+
+    frame(anim)
+  end
+    
 end
-
-plt.plot(x_grd, u[1:nx])
-plt.show()
-
+gif(anim)
 
