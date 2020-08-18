@@ -1,11 +1,11 @@
-using  FastGaussQuadrature 
+using  FastGaussQuadrature
 import SymPy
 
 function massMatrix(length, lag) 
 
   M     = zeros(length, length)
 
-  quad  = gausslegendre(length)
+#  quad  = gausslegendre(length)
   quad  = gausslobatto(length)
   nodes = quad[1]
   wts   = quad[2]
@@ -101,9 +101,68 @@ function lagrangeDeri(length, nodes)
   end
 
   return dPhi
+
 end
 
-p     = 2
+function getDerivativeOp(Np)
+
+  typ = 1
+  if (typ == 1)
+    nodes   = gausslobatto(Np)[1] 
+  elseif (typ == 1)
+    nodes   = gausslegendre(Np)[1] 
+  end
+
+  lag   = lagrange(p + 1, nodes)
+
+  M = massMatrix(p + 1, lag)
+
+  dPhi = lagrangeDeri(p + 1, nodes)
+  dPhi = convert(Array{Float64,2}, dPhi)
+
+  return M, dPhi 
+end
+
+
+function restrictionOp(Np) 
+  """
+  We need the restriction matrix that gives
+  the values at the edges
+  """
+
+  typ = 1
+  if (typ == 1)
+    nodes   = gausslobatto(Np)[1] 
+  elseif (typ == 1)
+    nodes   = gausslegendre(Np)[1] 
+  end
+
+  r    = SymPy.symbols("r", real=true)
+  phi  = SymPy.sympy.ones(1, Np)
+  for k = 1:Np
+    for l = 1:Np 
+      if (k != l)
+        phi[k] *= (r - nodes[l])/(nodes[k] - nodes[l])
+      end
+    end
+  end
+
+  R = zeros(2, Np)
+  for k = 1:Np
+    R[1, k] = phi[k].subs(r, -1.0)
+    R[2, k] = phi[k].subs(r,  1.0)
+  end
+
+  return R
+
+end
+
+
+########################################################################
+## Run
+########################################################################
+
+p     = 3
 quad  = gausslobatto(p + 1)
 nodes = quad[1]
 wts   = quad[2]
@@ -114,9 +173,11 @@ lag   = lagrange(p + 1, nodes)
 #dPhi = convert(Array{Float64,2}, dPhi)
 #println(dPhi)
 
-M = massMatrix(p + 1, lag)
-S = stiffMatrix(p + 1, lag) 
+#M = massMatrix(p + 1, lag)
+#S = stiffMatrix(p + 1, lag) 
+#
+#println(M)
+##println(S)
+#println(inv(M)*S)
 
-println(S)
-println(inv(M)*S)
-
+#R = restriction(p+1, nodes) 
