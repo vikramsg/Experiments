@@ -5,8 +5,12 @@ function massMatrix(length, lag)
 
   M     = zeros(length, length)
 
-#  quad  = gausslegendre(length)
-  quad  = gausslobatto(length)
+  typ = 1
+  if (typ == 1)
+    quad  = gausslobatto(length)
+  elseif (typ == 2)
+    quad  = gausslegendre(length)
+  end
   nodes = quad[1]
   wts   = quad[2]
 
@@ -109,7 +113,7 @@ function getDerivativeOp(Np)
   typ = 1
   if (typ == 1)
     nodes   = gausslobatto(Np)[1] 
-  elseif (typ == 1)
+  elseif (typ == 2)
     nodes   = gausslegendre(Np)[1] 
   end
 
@@ -133,7 +137,7 @@ function restrictionOp(Np)
   typ = 1
   if (typ == 1)
     nodes   = gausslobatto(Np)[1] 
-  elseif (typ == 1)
+  elseif (typ == 2)
     nodes   = gausslegendre(Np)[1] 
   end
 
@@ -162,12 +166,12 @@ end
 ## Run
 ########################################################################
 
-p     = 3
-quad  = gausslobatto(p + 1)
-nodes = quad[1]
-wts   = quad[2]
-
-lag   = lagrange(p + 1, nodes)
+#p     = 3
+#quad  = gausslobatto(p + 1)
+#nodes = quad[1]
+#wts   = quad[2]
+#
+#lag   = lagrange(p + 1, nodes)
 
 #dPhi  = lagrangeDeri(p + 1, nodes)
 #dPhi = convert(Array{Float64,2}, dPhi)

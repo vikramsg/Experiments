@@ -7,7 +7,7 @@ function dg_mesh(nx, P, grd, typ)
 
   if (typ == 1)
     nodes   = gausslobatto(Np)[1] 
-  elseif (typ == 1)
+  elseif (typ == 2)
     nodes   = gausslegendre(Np)[1] 
   end
 
@@ -23,10 +23,11 @@ function dg_mesh(nx, P, grd, typ)
 end
 
 function uni_mesh(startX, stopX, P, nx)
-  dx = (stopX - startX)/(nx);
+  dx  = zeros(nx)
+  dx .= (stopX - startX)/(nx);
 
   edg_grd = range(startX, length=nx+1, stop = stopX)
-  return dg_mesh(nx, P, edg_grd, 1)
+  return dx, dg_mesh(nx, P, edg_grd, 2)
 
 end
 
