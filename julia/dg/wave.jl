@@ -1,6 +1,8 @@
 include("mesh.jl")
 include("poly.jl")
 
+## Will need to compare with MFEM?
+
 struct Solver 
   nx   ::  Int
   p    ::  Int
@@ -15,7 +17,7 @@ end
 
 function init(grd)
 #  return exp.(-40*(grd ).^2) 
-  return sin.(pi*grd) 
+  return sin.(2*pi*grd) 
 end
 
 function getOperators(p)
@@ -97,6 +99,9 @@ function getRHS(sol)
                      sol.R[1, j]*(-1.0)*(f_edg[i    ] - u_f[i, 1])
      du[i, j]  = du[i, j] + (2.0/sol.dx[i])*sol.invM[j, j]*
                      sol.R[2, j]*( 1.0)*(f_edg[i + 1] - u_f[i, 2])
+
+#     println(i, " ", j, " ", sol.mesh[i, j], " ", sol.u[i, j] )
+#     println(i, " ", j, " ", sol.u[i, j], " ", du[i, j] )
    end
 #   println(i, " ", f_edg[i], " ", f_edg[i + 1])
 #   println(i, " ", u_f[i, 1], " ", u_f[i, 2])
@@ -162,7 +167,7 @@ function runSolver(startX, stopX, p, nx, CFL)
   
   dt = 0.03 
 
-  T_final = 0.03
+  T_final = 3.0
   T       = 0
   dt_real = min(dt, T_final - T)
 
@@ -192,11 +197,11 @@ end
 ########################################################################
 
 
-startX = -1.0
+startX =  0.0
 stopX  =  1.0
  
 p  = 2 
-nx = 10
+nx = 8 
 
 CFL = 0.9
 

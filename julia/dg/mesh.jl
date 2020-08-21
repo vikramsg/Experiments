@@ -27,7 +27,7 @@ function uni_mesh(startX, stopX, P, nx)
   dx .= (stopX - startX)/(nx);
 
   edg_grd = range(startX, length=nx+1, stop = stopX)
-  return dx, dg_mesh(nx, P, edg_grd, 2)
+  return dx, dg_mesh(nx, P, edg_grd, 1)
 
 end
 
