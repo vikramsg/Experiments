@@ -1,8 +1,6 @@
 include("mesh.jl")
 include("poly.jl")
 
-## Will need to compare with MFEM?
-
 struct Solver 
   nx   ::  Int
   p    ::  Int
@@ -16,8 +14,8 @@ struct Solver
 end
 
 function init(grd)
-#  return exp.(-40*(grd ).^2) 
-  return sin.(2*pi*grd) 
+  return exp.(-40*(grd .- 0.5).^2) 
+#  return sin.(2*pi*grd) 
 end
 
 function getOperators(p)
@@ -100,15 +98,10 @@ function getRHS(sol)
      du[i, j]  = du[i, j] + (2.0/sol.dx[i])*sol.invM[j, j]*
                      sol.R[2, j]*( 1.0)*(f_edg[i + 1] - u_f[i, 2])
 
-#     println(i, " ", j, " ", sol.mesh[i, j], " ", sol.u[i, j] )
-#     println(i, " ", j, " ", sol.u[i, j], " ", du[i, j] )
+#     println(i, " ", f_edg[i], " ", u_f[i, 1], " ", f_edg[i + 1], " ", u_f[i, 2] )
    end
-#   println(i, " ", f_edg[i], " ", f_edg[i + 1])
-#   println(i, " ", u_f[i, 1], " ", u_f[i, 2])
  end
 
-# display(sol.M)
-# display(sol.invM*sol.R[1, :])
 # display(du)
  du = -1 .*du
 
@@ -165,11 +158,13 @@ end
 function runSolver(startX, stopX, p, nx, CFL)
   sol = createSolver(startX, stopX, p, nx);
   
-  dt = 0.03 
+  dt = 0.001 
 
-  T_final = 3.0
+  T_final = 6.0
   T       = 0
   dt_real = min(dt, T_final - T)
+
+  anim = Animation()
 
   it_coun = 0
   while (T < T_final)  
@@ -178,16 +173,25 @@ function runSolver(startX, stopX, p, nx, CFL)
     T       = T + dt_real
     dt_real = min(dt, T_final - T)
 
-#    if (it_coun % 10 == 0):
     println("Time: ", T, " Max u: ", maximum(u))
 
     it_coun  = it_coun + 1
+
+    flat_x = flatten(sol.mesh)
+    flat_u = flatten(sol.u)
+
+    if (it_coun % 100 == 0) 
+      plot(flat_x, flat_u, lw=4, legend=true)
+      frame(anim)
+    end
   end
 
-  flat_x = flatten(sol.mesh)
-  flat_u = flatten(sol.u)
+  gif(anim, "zoom.gif", fps=10)
 
-  plot(flat_x, flat_u, lw=4, legend=true)
+#  flat_x = flatten(sol.mesh)
+#  flat_u = flatten(sol.u)
+#
+#  plot(flat_x, flat_u, lw=4, legend=true)
 
 end
 
@@ -200,9 +204,7 @@ end
 startX =  0.0
 stopX  =  1.0
  
-p  = 2 
-nx = 8 
-
-CFL = 0.9
+p  = 3 
+nx = 200
 
 runSolver(startX, stopX, p, nx, CFL)
