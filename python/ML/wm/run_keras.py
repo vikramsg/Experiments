@@ -1,4 +1,3 @@
-# first neural network with keras tutorial
 import numpy as np
 
 import pandas as pd
@@ -27,11 +26,21 @@ y       = pd.DataFrame(data=wm_data, columns=["tau"])
 
 # define the keras model
 model = Sequential()
-model.add(Dense(10, input_dim=2, activation='relu'))
-model.add(Dense(10, activation='relu'))
-model.add(Dense(10, activation='relu'))
-model.add(Dense( 5, activation='relu'))
-model.add(Dense(1, activation='tanh'))
+# Add layers
+"""
+I did various experiments to define the layer structure
+Various number of layers as well as width of each layer
+However, with final activation as sigmoid, none of
+the networks worked well. But as soon as I used
+tanh, it worked really well.
+Note that for all other layers, it only works if we use relu
+Note that training can be sensitive as well and is not repeatable
+Repeat a few times before concluding it is not good
+"""
+model.add(Dense(15, input_dim=2, activation='relu'))
+model.add(Dense(15, activation='relu'))
+model.add(Dense(15, activation='relu'))
+model.add(Dense( 1, activation='tanh'))
 
 #Examine the model
 print(model.summary())
@@ -39,7 +48,9 @@ print(model.summary())
 # compile the keras model
 model.compile(loss='mean_squared_error', optimizer='adam')
 # fit the keras model on the dataset
-model.fit(x_smpls, y, validation_split=0.2, epochs=25, verbose=2)
+model.fit(x_smpls, y, validation_split=0.3, epochs=50, verbose=2)
+
+weights = model.get_weights()
 
 space   = Space([(2., 4.), (10., 100.)])
 lhs     = Lhs(lhs_type="classic", criterion=None)
@@ -55,7 +66,7 @@ for it, i in enumerate(x_n):
   u   = i[0]
   h   = i[1]
 
-  tau = 10.*getTau(nu, h, u) 
+  tau = getTau(nu, h, u) 
 
   print(i, tau, y_prd[it])
 
