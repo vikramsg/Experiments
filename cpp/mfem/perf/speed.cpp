@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
      {
        fes->GetElementVDofs(ele, dof_idx);
        z.GetSubVector(dof_idx, loc_u);
-       cblas_dgemv  (CblasRowMajor, CblasNoTrans, npts, npts, 1.0, elmat.GetData(), npts, 
+       cblas_dgemv  (CblasColMajor, CblasNoTrans, npts, npts, 1.0, elmat.GetData(), npts, 
          loc_u, 1, 0, ac, 1);    
 //       elmat.Mult(loc_u, ac);
        y.SetSubVector(dof_idx, ac);
