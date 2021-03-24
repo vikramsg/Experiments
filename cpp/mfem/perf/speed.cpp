@@ -1,4 +1,5 @@
 #include "mfem.hpp"
+#include <cblas.h>
 #include <fstream>
 #include <iostream>
 
@@ -30,7 +31,7 @@ int main(int argc, char *argv[])
    // 2. Parse command-line options.
    problem = 0;
    const char *mesh_file = "../data/periodic-cube.mesh";
-   int ser_ref_levels = 3;
+   int ser_ref_levels = 2;
    int order = 3;
    bool pa = false;
    bool ea = false;
@@ -176,7 +177,9 @@ int main(int argc, char *argv[])
      {
        fes->GetElementVDofs(ele, dof_idx);
        z.GetSubVector(dof_idx, loc_u);
-       elmat.Mult(loc_u, ac);
+       cblas_dgemv  (CblasRowMajor, CblasNoTrans, npts, npts, 1.0, elmat.GetData(), npts, 
+         loc_u, 1, 0, ac, 1);    
+//       elmat.Mult(loc_u, ac);
        y.SetSubVector(dof_idx, ac);
      }
      
