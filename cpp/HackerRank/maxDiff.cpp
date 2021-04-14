@@ -20,11 +20,11 @@ class Difference {
     void computeDifference()
     {
         int maxDiff = std::numeric_limits<int>::min();
-        for(int a: elements)
+        for(int i = 0; i < elements.size() - 1; i++)
         {
-            for(int b: elements)
+            for(int j = i + 1; j < elements.size(); j++)
             {
-                maxDiff = max(maxDiff, abs(a - b));
+                maxDiff = max(maxDiff, abs(elements[i] - elements[j]));
                 
             }
         }
