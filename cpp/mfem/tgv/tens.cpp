@@ -45,27 +45,27 @@ int main(int argc, char **argv)
   IntegrationRules GLIntRules(0, Quadrature1D::GaussLobatto); 
   const IntegrationRule *ir = &GLIntRules.Get(Geometry::CUBE  , 2*np-3);
 
-  ParBilinearForm k(fes);
-  ParBilinearForm m(fes);
+  ParBilinearForm *k = new ParBilinearForm(fes);
+  ParBilinearForm *m = new ParBilinearForm(fes);
 
   ConvectionIntegrator cix(x_dir, 1.0);
   cix.SetIntRule(ir);
   ConvectionIntegrator ciy(y_dir, 1.0);
   ciy.SetIntRule(ir);
-  k.AddDomainIntegrator(&ciy);
+  k->AddDomainIntegrator(&ciy);
   MassIntegrator mix;
   mix.SetIntRule(ir);
-  m.AddDomainIntegrator(&mix);
+  m->AddDomainIntegrator(&mix);
 
   int skip_zeros = 0;
-  k.Assemble(skip_zeros);
-  k.Finalize(skip_zeros);
-  m.Assemble();
-  m.Finalize();
+  k->Assemble(skip_zeros);
+  k->Finalize(skip_zeros);
+  m->Assemble();
+  m->Finalize();
 
-  CGSolver M_solver( m.ParFESpace()->GetComm() );
+  CGSolver M_solver( m->ParFESpace()->GetComm() );
   OperatorHandle M;
-  M.Reset(m.ParallelAssemble(), true);
+  M.Reset(m->ParallelAssemble(), true);
   M_solver.SetOperator(*M);
   HypreParMatrix &M_mat = *M.As<HypreParMatrix>();
   HypreSmoother *hypre_prec = new HypreSmoother(M_mat, HypreSmoother::Jacobi);
@@ -87,7 +87,7 @@ int main(int argc, char **argv)
   // The values printed here should be the same ones
   // that we get with tensor product multiplication
   {
-    k.Mult(x, y);
+    k->Mult(x, y);
     M_solver.Mult(y, y_fn);
 //    y.Print();
   }
@@ -114,7 +114,7 @@ int main(int argc, char **argv)
   }
   printMatrix<np, np>(der);
 
-  k.SpMat().Print();
+  k->SpMat().Print();
 
 // The action of der will be equivalent to 
 // M^-1 Q, so we need to mult by k, then invert
@@ -123,7 +123,6 @@ int main(int argc, char **argv)
   double rhs_x[ne*np*np];
   double rhs_y[ne*np*np];
   for(int i = 0; i < ne; i++)
-//  for(int i = 0; i < 1; i++)
   {
 
     for(int j = 0; j < np; j++)
@@ -146,15 +145,37 @@ int main(int argc, char **argv)
  
   }
   
+//********************************************************
+//********************************************************
+//Notice that for linear elements we need just one 
+//J value for an element. So we need just one J
+//for each e. Next, notice how the x derivative
+//is wx*J22 - wy*J12 and the y derivative. We just repeat this
+//So finally, what we do is for each element, get J22, J12, J21, J11
+//and multiply with rhs_x and rhs_y to get the correct derivatives
+//  const double J11 = J(q,0,0,e);
+//  const double J21 = J(q,1,0,e);
+//  const double J12 = J(q,0,1,e);
+//  const double J22 = J(q,1,1,e);
+//  const double w = alpha * W[q];
+//  const double v0 = const_v ? V(0,0,0) : V(0,q,e);
+//  const double v1 = const_v ? V(1,0,0) : V(1,q,e);
+//  const double wx = w * v0;
+//  const double wy = w * v1;
+//  //w*J^-1
+//  y(q,0,e) =  wx * J22 - wy * J12; // 1
+//  y(q,1,e) = -wx * J21 + wy * J11; // 2
+//********************************************************
+//*******************************************************/
 
   for(int i = 0; i < x.Size(); i++)
   {
-//    std::cout << setprecision(8)<< x[i] << " " << y_fn[i] << " " << 1.5*rhs_y[i] << std::endl; 
+    std::cout << setprecision(8)<< x[i] << " " << y_fn[i] << " " << 1.5*rhs_y[i] << std::endl; 
   }
 
-//  delete u;
-//  delete fes;
-//  delete pmesh;
+  delete u;
+  delete fes;
+  delete pmesh;
 
   MPI_Finalize();
 
