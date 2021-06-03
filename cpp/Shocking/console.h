@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-// Copied from 
+// Inspired by 
 // https://stackoverflow.com/questions/1657883/variable-number-of-arguments-in-c
 template <typename T>
 void cons_func(T t) 

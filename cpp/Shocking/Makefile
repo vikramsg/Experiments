@@ -1,6 +1,6 @@
 EXE = shock.x 
 
-CPP = g++ -O0 -g 
+CPP = g++ -O0 -g -std=c++11 
 
 LDFLAGS =
 
