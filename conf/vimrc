@@ -1,0 +1,131 @@
+set nocompatible              " be iMproved, required
+filetype off                  " required
+
+" set the runtime path to include Vundle and initialize
+set rtp+=~/.vim/bundle/Vundle.vim
+call vundle#begin()
+" " alternatively, pass a path where Vundle should install plugins
+" "call vundle#begin('~/some/path/here')
+"
+" " let Vundle manage Vundle, required
+Plugin 'VundleVim/Vundle.vim'
+
+" The following are examples of different formats supported.
+" " Keep Plugin commands between vundle#begin/end.
+" " plugin on GitHub repo
+Plugin 'tpope/vim-fugitive'
+" " plugin from http://vim-scripts.org/vim/scripts.html
+" " Plugin 'L9'
+" " Git plugin not hosted on GitHub
+Plugin 'git://git.wincent.com/command-t.git'
+" " git repos on your local machine (i.e. when working on your own plugin)
+"Plugin 'file:///home/gmarik/path/to/plugin'
+" " The sparkup vim script is in a subdirectory of this repo called vim.
+" " Pass the path to set the runtimepath properly.
+Plugin 'rstacruz/sparkup', {'rtp': 'vim/'}
+" " Install L9 and avoid a Naming conflict if you've already installed a
+" " different version somewhere else.
+" " Plugin 'ascenator/L9', {'name': 'newL9'}}})
+
+Plugin 'JuliaEditorSupport/julia-vim'
+
+"
+ " All of your Plugins must be added before the following line
+call vundle#end()            " required
+filetype plugin indent on    " required
+" " To ignore plugin indent changes, instead use:
+" "filetype plugin on
+" "
+" " Brief help
+" " :PluginList       - lists configured plugins
+" " :PluginInstall    - installs plugins; append `!` to update or just
+" :PluginUpdate
+" " :PluginSearch foo - searches for foo; append `!` to refresh local cache
+" " :PluginClean      - confirms removal of unused plugins; append `!` to
+" auto-approve removal
+" "
+" " see :h vundle for more details or wiki for FAQ
+" " Put your non-Plugin stuff after this line)}})))
+
+
+
+set nocompatible              " be iMproved, required
+filetype off                  " required
+
+
+:inoremap ( ()<Esc>i
+:inoremap [ []<Esc>i
+:inoremap { {}<Esc>i
+
+:set autoindent
+
+" show the matching part of the pair for () [] {}
+:set showmatch
+
+nnoremap Q <nop>
+
+if has("autocmd")
+  au BufReadPost * if line("'\"") > 0 && line("'\"") <= line("$")
+      \| exe "normal! g'\"" | endif
+endif
+
+
+let vimDir = '/Users/vikramsingh/.vim'
+
+" " Keep undo history across sessions by storing it in a file
+  if has('persistent_undo')
+    let myUndoDir = expand(vimDir . '/undodir')
+    " Create dirs
+    call system('mkdir ' . vimDir)
+    call system('mkdir ' . myUndoDir)
+    let &undodir = myUndoDir
+     set undofile
+  endif
+
+
+" Ensure correct syntax highlighting and auto-indentation for Fortran free-form
+" source code.
+let fortran_free_source=1
+let fortran_do_enddo=1
+let fortran_have_tabs=1
+filetype plugin indent on
+syntax on
+filetype on
+filetype indent on
+set sw=4 sts=4 et
+
+
+" Make vim echo commands as they are being entered.
+set showcmd
+
+" Set tabstops to two spaces and ensure tab characters are expanded into
+" spaces.
+"set smarttab
+"set expandtab
+"set smartindent
+set tabstop=2 shiftwidth=2 expandtab
+set autoindent
+
+" Fix backspace key.
+set bs=2
+
+" Set up searching so that it jumps to matches as the word is being entered and
+" is case-insensitive.
+set incsearch
+set ignorecase
+set smartcase
+
+" Show line/col number at bottom right
+set ruler
+
+" Uncomment the following lines to make
+" vim automatically create a backup copy
+" each time a file is edited.
+"
+" If you enable this feature, be sure to
+"   
+"   mkdir ~/codeBackups
+"
+" or it won't work.
+"set backupdir=~/codeBackups
+"set backup
