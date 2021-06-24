@@ -1,9 +1,12 @@
 import random
 import sys
 
-#sys.setrecursionlimit(10)
-
 class Node:
+    """
+    Create node for a tree data structure
+    Since we are traversing a square, a valid leaf for a node
+    is the left, right, top or bottom square. 
+    """
     def __init__(self, data):
         """
         We can move in only 4 directions
@@ -17,7 +20,7 @@ class Node:
 
 class SqrTree:
     """
-    Creating a tree for a 2x2 square numbered 0, 1, 2, 3 
+    Creating a tree for a give square 
     """
     def __init__(self, edgeSize):
         self.rowSize = edgeSize 
@@ -32,6 +35,8 @@ class SqrTree:
         Find valid left, right, top, bot indices otherwise return None
         In a given row, we take the mod so that it only goes from
         0:rowSize - 1. Then we check if +1, -1 lie within 0:rowSize - 1
+        For top and bottom we only need to check whether it is within
+        size
         """
         tmp = data%self.rowSize - 1
         ind = data - 1
@@ -49,32 +54,6 @@ class SqrTree:
 
         return [indLeft, indRight, indTop, indBot]
 
-    def insert(self, root, traversed, data):
-        if (traversed[data] == 1):
-            return [root, traversed]
-        if (root is None):
-            root = Node(data)
-
-        trv = list(traversed) #Mimic pass by value
-        trv[root.data] = 1
-        print("Data: ", data)
-        print("Traversed: ", trv)
-
-        traverseInd = self.getIndices(root.data)
-        [indLeft, indRight, indTop, indBot] = self.getIndices(root.data)
-        print("Traverse indices: ", traverseInd)
-
-        if ( ( indLeft is not None ) ):
-            root.left = self.insert(root.left, trv, indLeft)
-        if ( ( indRight is not None ) ):
-            root.right = self.insert(root.right, trv, indRight)
-        if ( ( indTop is not None ) ):
-            root.top = self.insert(root.top, trv, indTop)
-        if ( ( indBot is not None ) ):
-            root.bot = self.insert(root.bot, trv, indBot)
-
-        return root
-
     def checkInsert(self, root, traversed, data, tr_val):
         """
         The algorithm is simple. Everytime we encounter a node
@@ -82,7 +61,7 @@ class SqrTree:
         This is done recursively. We attempt to go to the neigbouring index
         using getIndices, if it has not already been traversed. 
         If not we add those as leaves to the present level, which constructs
-        a tree. Finally, if we come reach the final level, then we 
+        a tree. Finally, if we reach the final level, then we 
         increment the global counter
 
         tr_val keeps count of the traversal, that is, if the present 
@@ -93,9 +72,10 @@ class SqrTree:
         if (root is None):
             root = Node(data)
 
-        trv = list(traversed) #Mimic pass by value
+        trv    = list(traversed) #Mimic pass by value
         tr_val = tr_val + 1
         trv[root.data] = tr_val
+
         chk = 1
         for i in trv:
             if (i == 0):
@@ -108,13 +88,14 @@ class SqrTree:
             dct = list(org)
             for it, i in enumerate(trv):
                 dct[i - 1] = it
-            print("Traversed:        ", dct)
-            print("Curve count:      ", self.cnt)
-            print("")
+#            print("Traversed:        ", dct)
+#            print("Curve count:      ", self.cnt)
+#            print("")
 
-        traverseInd = self.getIndices(root.data)
+        ## Get indices to traverse to
         [indLeft, indRight, indTop, indBot] = self.getIndices(root.data)
 
+        ## Now add leaves for valid indices
         if ( ( indLeft is not None ) ):
             root.left = self.checkInsert(root.left, trv, indLeft, tr_val)
         if ( ( indRight is not None ) ):
@@ -132,24 +113,66 @@ class SqrTree:
         for i in range(self.size):
             traversed.append(0)
 
-        cnt    = 0
-        tr_val = 0
+        self.cnt  = 0
+        tr_val    = 0
         self.checkInsert(root, traversed, data, tr_val)
 #        self.insert(root, traversed, data)
 
 #        [indLeft, indRight, indTop, indBot] = self.getIndices(data)
 #        print( self.getIndices(data) )
 
-        return root
+        return self.cnt 
+
+    def getUniquePts(self):
+        """
+        Squares are symmetric. So our starting points can simply
+        be the upper triangle of one quarter of the square. 
+        The number of paths then is just 4 times this number. 
+        Note however that the center in the case of odd edge-length
+        is counted only once. 
+        """
+        halfSize = int(self.rowSize/2) + self.rowSize%2
+
+        lst = []
+
+        for i in range(0, halfSize):
+            lstRow = []
+            for j in range(i, halfSize):
+                lstRow.append(i*self.rowSize + j)
+            lst.append(lstRow)
+
+        return lst
+
 
 
 if __name__=="__main__":
 
-    ob = SqrTree(3)
+    edge_length = 5 
+
+    ob = SqrTree(edge_length)
 
     root = None
 
-    ob.startInsert(root, 4)
+    lst = ob.getUniquePts()
+
+    ## Determine mid location which should only be multiplied with 1
+    ## All other locations multiplied with 4
+    if (edge_length%2 == 1):
+        halfSize    = int(edge_length/2) 
+        midLocation = halfSize*edge_length + halfSize     
+        print(midLocation)
+    paths = 0
+    for i in lst:
+        for j in i:
+            cnt = ob.startInsert(root, j)
+    
+            if ( (edge_length%2 == 1) and (j == midLocation) ):
+                paths  = paths  + cnt
+            else:
+                paths  = paths  + 4*cnt
+            print(j, cnt)
+
+    print("Number of snakes: ", paths )
 
 
 
