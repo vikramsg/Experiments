@@ -43,3 +43,9 @@
   /* React purple color */
   opacity: 1;
 }
+
+.card-clickable:hover {
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  /* Add any other styling you want for the hover effect */
+}

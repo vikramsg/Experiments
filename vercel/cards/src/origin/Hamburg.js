@@ -41,7 +41,7 @@ const Hamburg = () => {
                     <Col key={card.city}>
                         <Card
                             ref={card.expanded ? expandedCardRef : null}
-                            className={`h-100 ${card.expanded ? 'expanded' : ''}`}
+                            className={`h-100 card-clickable ${card.expanded ? 'expanded' : ''}`}
                             onClick={() => handleCardClick(card.city)}
                         >
                             <Card.Body>
