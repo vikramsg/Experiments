@@ -1,23 +1,25 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Container, Row, Col, Card } from 'react-bootstrap';
+import { formatDuration, intervalToDuration } from 'date-fns';
+
+import cardsData from '../data/hamburg_destinations.json';
 
 const Hamburg = () => {
-    // Generate an array of card data
-    const cardData = Array.from({ length: 100 }, (_, index) => ({
-        id: index + 1,
-        title: `Card ${index + 1}`,
-        description: `This is card number ${index + 1}`,
-    }));
+    const [cards, setCards] = useState([]);
+
+    useEffect(() => {
+        setCards(cardsData.cards);
+    }, []);
 
     return (
         <Container className="d-flex justify-content-center mt-4">
             <Row xs={1} md={2} lg={2} className="g-4">
-                {cardData.map((card) => (
-                    <Col key={card.id}>
+                {cards.map((card) => (
+                    <Col key={card.city}>
                         <Card className="h-100">
                             <Card.Body>
-                                <Card.Title>{card.title}</Card.Title>
-                                <Card.Text>{card.description}</Card.Text>
+                                <Card.Title>{card.city}</Card.Title>
+                                <Card.Text>{formatDuration(intervalToDuration({ start: 0, end: card.journey_time * 1000 }))}</Card.Text>
                             </Card.Body>
                         </Card>
                     </Col>
