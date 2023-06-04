@@ -10,11 +10,11 @@ const Hamburg = () => {
     }));
 
     return (
-        <Container className="mt-4">
-            <Row xs={1} md={2} lg={3} className="g-4">
+        <Container className="d-flex justify-content-center mt-4">
+            <Row xs={1} md={2} lg={2} className="g-4">
                 {cardData.map((card) => (
                     <Col key={card.id}>
-                        <Card style={{ width: '18rem' }} className="h-100">
+                        <Card className="h-100">
                             <Card.Body>
                                 <Card.Title>{card.title}</Card.Title>
                                 <Card.Text>{card.description}</Card.Text>
