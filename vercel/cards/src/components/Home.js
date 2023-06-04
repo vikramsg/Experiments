@@ -3,31 +3,31 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Card from 'react-bootstrap/Card';
+import { Link } from 'react-router-dom';
 
 const Home = () => {
     return (
         <Container className="d-flex justify-content-center mt-4">
-            <Row >
-                <Col xs={12} md={6} >
-                    <Card style={{ width: '18rem' }}>
-                        <Card.Body>
-                            <Card.Title>Card title</Card.Title>
-                            <Card.Text>
-                                This is a longer card with supporting text below as a natural
-                                lead-in to additional content. This content is a little bit
-                                longer.
-                            </Card.Text>
-                        </Card.Body>
-                    </Card>
+            <Row xs={1} md={2} lg={2} className="g-4" >
+                <Col >
+                    <Link to="/origin/hamburg" className="text-decoration-none">
+                        <Card className="h-100">
+                            <Card.Body>
+                                <Card.Title>Hamburg </Card.Title>
+                                <Card.Text>
+                                    Find out all destinations you can take
+                                    from Hamburg using only your 49 Euro ticket.
+                                </Card.Text>
+                            </Card.Body>
+                        </Card>
+                    </Link>
                 </Col>
-                <Col xs={12} md={6} >
-                    <Card style={{ width: '18rem' }}>
+                <Col >
+                    <Card className="h-100">
                         <Card.Body>
-                            <Card.Title>Second Card title</Card.Title>
+                            <Card.Title>Berlin</Card.Title>
                             <Card.Text>
-                                This is a longer card with supporting text below as a natural
-                                lead-in to additional content. This content is a little bit
-                                longer.
+                                Coming soon!
                             </Card.Text>
                         </Card.Body>
                     </Card>
