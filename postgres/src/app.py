@@ -1,6 +1,6 @@
 from fastapi import Depends, FastAPI, Response
-from psycopg2 import errors
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 from src.db import get_db
 from src.model import Task, Tasks
@@ -14,8 +14,11 @@ async def create_task(task: str, db=Depends(get_db)) -> Response:
         query = text("INSERT INTO tasks (task) VALUES (:task)")
         db.execute(query, {"task": task})
         db.commit()
-    except errors.UniqueViolation:
-        return Response(status_code=400, content="Task already exists")
+    except IntegrityError as e:
+        if "psycopg2.errors.UniqueViolation" in e.args[0]:
+            return Response(status_code=400, content="Task already exists")
+        else:
+            return Response(status_code=400, content=f"Unknown error. {e.args[0]}")
 
     return Response(status_code=201, content="Task created successfully")
 
