@@ -10,6 +10,7 @@ python = ">=3.8.1,<4.0"
 fastapi = "^0.100.0"
 uvicorn = "^0.22.0"
 sqlalchemy = "^2.0.18"
+psycopg2-binary = "^2.9.6"
 
 
 [tool.poetry.group.dev.dependencies]
