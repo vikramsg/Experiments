@@ -1,6 +1,7 @@
 from fastapi import Depends, FastAPI
-from src.db import get_db
 from sqlalchemy import text
+
+from src.db import get_db
 from src.model import Task, Tasks
 
 app = FastAPI()
@@ -13,10 +14,10 @@ async def create_task(task: str, db=Depends(get_db)) -> None:
 
 
 @app.get("/tasks", response_model=Tasks)
-async def get_tasks(db=Depends(get_db)) -> None:
+async def get_tasks(db=Depends(get_db)) -> Tasks:
     query = text("SELECT task FROM tasks")
     fetched_tasks = db.execute(query).all()
 
-    tasks: Tasks = [Task(id=task[0], task=task[1]) for task in fetched_tasks]
+    tasks = [Task(id=task[0], task=task[1]) for task in fetched_tasks]
 
-    return tasks
+    return Tasks(tasks=tasks)

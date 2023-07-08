@@ -4,3 +4,6 @@ up:
 
 down:
 	docker-compose down
+
+lint:
+	./linter.sh
