@@ -1,4 +1,5 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Response
+from psycopg2 import errors
 from sqlalchemy import text
 
 from src.db import get_db
@@ -8,14 +9,20 @@ app = FastAPI()
 
 
 @app.post("/tasks")
-async def create_task(task: str, db=Depends(get_db)) -> None:
-    query = text("INSERT INTO tasks (task) VALUES (:task)")
-    db.execute(query, {"task": task})
+async def create_task(task: str, db=Depends(get_db)) -> Response:
+    try:
+        query = text("INSERT INTO tasks (task) VALUES (:task)")
+        db.execute(query, {"task": task})
+        db.commit()
+    except errors.UniqueViolation:
+        return Response(status_code=400, content="Task already exists")
+
+    return Response(status_code=201, content="Task created successfully")
 
 
 @app.get("/tasks", response_model=Tasks)
 async def get_tasks(db=Depends(get_db)) -> Tasks:
-    query = text("SELECT task FROM tasks")
+    query = text("SELECT id, task FROM tasks")
     fetched_tasks = db.execute(query).all()
 
     tasks = [Task(id=task[0], task=task[1]) for task in fetched_tasks]

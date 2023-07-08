@@ -19,6 +19,7 @@ isort = "^5.12.0"
 black = "^23.3.0"
 mypy = "^1.4.1"
 pytest = "^7.4.0"
+types-psycopg2 = "^2.9.21.10"
 
 [tool.isort]
 profile = "black"
