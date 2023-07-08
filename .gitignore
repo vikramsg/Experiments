@@ -4,3 +4,5 @@ old
 *.swp
 *.mod
 *.out
+.env
+.venv
