@@ -9,12 +9,12 @@ class DBConfig(BaseSettings):
     postgres_password: str
     postgres_db: str
 
-    postgres_url: Optional[PostgresDsn] = None
+    postgres_url: Optional[str] = None
 
     @validator("postgres_url")
-    def create_db_url(cls, _, values) -> Optional[PostgresDsn]:
+    def create_db_url(cls, _, values) -> Optional[str]:
         if "postgres_user" in values:
             url = f"""postgresql://{values["postgres_user"]}:{values["postgres_password"]}@db/{values["postgres_db"]}"""
-            return PostgresDsn(url=url)
+            return str(PostgresDsn(url=url))
         else:
             return None

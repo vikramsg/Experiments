@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 
 from src.config import DBConfig
 
-url = DBConfig().url
+url = DBConfig().postgres_url
 
 # Create a SQLAlchemy engine
 engine = create_engine(url)
