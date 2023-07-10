@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, status
 from sqlalchemy import text
@@ -36,14 +37,14 @@ async def create_task(task: str, db=Depends(get_db)) -> Task:
 
 
 @app.get("/tasks")
-async def get_tasks(db=Depends(get_db)) -> Tasks:
+async def get_tasks(db=Depends(get_db)) -> List[Task]:
     logger.info("Fetching all tasks.")
     query = text("SELECT id, task FROM tasks")
     fetched_tasks = db.execute(query).all()
 
     tasks = [Task(id=task[0], task=task[1]) for task in fetched_tasks]
 
-    return Tasks(tasks=tasks)
+    return tasks
 
 
 @app.put("/tasks/{id}")

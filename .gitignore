@@ -9,4 +9,4 @@ old
 .venv
 local_pgdata
 pgadmin-data
-postgres/src/__pycache__/__init__.cpython-38.pyc
+.vscode
