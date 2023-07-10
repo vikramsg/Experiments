@@ -3,9 +3,9 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.config import postgres_url
+from src.config import DBConfig
 
-url = postgres_url()
+url = DBConfig().url
 
 # Create a SQLAlchemy engine
 engine = create_engine(url)
