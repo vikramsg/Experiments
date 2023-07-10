@@ -13,7 +13,7 @@ logger.setLevel(logging.INFO)
 app = FastAPI()
 
 
-@app.post("/tasks", status_code=status.HTTP_201_CREATED)
+@app.post("/task", status_code=status.HTTP_201_CREATED)
 async def create_task(task: str, db=Depends(get_db)) -> Task:
     try:
         query = text("INSERT INTO tasks (task) VALUES (:task) RETURNING id")
