@@ -6,69 +6,36 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from src.db import get_db
-from src.model import Task, Tasks
+from src.todo.routes import todo_router
+from src.middleware import CustomExceptionMiddleware
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-app = FastAPI()
+
+# app = FastAPI()
+def init_routers(app: FastAPI) -> None:
+    app.include_router(todo_router)
 
 
-@app.post("/task", status_code=status.HTTP_201_CREATED)
-async def create_task(task: str, db=Depends(get_db)) -> Task:
-    try:
-        query = text("INSERT INTO tasks (task) VALUES (:task) RETURNING id")
-        result = db.execute(query, {"task": task})
-        db.commit()
-        task_id = result.fetchone()[0]
-    except IntegrityError as e:
-        logger.warning(f"Error in creating task: {e.args[0]}")
-        if "psycopg2.errors.UniqueViolation" in e.args[0]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Task already exists"
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Unknown error occurred",
-            )
-
-    return Task(task=task, id=task_id)
+def init_custom_exception(app: FastAPI) -> None:
+    app.add_middleware(CustomExceptionMiddleware)
 
 
-@app.get("/tasks")
-async def get_tasks(db=Depends(get_db)) -> List[Task]:
-    logger.info("Fetching all tasks.")
-    query = text("SELECT id, task FROM tasks")
-    fetched_tasks = db.execute(query).all()
+def create_app() -> FastAPI:
+    _app = FastAPI(
+        title="Vikram's todo app",
+        description="Vikram's awesome to do app",
+        version="0.1.0",
+    )
 
-    tasks = [Task(id=task[0], task=task[1]) for task in fetched_tasks]
+    # @_app.on_event("startup")
+    # def startup_event() -> None:
+    #     get_db()
 
-    return tasks
+    # Keep this on top of all the other middlewares
+    # init_custom_exception(app=_app)
 
+    init_routers(app=_app)
 
-@app.put("/tasks/{id}")
-async def update_tasks(id: int, new_task: str, db=Depends(get_db)) -> Task:
-    logging.info(f"Updating task with id: {id}")
-    query = text("UPDATE tasks SET task = :task WHERE id= :id")
-    db.execute(query, {"task": new_task, "id": id})
-    db.commit()
-
-    return Task(task=new_task, id=id)
-
-
-@app.delete("/tasks/{id}")
-async def delete_tasks(id: int, db=Depends(get_db)) -> Task:
-    query = text("SELECT id, task FROM tasks WHERE id= :id")
-    query_result = db.execute(query, {"id": id}).fetchone()
-    if query_result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such Id")
-
-    logging.info(f"Deleting task with id: {id}")
-    query = text("DELETE FROM tasks WHERE id= :id RETURNING id, task")
-    result = db.execute(query, {"id": id})
-    db.commit()
-
-    id, task = result.fetchone()
-
-    return Task(id=id, task=task)
+    return _app

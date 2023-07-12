@@ -7,11 +7,11 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.8.1,<4.0"
-fastapi = "^0.100.0"
 uvicorn = "^0.22.0"
 sqlalchemy = "^2.0.18"
 psycopg2-binary = "^2.9.6"
-pydantic-settings = "^2.0.1"
+pydantic = {extras = ["dotenv"], version = "^1.10.6"}
+fastapi = "^0.95.1"
 
 
 [tool.poetry.group.dev.dependencies]

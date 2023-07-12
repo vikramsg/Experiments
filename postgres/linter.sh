@@ -2,7 +2,7 @@
 
 set -o verbose
 
-mypy .
-isort .
-black .
-flake8 .
+poetry run mypy . --exclude tests/
+poetry run isort .
+poetry run black .
+# poetry run ruff . --fix

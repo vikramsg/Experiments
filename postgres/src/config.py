@@ -1,20 +1,27 @@
-from typing import Optional
-from pydantic import validator
-from pydantic_settings import BaseSettings
+from functools import lru_cache
+from pydantic import Field
+from pydantic import BaseSettings
 from pydantic.networks import PostgresDsn
+import os
 
 
-class DBConfig(BaseSettings):
-    postgres_user: str
-    postgres_password: str
-    postgres_db: str
+class Settings(BaseSettings):
+    postgres_user: str = Field(..., env="POSTGRES_USER")
+    postgres_password: str = Field(..., env="POSTGRES_PASSWORD")
+    postgres_server: str = Field(..., env="POSTGRES_HOST")
+    postgres_db: str = Field(..., env="POSTGRES_DB")
 
-    postgres_url: Optional[str] = None
+    @property
+    def postgres_dsn(self) -> PostgresDsn:
+        return PostgresDsn.build(
+            scheme="postgresql",
+            user=self.postgres_user,
+            password=self.postgres_password,
+            host=self.postgres_server,
+            path=f"/{self.postgres_db}",
+        )
 
-    @validator("postgres_url")
-    def create_db_url(cls, _, values) -> Optional[str]:
-        if "postgres_user" in values:
-            url = f"""postgresql://{values["postgres_user"]}:{values["postgres_password"]}@db/{values["postgres_db"]}"""
-            return str(PostgresDsn(url=url))
-        else:
-            return None
+
+@lru_cache()
+def get_config() -> Settings:
+    return Settings(_env_file=os.getenv("ENVFILE", ".env"), _env_file_encoding="utf-8")  # type: ignore
