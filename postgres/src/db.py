@@ -21,3 +21,7 @@ def get_db() -> Generator:
         yield db
     finally:
         db.close()
+
+
+def is_task_exists():
+    ...

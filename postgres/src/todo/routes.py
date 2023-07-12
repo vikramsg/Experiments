@@ -15,22 +15,10 @@ todo_router = APIRouter(prefix="/todo", tags=["basic todo"])
 
 @todo_router.post("/task", status_code=status.HTTP_201_CREATED)
 async def create_task(task: str, db=Depends(get_db)) -> Task:
-    try:
-        query = text("INSERT INTO tasks (task) VALUES (:task) RETURNING id")
-        result = db.execute(query, {"task": task})
-        db.commit()
-        task_id = result.fetchone()[0]
-    except IntegrityError as e:
-        logger.warning(f"Error in creating task: {e.args[0]}")
-        if "psycopg2.errors.UniqueViolation" in e.args[0]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Task already exists"
-            )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Unknown error occurred",
-            )
+    query = text("INSERT INTO tasks (task) VALUES (:task) RETURNING id")
+    result = db.execute(query, {"task": task})
+    db.commit()
+    task_id = result.fetchone()[0]
 
     return Task(task=task, id=task_id)
 

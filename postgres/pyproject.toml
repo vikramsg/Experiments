@@ -12,6 +12,7 @@ sqlalchemy = "^2.0.18"
 psycopg2-binary = "^2.9.6"
 pydantic = {extras = ["dotenv"], version = "^1.10.6"}
 fastapi = "^0.95.1"
+orjson = "^3.9.2"
 
 
 [tool.poetry.group.dev.dependencies]

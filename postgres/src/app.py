@@ -29,12 +29,12 @@ def create_app() -> FastAPI:
         version="0.1.0",
     )
 
-    # @_app.on_event("startup")
-    # def startup_event() -> None:
-    #     get_db()
+    @_app.on_event("startup")
+    def startup_event() -> None:
+        get_db()
 
     # Keep this on top of all the other middlewares
-    # init_custom_exception(app=_app)
+    init_custom_exception(app=_app)
 
     init_routers(app=_app)
 
