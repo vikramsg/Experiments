@@ -1,4 +1,5 @@
 from fastapi import APIRouter, status
+
 from src.llama.llama import llama_cpp_prompt_response
 from src.llama.model import Prompt
 

@@ -1,6 +1,13 @@
-from pathlib import Path
+import os
+from functools import lru_cache
+
+from pydantic import BaseSettings, Field
 
 
-LLAMA_BIN_FILE = str(
-    Path(__file__).resolve().parent.parent / "data" / "llama-2-7b.ggmlv3.q4_0.bin"
-)
+class LLAMAConfig(BaseSettings):
+    llam_bin_file: str = Field(..., env="LLAMA_BIN_FILE")
+
+
+@lru_cache()
+def get_llama_config() -> LLAMAConfig:
+    return LLAMAConfig(_env_file=os.getenv("ENVFILE", ".env"), _env_file_encoding="utf-8")  # type: ignore

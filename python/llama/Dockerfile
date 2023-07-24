@@ -3,7 +3,8 @@ FROM python:3.8-slim
 # Add the path for poetry
 ENV PATH $PATH:/root/.local/bin/
 
-RUN apt-get update && apt-get install -y curl && \
+RUN apt-get update && apt-get install -y build-essential && \
+    apt-get install -y curl && \
     # Install & Configure poetry
     python3 -m pip install --upgrade pip && \
     curl -sSL https://install.python-poetry.org | python3 - --version 1.4.2 && \
@@ -11,6 +12,8 @@ RUN apt-get update && apt-get install -y curl && \
 
 COPY poetry.lock pyproject.toml /app/
 COPY ./src /app/src
+COPY ./README.md /app/README.md
+
 WORKDIR /app
 RUN --mount=type=cache,target=/home/.cache/pypoetry/cache \
     --mount=type=cache,target=/home/.cache/pypoetry/artifacts \ 
@@ -18,4 +21,4 @@ RUN --mount=type=cache,target=/home/.cache/pypoetry/cache \
 ENV PYTHONPATH /app
 
 # Expose the port on which the application will run (default: 8000)
-EXPOSE 8000
+EXPOSE 8050
