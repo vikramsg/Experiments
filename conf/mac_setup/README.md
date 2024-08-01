@@ -21,8 +21,8 @@
         1. Go to preferences - shortcut 1, change key from option key to command key to make it override system command + tab
 6. Bookmarks
 7. Keyboard setup
-    1. Resolve pairing issue - [https://www.notion.so/Logitech-fc65efb895334e5da1bc61e9c4584eef](https://www.notion.so/Logitech-fc65efb895334e5da1bc61e9c4584eef?pvs=21) 
-    2. Resolve option + right and option + left - [https://www.notion.so/Mac-1b5e41767540494e95f2dfcab6e8b0c2#44db6fca88a94dc5abab8d6c9989f519](https://www.notion.so/1b5e41767540494e95f2dfcab6e8b0c2?pvs=21)
+    1. Resolve pairing issue 
+    2. Resolve option + right and option + left 
 
 
 ## MX Keys pairing issue
