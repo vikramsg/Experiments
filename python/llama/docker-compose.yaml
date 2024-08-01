@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  fastapi-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8050
+    ports:
+      - "8050:8050"
+    environment:
+      - LLAMA_BIN_FILE=/app/data/llama-2-7b.ggmlv3.q4_0.bin
+    volumes:
+      - ./data:/app/data
