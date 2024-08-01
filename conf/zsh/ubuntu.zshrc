@@ -80,14 +80,6 @@ alias lint="~/.local/bin/linter.sh"
 
 alias aws="/home/vikramsg/.local/bin/aws"
 
-alias awsdev="export AWS_DEFAULT_PROFILE=mocca-developer-dev"
-alias awstest="export AWS_DEFAULT_PROFILE=mocca-developer-test"
-alias awsprod="export AWS_DEFAULT_PROFILE=mocca-developer-prod"
-alias awsmaster="export AWS_DEFAULT_PROFILE=mocca-developer-master"
-
-alias omicsprod="export AWS_DEFAULT_PROFILE=omics-hub-developer-prod"
-alias omicsdev="export AWS_DEFAULT_PROFILE=omics-hub-developer-dev"
-
 alias k="kubectl"
 
 # Use to get magic autocomplete
