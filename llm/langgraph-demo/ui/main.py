@@ -3,6 +3,8 @@ import re
 
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
+from langgraph.config import get_stream_writer
+from langgraph.prebuilt import create_react_agent
 from nicegui import ui
 from pydantic import BaseModel, Field
 
@@ -17,7 +19,12 @@ class MultiplyInputSchema(BaseModel):
 @tool("multiply_tool", args_schema=MultiplyInputSchema)
 def multiply(a: int, b: int) -> int:
     """Multiply two numbers together"""
-    return a * b
+    writer = get_stream_writer()
+    # Stream custom progress data
+    writer(f"Multiplying {a} × {b} using Python...")
+    result = a * b
+    writer(f"Result: {result}")
+    return result
 
 
 def parse_thinking_content(content: str):
@@ -31,13 +38,51 @@ def parse_thinking_content(content: str):
     return thinking_matches, clean_content
 
 
+async def simulate_char_streaming(content: str, thinking_section, response_content, current_thinking, current_response):
+    """Simulate character-by-character streaming for smooth UI effect"""
+    accumulated = ""
+
+    for char in content:
+        accumulated += char
+
+        # Parse thinking vs response content as we build up
+        thinking_matches, clean_content = parse_thinking_content(accumulated)
+
+        # Check if thinking is complete
+        thinking_complete = "</think>" in accumulated
+
+        # Update thinking section if we found thinking content
+        if thinking_matches:
+            new_thinking = "\n\n".join(thinking_matches)
+            if new_thinking != current_thinking[0]:
+                current_thinking[0] = new_thinking
+                thinking_section.clear()
+                with thinking_section:
+                    ui.markdown(current_thinking[0]).classes("text-sm text-gray-600 whitespace-pre-wrap")
+                if not thinking_section.value:  # Auto-open if closed
+                    thinking_section.open()
+
+        # Auto-collapse thinking section when thinking is complete and we have response content
+        if thinking_complete and clean_content.strip() and thinking_section.value:
+            thinking_section.close()
+
+        # Update response section with clean content
+        if clean_content.strip() != current_response[0]:
+            current_response[0] = clean_content.strip()
+            response_content.content = current_response[0]
+
+        # Auto-scroll and allow UI to update
+        ui.run_javascript("window.scrollTo(0, document.body.scrollHeight)")
+        await asyncio.sleep(0.02)  # Character streaming speed
+
+
 @ui.page("/")
 def main():
-    # tools = [multiply]
+    tools = [multiply]
     llm = ChatOllama(model="qwen3:4b")
 
-    # FIXME: We are directly using the llm instead of the agent.
-    # agent = create_react_agent(llm, tools=tools)
+    # Create streaming LangGraph agent
+    agent = create_react_agent(llm, tools=tools)
 
     async def send() -> None:
         question = text.value
@@ -64,49 +109,57 @@ def main():
 
             spinner = ui.spinner(type="dots")
 
-        current_thinking = ""
-        current_response = ""
+        current_thinking = [""]
+        current_response = [""]
+        accumulated_content = ""
 
         try:
-            # Stream from the LLM directly for better control
-            print("Starting real-time streaming...")
-            accumulated_content = ""
-            current_thinking = ""
-            current_response = ""
+            # Use LangGraph with multiple stream modes for comprehensive streaming
+            print("Starting LangGraph multi-mode streaming...")
 
-            async for chunk in llm.astream(question):
-                content = chunk.content if isinstance(chunk.content, str) else str(chunk.content)
-                accumulated_content += content
+            async for chunk in agent.astream(
+                {"messages": [{"role": "user", "content": question}]}, stream_mode=["updates", "messages", "custom"]
+            ):
+                stream_mode, data = chunk
+                print(f"Stream mode: {stream_mode}")
 
-                # Parse the accumulated content so far
-                thinking_matches, clean_content = parse_thinking_content(accumulated_content)
+                if stream_mode == "custom":
+                    # Custom data from tools (e.g., progress updates)
+                    print(f"Custom data: {data}")
+                    if isinstance(data, str):
+                        current_response[0] = f"🔧 {data}"
+                        response_content.content = current_response[0]
+                        ui.run_javascript("window.scrollTo(0, document.body.scrollHeight)")
+                        await asyncio.sleep(0.5)  # Show tool progress briefly
 
-                # Check if thinking is complete (has closing tag)
-                thinking_complete = "</think>" in accumulated_content
+                elif stream_mode == "updates":
+                    # State updates after each node
+                    print(f"Update: {data}")
+                    # Could show step progress here if needed
 
-                # Update thinking section if we found thinking content
-                if thinking_matches:
-                    new_thinking = "\n\n".join(thinking_matches)
-                    if new_thinking != current_thinking:
-                        current_thinking = new_thinking
-                        thinking_section.clear()
-                        with thinking_section:
-                            ui.markdown(current_thinking).classes("text-sm text-gray-600 whitespace-pre-wrap")
-                        if not thinking_section.value:  # Auto-open if closed
-                            thinking_section.open()
+                elif stream_mode == "messages":
+                    message_chunk, metadata = data
+                    print(f"Message from {metadata.get('langgraph_node', 'unknown')}")
 
-                # Auto-collapse thinking section when thinking is complete and we have response content
-                if thinking_complete and clean_content.strip() and thinking_section.value:
-                    thinking_section.close()
+                    # Handle different message types
+                    if hasattr(message_chunk, "content") and message_chunk.content:
+                        content = str(message_chunk.content)
+                        print(f"Content length: {len(content)} chars")
 
-                # Update response section with clean content
-                if clean_content.strip() != current_response:
-                    current_response = clean_content.strip()
-                    response_content.content = current_response
+                        # Simulate character-by-character streaming for this response
+                        await simulate_char_streaming(
+                            content, thinking_section, response_content, current_thinking, current_response
+                        )
 
-                # Auto-scroll and allow UI to update
-                ui.run_javascript("window.scrollTo(0, document.body.scrollHeight)")
-                await asyncio.sleep(0.03)  # Small delay for smooth streaming effect
+                    elif hasattr(message_chunk, "tool_calls") and message_chunk.tool_calls:
+                        # Tool call decision
+                        tool_call = message_chunk.tool_calls[0]
+                        tool_name = tool_call["name"]
+                        tool_args = tool_call["args"]
+                        current_response[0] = f"🔧 Calling {tool_name} with {tool_args}"
+                        response_content.content = current_response[0]
+                        ui.run_javascript("window.scrollTo(0, document.body.scrollHeight)")
+                        await asyncio.sleep(0.3)
 
         except Exception as e:
             # Handle any streaming errors
