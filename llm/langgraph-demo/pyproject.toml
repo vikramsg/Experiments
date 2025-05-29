@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "langchain-ollama>=0.3.3",
     "langgraph>=0.4.7",
+    "nicegui>=2.18.0",
     "ollama>=0.4.9",
 ]
 
@@ -14,3 +15,43 @@ dependencies = [
 dev = [
     "ruff>=0.11.11",
 ]
+
+[tool.ruff]
+# Same as Black.
+line-length = 120
+indent-width = 4
+
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E", # pycodestyle
+    "F", # pyflakes
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I",   # isort
+    "RUF", # ruff-specific-rules
+    "BLE", # Blind except 
+]
+ignore = []
+
+# Exclude specific folders
+exclude = []
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
