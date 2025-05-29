@@ -9,6 +9,8 @@ dependencies = [
     "langgraph>=0.4.7",
     "nicegui>=2.18.0",
     "ollama>=0.4.9",
+    "prompt-toolkit>=3.0.51",
+    "rich>=14.0.0",
 ]
 
 [dependency-groups]
