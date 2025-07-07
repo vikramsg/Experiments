@@ -1,0 +1,25 @@
+name: Feature Request
+description: Suggest an idea for this project
+labels: ["backlog"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Overview of the goal, reason for it, benefits of completing it
+      description: A clear description of the feature.
+    validations:
+      required: true
+
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: List of final deliverable
+      description: Description of what the final deliverable should look like, including any specific characteristics, functionalities, and performance expectations
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Conditions that must be met for the feature to be considered complete
