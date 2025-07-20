@@ -156,6 +156,7 @@ require("lazy").setup({
 			end, { desc = "[S]earch [N]eovim files" })
 		end,
 	},
+
 	{
 		"nvim-neo-tree/neo-tree.nvim",
 		branch = "v3.x",
@@ -172,7 +173,14 @@ require("lazy").setup({
 		---@module "neo-tree"
 		---@type neotree.Config?
 		opts = {
-			-- add options here
+			filesystem = {
+				filtered_items = {
+					visible = true,
+					show_hidden_count = true,
+					hide_dotfiles = false,
+					hide_gitignored = false,
+				},
+			},
 		},
 	},
 
