@@ -24,6 +24,14 @@ vim.opt.undofile = true
 vim.opt.ignorecase = true
 vim.opt.smartcase = true
 
+-- Optimize esc experience
+-- Fast, reliable <Esc>
+-- Does not help a lot but we have to do Esc twice it seems
+vim.opt.timeout = true -- (default, but be explicit)
+vim.opt.timeoutlen = 500 -- mapping sequences (adjust to taste)
+vim.opt.ttimeout = true
+vim.opt.ttimeoutlen = 10 -- 10–40 typical; lower = snappier Esc
+
 -- Make Space the leader
 vim.g.mapleader = " "
 
