@@ -20,6 +20,8 @@
             "plugins": "python git zsh-autosuggestions zsh-syntax-highlighting",
             "omzPlugins": "https://github.com/zsh-users/zsh-autosuggestions.git https://github.com/zsh-users/zsh-syntax-highlighting.git"
         },
+        // Install claude-code so that we can use the claude code extension
+        "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
 	},
 	"mounts": [
 		"source=${localEnv:HOME}/.config/nvim,target=/home/vscode/.config/nvim,type=bind,consistency=cached",
@@ -29,7 +31,8 @@
         "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh-owner,type=bind,consistency=cached",
 		"source=${localEnv:HOME}/.config/gh,target=/home/vscode/.config/gh,type=bind,consistency=cached",
         "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
-
+        // For Claude code
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.claude.json,target=/home/vscode/.claude.json,type=bind,consistency=cached",
 	],
     "postCreateCommand": "bash .devcontainer/setup.sh",
 	"customizations": {
