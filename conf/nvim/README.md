@@ -46,6 +46,9 @@ To bind keys with things like `Cmd`, we need to do a 2 step process.
 2. Then go to Neovim, into insert mode, do `Ctrl + V, key combination` and note the output. 
 3. Then go to `init.lua` and use that output for the shortcut you want.
 
+Caution: Keybinding changes in `iTerm2` can have unintended consequences. 
+IF anywhere in the keybinding menu, you have used `Esc`, it could mean needing to send `Esc` twice to be registered in `nvim`!
+
 
 ## Python
 
