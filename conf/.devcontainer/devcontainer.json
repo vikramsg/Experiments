@@ -31,7 +31,7 @@
         "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
 
 	],
-    "postCreateCommand": "git config --global --add safe.directory /workspaces/Experiments && bash .devcontainer/setup.sh",
+    "postCreateCommand": "bash .devcontainer/setup.sh",
 	"customizations": {
 		"vscode": {
 			"extensions": [
