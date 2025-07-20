@@ -46,6 +46,9 @@ To bind keys with things like `Cmd`, we need to do a 2 step process.
 2. Then go to Neovim, into insert mode, do `Ctrl + V, key combination` and note the output. 
 3. Then go to `init.lua` and use that output for the shortcut you want.
 
+Caution: Keybinding changes in `iTerm2` can have unintended consequences. 
+IF anywhere in the keybinding menu, you have used `Esc`, it could mean needing to send `Esc` twice to be registered in `nvim`!
+
 
 ## Python
 
@@ -67,9 +70,16 @@ ln -s <full path to nvim git dir> ~/.config/nvim
 
 Go look at some of the settings [here](https://github.com/nvim-lua/kickstart.nvim/blob/master/init.lua) for inspiration. 
 
+## Debugging
+
+- `:checkhealth` is useful
+- `:checkhealth vim.lsp` shows what is happening with LSP 
+
 ## ToDo
 
 1. Make `Cmd + .` work to suggest imports.
+    - Did this break esc?
+    - Always need to press esc twice now
 2. Make `Cmd + p` work to show recent files. 
 3. Make all files open show up as tabs. 
 
