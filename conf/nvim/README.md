@@ -5,8 +5,6 @@
 Use linking as in [Config init](## Config init) section.
 After linking, setup is automatic. 
 Start `nvim` for the first time, and `lazy` should automatically setup. 
-For `fzf`, if you try to execute a command, it will ask to install the binary and after you 
-accept, it will just work!
 
 ## Keybindings
 
@@ -25,9 +23,24 @@ accept, it will just work!
 - `Ctrl + h`: Open file in horizontal split  
 - `Ctrl + t`: Open file in new tab
 
-### Fzf
+### Telescope 
 
 - `Space + Space`: Open search to find files. 
+- `Space + /`: Search for word in current buffer.
+- `Space + sg`: Grep for word in project.
+
+### Lazygit
+
+- `Space + lg`: To open lazygit view
+- `+` after `Enter` on a file to go to bigger diff view. 
+- `Space`: To stage
+- `c` to commit
+
+## Python
+
+To use with Python and `uv` just do 
+`uv run nvim .` from your root workspace folder. It should automatically find the correct `venv`. 
+
 
 ## Config init 
 
@@ -38,3 +51,7 @@ We have linked it to our base system using
 ```sh
 ln -s <full path to nvim git dir> ~/.config/nvim
 ```
+
+## References
+
+Go look at some of the settings [here](https://github.com/nvim-lua/kickstart.nvim/blob/master/init.lua) for inspiration. 
