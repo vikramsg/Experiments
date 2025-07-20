@@ -425,7 +425,8 @@ require("lazy").setup({
 			local servers = {
 				-- clangd = {},
 				-- gopls = {},
-				-- TODO: Add basedpyright
+				-- TODO: Add ty
+				ty = {},
 
 				ruff = {},
 				-- rust_analyzer = {},
@@ -678,22 +679,5 @@ require("lazy").setup({
 		keys = {
 			{ "<leader>lg", "<cmd>LazyGit<cr>", desc = "LazyGit" },
 		},
-	},
-	{
-		"NeogitOrg/neogit",
-		dependencies = {
-			"nvim-lua/plenary.nvim", -- required
-			"sindrets/diffview.nvim", -- optional - Diff integration
-			"nvim-telescope/telescope.nvim", -- optional
-		},
-		config = function()
-			require("neogit").setup({
-				integrations = {
-					diffview = true,
-				},
-			})
-			vim.keymap.set("n", "<Leader>g", ":Neogit<CR>")
-			vim.keymap.set("n", "<Leader>gh", ":DiffviewFileHistory ")
-		end,
 	},
 })
