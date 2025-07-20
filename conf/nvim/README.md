@@ -10,13 +10,15 @@ Start `nvim` for the first time, and `lazy` should automatically setup.
 
 ### Neovim
 
-- `Ctrl + w + <-` - To move between split 
-- `Ctrl + w + ->` - To move between split 
+- `Ctrl + h` - To move between split 
+- `Ctrl + l` - To move between split 
 
-### Oil
+### Neotree 
 
-- `-` :  Use `-` to show files as a vim buffer. Edit files exactly the way you would edit text
-- `Space + e`: Open Oil in left split (VSCode-like file explorer)
+- `Space + e`: Toggle File tree view 
+- `a` in Neotree view to add a file.
+- `d` in Neotree view to delete a file.
+- `A` in Neotree view to create a dir.
 
 #### Within Oil buffer:
 - `Ctrl + s`: Open file in vertical split

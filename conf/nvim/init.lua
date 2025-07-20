@@ -156,42 +156,23 @@ require("lazy").setup({
 			end, { desc = "[S]earch [N]eovim files" })
 		end,
 	},
-
 	{
-		"stevearc/oil.nvim",
-		dependencies = { "nvim-tree/nvim-web-devicons" }, -- optional icons
-		config = function()
-			require("oil").setup({
-				default_file_explorer = true, -- use Oil instead of netrw on dirs
-				float = false, -- disable floating windows entirely
-				columns = { "icon" }, -- show only icons; add size/mtime if desired
-				view_options = {
-					show_hidden = true, -- display dotfiles
-					is_hidden_file = function(name)
-						return vim.startswith(name, ".")
-					end,
-					sort = { { "type", "asc" }, { "name", "asc" } },
-				},
-				buf_options = {
-					buflisted = false,
-					bufhidden = "hide",
-				},
-				win_options = {
-					wrap = false,
-					signcolumn = "no",
-					concealcursor = "nvic",
-					conceallevel = 3,
-				},
-				delete_to_trash = false,
-				skip_confirm_for_simple_edits = false,
-				prompt_save_on_select_new_entry = true,
-				use_default_keymaps = true,
-			})
-		end,
+		"nvim-neo-tree/neo-tree.nvim",
+		branch = "v3.x",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"nvim-tree/nvim-web-devicons", -- not strictly required, but recommended
+			"MunifTanjim/nui.nvim",
+		},
+		lazy = false, -- neo-tree will lazily load itself
 		keys = {
-			{ "-", "<Cmd>Oil<CR>", desc = "Browse files from here" },
-			-- Note - usings 30vsplit to use 30 columns only
-			{ "<Leader>e", "<Cmd>30vsplit | Oil<CR>", desc = "Open Oil in left split" },
+			{ "<leader>e", "<cmd>Neotree toggle<cr>", desc = "Toggle file tree" },
+			{ "<leader>E", "<cmd>Neotree reveal<cr>", desc = "Reveal current file in tree" },
+		},
+		---@module "neo-tree"
+		---@type neotree.Config?
+		opts = {
+			-- add options here
 		},
 	},
 
