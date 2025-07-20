@@ -67,9 +67,16 @@ ln -s <full path to nvim git dir> ~/.config/nvim
 
 Go look at some of the settings [here](https://github.com/nvim-lua/kickstart.nvim/blob/master/init.lua) for inspiration. 
 
+## Debugging
+
+- `:checkhealth` is useful
+- `:checkhealth vim.lsp` shows what is happening with LSP 
+
 ## ToDo
 
 1. Make `Cmd + .` work to suggest imports.
+    - Did this break esc?
+    - Always need to press esc twice now
 2. Make `Cmd + p` work to show recent files. 
 3. Make all files open show up as tabs. 
 
