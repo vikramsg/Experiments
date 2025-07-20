@@ -4,7 +4,8 @@
       "Bash(find:*)",
       "Bash(ls:*)",
       "WebFetch(domain:containers.dev)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(nvim:*)"
     ],
     "deny": []
   }

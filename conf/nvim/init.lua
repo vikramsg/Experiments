@@ -429,19 +429,8 @@ require("lazy").setup({
 			local servers = {
 				-- clangd = {},
 				-- gopls = {},
-				-- TODO: Add ty
-				ty = {},
 
 				ruff = {},
-				-- rust_analyzer = {},
-				-- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
-				--
-				-- Some languages (like typescript) have entire language plugins that can be useful:
-				--    https://github.com/pmizio/typescript-tools.nvim
-				--
-				-- But for many setups, the LSP (`ts_ls`) will work just fine
-				-- ts_ls = {},
-				--
 
 				lua_ls = {
 					-- cmd = { ... },
@@ -671,3 +660,12 @@ require("lazy").setup({
 		},
 	},
 })
+
+-----------------------
+----- Setup ty here sunce its setup for vim 0.11 rather than 0.10
+vim.lsp.config(
+	"ty",
+	{ cmd = { "ty", "server" }, filetypes = { "python" }, root_markers = { "ty.toml", "pyproject.toml", ".git" } }
+)
+vim.lsp.enable("ty")
+-----------------------
