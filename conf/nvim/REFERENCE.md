@@ -16,5 +16,7 @@ Fix config
 https://github.com/astral-sh/ruff-lsp/issues/409
 
 
+### Quick fix
 
+https://github.com/kosayoda/nvim-lightbulb
 
