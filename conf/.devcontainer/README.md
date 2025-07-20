@@ -51,6 +51,31 @@ After the container starts:
 - `~/.tmux.conf` → `/home/vscode/.tmux.conf`
 - `~/.tmux/` → `/home/vscode/.tmux/`
 - `~/.zshrc` → `/home/vscode/.zshrc`
+- `~/.gitconfig` → `/home/vscode/.gitconfig`
+
+### Issues
+
+#### ssh does not mount
+
+Kill the container, rebuild and restart. 
+
+
+#### Git blocks git operations from inside devcontainer
+
+Keep getting blocked with the error
+```sh
+- git status
+fatal: detected dubious ownership in repository at '/workspaces/Experiments'
+To add an exception for this directory, call:
+```
+
+This is a `git` issue. Fix it by editing `.gitconfig` and add the following
+
+```
+[safe]
+	directory = /workspaces/*
+```
+
 
 ## Installed Tools
 
