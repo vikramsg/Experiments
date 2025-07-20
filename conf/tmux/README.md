@@ -25,3 +25,7 @@ We are going to link the `.tmux.conf` from here to our default config file to ma
 ```sh
 ln -s /Users/vikramsingh/Projects/Personal/Experiments/conf/tmux/.tmux.conf ~/.tmux.conf
 ```
+
+## TODO
+
+`tmux` is still not showing the git branch on the status line!
