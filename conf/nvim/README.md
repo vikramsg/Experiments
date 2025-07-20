@@ -2,7 +2,8 @@
 
 ## Install
 
-After creating `init.lua`, setup is automatic. 
+Use linking as in [Config init](## Config init) section.
+After linking, setup is automatic. 
 Start `nvim` for the first time, and `lazy` should automatically setup. 
 For `fzf`, if you try to execute a command, it will ask to install the binary and after you 
 accept, it will just work!
