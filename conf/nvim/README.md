@@ -39,6 +39,14 @@ Start `nvim` for the first time, and `lazy` should automatically setup.
 - `Space`: To stage
 - `c` to commit
 
+### Mac issues
+
+To bind keys with things like `Cmd`, we need to do a 2 step process. 
+1. Go to `iterm2 -> Settings -> Keys -> Keybindings` and then attach each key combination you want with an escape sequence. 
+2. Then go to Neovim, into insert mode, do `Ctrl + V, key combination` and note the output. 
+3. Then go to `init.lua` and use that output for the shortcut you want.
+
+
 ## Python
 
 To use with Python and `uv` just do 
@@ -58,3 +66,10 @@ ln -s <full path to nvim git dir> ~/.config/nvim
 ## References
 
 Go look at some of the settings [here](https://github.com/nvim-lua/kickstart.nvim/blob/master/init.lua) for inspiration. 
+
+## ToDo
+
+1. Make `Cmd + .` work to suggest imports.
+2. Make `Cmd + p` work to show recent files. 
+3. Make all files open show up as tabs. 
+
