@@ -1,7 +1,7 @@
 -- Options
 
 vim.o.number = true
-vim.o.relativenumber = true
+vim.o.relativenumber = false
 vim.o.cursorline = true
 vim.o.expandtab = true
 vim.o.shiftwidth = 4
@@ -401,30 +401,15 @@ require("lazy").setup({
 			-- Diagnostic Config
 			-- See :help vim.diagnostic.Opts
 			vim.diagnostic.config({
-				severity_sort = true,
-				float = { border = "rounded", source = "if_many" },
-				underline = { severity = vim.diagnostic.severity.ERROR },
-				signs = vim.g.have_nerd_font and {
-					text = {
-						[vim.diagnostic.severity.ERROR] = "󰅚 ",
-						[vim.diagnostic.severity.WARN] = "󰀪 ",
-						[vim.diagnostic.severity.INFO] = "󰋽 ",
-						[vim.diagnostic.severity.HINT] = "󰌶 ",
-					},
-				} or {},
-				virtual_text = {
-					source = "if_many",
-					spacing = 2,
-					format = function(diagnostic)
-						local diagnostic_message = {
-							[vim.diagnostic.severity.ERROR] = diagnostic.message,
-							[vim.diagnostic.severity.WARN] = diagnostic.message,
-							[vim.diagnostic.severity.INFO] = diagnostic.message,
-							[vim.diagnostic.severity.HINT] = diagnostic.message,
-						}
-						return diagnostic_message[diagnostic.severity]
-					end,
-				},
+				virtual_text = false, -- disable the diagnostic text on the same line
+				underline = true,
+				signs = true, -- Show diagnostic in the gutter
+				update_in_insert = false, -- Prevents diagnostic from updating while typing in insert mode
+
+				virtual_lines = {
+					current_line = true,
+				}, -- Only show if you are on the line with the error
+				float = false,
 			})
 
 			-- LSP servers and clients are able to communicate to each other what features they support.
@@ -693,5 +678,22 @@ require("lazy").setup({
 		keys = {
 			{ "<leader>lg", "<cmd>LazyGit<cr>", desc = "LazyGit" },
 		},
+	},
+	{
+		"NeogitOrg/neogit",
+		dependencies = {
+			"nvim-lua/plenary.nvim", -- required
+			"sindrets/diffview.nvim", -- optional - Diff integration
+			"nvim-telescope/telescope.nvim", -- optional
+		},
+		config = function()
+			require("neogit").setup({
+				integrations = {
+					diffview = true,
+				},
+			})
+			vim.keymap.set("n", "<Leader>g", ":Neogit<CR>")
+			vim.keymap.set("n", "<Leader>gh", ":DiffviewFileHistory ")
+		end,
 	},
 })
