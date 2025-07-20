@@ -30,6 +30,7 @@ Start `nvim` for the first time, and `lazy` should automatically setup.
 - `Space + Space`: Open search to find files. 
 - `Space + /`: Search for word in current buffer.
 - `Space + sg`: Grep for word in project.
+- `Space + sf`: Find files in project.
 
 ### Lazygit
 
