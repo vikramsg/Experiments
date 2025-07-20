@@ -28,6 +28,7 @@ accept, it will just work!
 ### Fzf
 
 - `Space + Space`: Open search to find files. 
+- `Space + /`: Search for word in project. 
 
 ## Config init 
 
@@ -38,3 +39,7 @@ We have linked it to our base system using
 ```sh
 ln -s <full path to nvim git dir> ~/.config/nvim
 ```
+
+## References
+
+Go look at some of the settings [here](https://github.com/nvim-lua/kickstart.nvim/blob/master/init.lua) for inspiration. 
