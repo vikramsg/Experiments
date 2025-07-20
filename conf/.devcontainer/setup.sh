@@ -1,5 +1,8 @@
 #!/bin/bash
 
+cp -r ~/.ssh-owner ~/.ssh
+sudo chown -R vscode:vscode ~/.ssh 2>/dev/null || true
+
 # Install Tmux Plugin Manager (TPM) if tmux config exists
 if [ -f "/home/vscode/.tmux.conf" ]; then
     git clone https://github.com/tmux-plugins/tpm /home/vscode/.tmux/plugins/tpm 2>/dev/null || true

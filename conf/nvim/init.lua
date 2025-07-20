@@ -38,6 +38,10 @@ vim.g.mapleader = " "
 vim.keymap.set("n", "<C-h>", "<C-w><C-h>", { desc = "Move focus to the left window" })
 vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right window" })
 
+-- Normal, visual, insert mode mappings for "beginning/end of line"
+vim.keymap.set({ "n", "v", "i" }, "<Find>", "^", { desc = "Go to beginning of line" }) -- Fn + ←
+vim.keymap.set({ "n", "v", "i" }, "<Select>", "$", { desc = "Go to end of line" }) -- Fn + →
+
 -- Highlight when yanking (copying) text
 --  Try it with `yap` in normal mode
 --  See `:help vim.highlight.on_yank()`
