@@ -38,6 +38,38 @@ llms-txt: ## Generate llms.txt for any GitHub repository. Usage: make llms-txt <
 	uv run python interconnection/scripts/generate_llms_txt.py "$(REPO_URL)" -o "$(OUTPUT_FILE)"
 	@echo "Generated $(OUTPUT_FILE)"
 
+dcb: ## Build the devcontainer
+	@echo
+	@echo ${CYAN} ---- Building Devcontainer ---- ${NC}
+	devcontainer build --workspace-folder .
+
+dcup: ## Up the devcontainer with newest image
+	@echo
+	@echo ${CYAN} ---- Starting Devcontainer ---- ${NC}
+	devcontainer up --workspace-folder . --remove-existing-container
+
+dcrb: ## Rebuild the devcontainer
+	@echo
+	@echo ${CYAN} ---- Rebuilding Devcontainer ---- ${NC}
+	devcontainer build --workspace-folder . --no-cache
+
+dccrb: ## Clean rebuild the devcontainer (remove and rebuild)
+	@echo
+	@echo ${CYAN} ---- Clean Rebuilding Devcontainer ---- ${NC}
+	docker system prune -f
+	devcontainer build --workspace-folder . --no-cache
+
+dce: ## Execute a command in the devcontainer. Usage: make dce <command>
+	@echo
+	@echo ${CYAN} ---- Executing in Devcontainer ---- ${NC}
+	$(eval CMD := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS)))
+	@if [ -z "$(CMD)" ]; then \
+		echo "Usage: make dce <command>"; \
+		echo "Example: make dce bash"; \
+		exit 1; \
+	fi
+	devcontainer exec --workspace-folder . $(CMD)
+
 # dummy rule so "foo" (the branch) isn't treated as an unknown target
 # This is a workaround for Makefile not really supporting CLI arguments
 %:

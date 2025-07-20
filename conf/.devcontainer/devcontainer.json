@@ -26,9 +26,12 @@
 		"source=${localEnv:HOME}/.tmux.conf,target=/home/vscode/.tmux.conf,type=bind,consistency=cached",
 		"source=${localEnv:HOME}/.tmux,target=/home/vscode/.tmux,type=bind,consistency=cached",
 		"source=${localEnv:HOME}/.zshrc,target=/home/vscode/.zshrc,type=bind,consistency=cached",
-		"source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+        "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh-owner,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.config/gh,target=/home/vscode/.config/gh,type=bind,consistency=cached",
+        "source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached",
+
 	],
-	"postCreateCommand": "bash .devcontainer/setup.sh",
+    "postCreateCommand": "bash .devcontainer/setup.sh",
 	"customizations": {
 		"vscode": {
 			"extensions": [
