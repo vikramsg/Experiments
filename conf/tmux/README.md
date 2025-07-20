@@ -1,8 +1,6 @@
 # Install
 
-Install plugin manager from here
-
-https://github.com/tmux-plugins/tpm
+Install plugin manager from herei https://github.com/tmux-plugins/tpm
 
 Put the following lines in ~/.tmux.conf
 
