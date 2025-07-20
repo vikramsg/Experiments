@@ -28,7 +28,12 @@ accept, it will just work!
 ### Fzf
 
 - `Space + Space`: Open search to find files. 
-- `Space + /`: Search for word in project. 
+- `Space + /`: Search for word in current buffer.
+- `Space + sg`: Grep for word in project.
+
+### Python LSP
+
+- `Space + d`: Show diagnostic details in floating window when cursor is on a line with issues 
 
 ## Config init 
 
