@@ -1,0 +1,51 @@
+{
+	"name": "Development Container with Neovim & Tmux",
+	"image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+	"features": {
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": "true",
+			"configureZshAsDefaultShell": "true",
+			"installOhMyZsh": "true",
+			"upgradePackages": "true",
+			"username": "vscode",
+			"uid": "1000",
+			"gid": "1000"
+		},
+		"ghcr.io/devcontainers/features/git:1": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers/features/python:1": {
+			"version": "3.12",
+			"installTools": true
+		},
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "20",
+			"nodeGypDependencies": true
+		},
+		"ghcr.io/duduribeiro/devcontainer-features/neovim:1": {
+			"version": "stable"
+		},
+		"ghcr.io/duduribeiro/devcontainer-features/tmux:1": {}
+	},
+	"mounts": [
+		"source=${localEnv:HOME}/.config/nvim,target=/home/vscode/.config/nvim,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.tmux.conf,target=/home/vscode/.tmux.conf,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.tmux,target=/home/vscode/.tmux,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.zshrc,target=/home/vscode/.zshrc,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,consistency=cached"
+	],
+	"postCreateCommand": "bash .devcontainer/setup.sh",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"vscodevim.vim"
+			],
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "zsh"
+			}
+		}
+	},
+	"remoteUser": "vscode",
+	"containerEnv": {
+		"TERM": "xterm-256color"
+	}
+}
