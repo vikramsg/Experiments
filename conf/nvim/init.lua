@@ -32,32 +32,6 @@ vim.opt.timeoutlen = 500 -- mapping sequences (adjust to taste)
 vim.opt.ttimeout = true
 vim.opt.ttimeoutlen = 10 -- 10–40 typical; lower = snappier Esc
 
-local function git_branch()
-	local ok, handle = pcall(io.popen, "git branch --show-current 2>/dev/null")
-	if not ok or not handle then
-		return ""
-	end
-	local branch = handle:read("*a")
-	handle:close()
-	if branch and branch ~= "" then
-		branch = branch:gsub("\n", "")
-		return " 󰊢 " .. branch
-	end
-	return ""
-end
-
-local git_b = git_branch()
-
-vim.opt.statusline = table.concat({
-	"%{git_b}", -- Git branch
-	"%f", -- File name
-	"%m", -- Modified flag
-	"%r", -- Readonly flag
-	"%=", -- Right align
-	" %l:%c", -- Line:Column
-	" %p%%", -- Percentage through file
-}, " ")
-
 -- Make Space the leader
 vim.g.mapleader = " "
 
@@ -512,6 +486,7 @@ require("lazy").setup({
 			local ensure_installed = vim.tbl_keys(servers or {})
 			vim.list_extend(ensure_installed, {
 				"stylua", -- Used to format Lua code
+				"prettier", -- Used for formatting JSON
 			})
 			require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
 
@@ -565,6 +540,7 @@ require("lazy").setup({
 				}
 			end,
 			formatters_by_ft = {
+				json = { "prettier" },
 				lua = { "stylua" },
 				-- Conform can also run multiple formatters sequentially
 				python = { -- To fix auto-fixable lint errors.

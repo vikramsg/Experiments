@@ -29,6 +29,9 @@ tar xf lazygit.tar.gz lazygit
 sudo install lazygit -D -t /usr/local/bin/
 rm -rf lazygit lazygit.tar.gz
 
+# Install gemini
+npm install -g @google/gemini-cli
+
 
 echo "Setup complete! You can now use Neovim with your mounted configuration."
 echo "Run 'tmux' and then press 'Ctrl+a + I' to install tmux plugins."
