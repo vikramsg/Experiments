@@ -32,6 +32,32 @@ vim.opt.timeoutlen = 500 -- mapping sequences (adjust to taste)
 vim.opt.ttimeout = true
 vim.opt.ttimeoutlen = 10 -- 10–40 typical; lower = snappier Esc
 
+local function git_branch()
+	local ok, handle = pcall(io.popen, "git branch --show-current 2>/dev/null")
+	if not ok or not handle then
+		return ""
+	end
+	local branch = handle:read("*a")
+	handle:close()
+	if branch and branch ~= "" then
+		branch = branch:gsub("\n", "")
+		return " 󰊢 " .. branch
+	end
+	return ""
+end
+
+local git_b = git_branch()
+
+vim.opt.statusline = table.concat({
+	"%{git_b}", -- Git branch
+	"%f", -- File name
+	"%m", -- Modified flag
+	"%r", -- Readonly flag
+	"%=", -- Right align
+	" %l:%c", -- Line:Column
+	" %p%%", -- Percentage through file
+}, " ")
+
 -- Make Space the leader
 vim.g.mapleader = " "
 
@@ -407,13 +433,24 @@ require("lazy").setup({
 			vim.diagnostic.config({
 				virtual_text = false, -- disable the diagnostic text on the same line
 				underline = true,
-				signs = true, -- Show diagnostic in the gutter
 				update_in_insert = false, -- Prevents diagnostic from updating while typing in insert mode
 
 				virtual_lines = {
 					current_line = true,
 				}, -- Only show if you are on the line with the error
 				float = false,
+				signs = {
+					text = {
+						[vim.diagnostic.severity.ERROR] = "󰅚 ",
+						[vim.diagnostic.severity.WARN] = "󰀪 ",
+						[vim.diagnostic.severity.INFO] = "󰋽 ",
+						[vim.diagnostic.severity.HINT] = "󰌶 ",
+					},
+					numhl = {
+						[vim.diagnostic.severity.ERROR] = "ErrorMsg",
+						[vim.diagnostic.severity.WARN] = "WarningMsg",
+					},
+				},
 			})
 
 			-- LSP servers and clients are able to communicate to each other what features they support.
