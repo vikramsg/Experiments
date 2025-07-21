@@ -407,13 +407,24 @@ require("lazy").setup({
 			vim.diagnostic.config({
 				virtual_text = false, -- disable the diagnostic text on the same line
 				underline = true,
-				signs = true, -- Show diagnostic in the gutter
 				update_in_insert = false, -- Prevents diagnostic from updating while typing in insert mode
 
 				virtual_lines = {
 					current_line = true,
 				}, -- Only show if you are on the line with the error
 				float = false,
+				signs = {
+					text = {
+						[vim.diagnostic.severity.ERROR] = "󰅚 ",
+						[vim.diagnostic.severity.WARN] = "󰀪 ",
+						[vim.diagnostic.severity.INFO] = "󰋽 ",
+						[vim.diagnostic.severity.HINT] = "󰌶 ",
+					},
+					numhl = {
+						[vim.diagnostic.severity.ERROR] = "ErrorMsg",
+						[vim.diagnostic.severity.WARN] = "WarningMsg",
+					},
+				},
 			})
 
 			-- LSP servers and clients are able to communicate to each other what features they support.
@@ -475,6 +486,7 @@ require("lazy").setup({
 			local ensure_installed = vim.tbl_keys(servers or {})
 			vim.list_extend(ensure_installed, {
 				"stylua", -- Used to format Lua code
+				"prettier", -- Used for formatting JSON
 			})
 			require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
 
@@ -528,6 +540,7 @@ require("lazy").setup({
 				}
 			end,
 			formatters_by_ft = {
+				json = { "prettier" },
 				lua = { "stylua" },
 				-- Conform can also run multiple formatters sequentially
 				python = { -- To fix auto-fixable lint errors.
