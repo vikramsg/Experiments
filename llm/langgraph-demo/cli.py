@@ -1,7 +1,5 @@
-import time
 from typing import Any
 
-from langgraph.pregel import Pregel
 from prompt_toolkit import prompt
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.history import InMemoryHistory
@@ -10,8 +8,10 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.spinner import Spinner
 
+from main import ChatAgent
 
-def chat_cli(agent: Pregel, chat_config: dict[str, Any]) -> None:
+
+def chat_cli(agent: ChatAgent, chat_config: dict[str, Any]) -> None:
     """Test CLI that echoes user input with beautiful formatting."""
 
     # Initialize Rich console
@@ -54,7 +54,6 @@ def chat_cli(agent: Pregel, chat_config: dict[str, Any]) -> None:
                 result = agent.invoke(
                     {"messages": [{"role": "user", "content": user_input}]},
                     config=chat_config,  # type: ignore
-                    stream_mode=["messages", "updates", "custom"],  # type: ignore
                 )
                 # TODO: Parse out thinking and response into separate messages
                 # Have the parser as a function input to this function
