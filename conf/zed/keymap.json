@@ -18,5 +18,11 @@
     "bindings": {
       "cmd-shift-g": "git_panel::ToggleFocus"
     }
+  },
+  {
+    "context": "GitPanel",
+    "bindings": {
+      "cmd-g up": "git::Push"
+    }
   }
 ]
