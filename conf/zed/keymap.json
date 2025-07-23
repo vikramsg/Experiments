@@ -1,0 +1,22 @@
+[
+  {
+    // In editor/anywhere: pressing Cmd+J spawns a new terminal
+    "context": "Workspace",
+    "bindings": {
+      "cmd-j": "workspace::ToggleRightDock"
+    }
+  },
+  {
+    // When focus is already in the terminal: Cmd+J sends focus back
+    "context": "Terminal",
+    "bindings": {
+      "cmd-j": "terminal_panel::ToggleFocus"
+    }
+  },
+  {
+    "context": "Workspace",
+    "bindings": {
+      "cmd-shift-g": "git_panel::ToggleFocus"
+    }
+  }
+]
