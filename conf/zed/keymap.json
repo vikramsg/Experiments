@@ -24,5 +24,10 @@
     "bindings": {
       "cmd-g up": "git::Push"
     }
+  },
+  {
+    // Stop command pallete from opening when typing : in vim normal mode
+    "context": "Editor && vim_mode == normal && !menu",
+    "bindings": { ":": null }
   }
 ]

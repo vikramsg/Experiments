@@ -21,5 +21,8 @@
   },
   "terminal": {
     "dock": "right"
+  },
+  "title_bar": {
+    "show_sign_in": false
   }
 }
