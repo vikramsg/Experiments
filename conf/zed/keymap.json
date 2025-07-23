@@ -20,7 +20,7 @@
     }
   },
   {
-    "context": "GitPanel",
+    "context": "Workspace",
     "bindings": {
       "cmd-g up": "git::Push"
     }
