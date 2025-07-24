@@ -4,7 +4,7 @@ Install plugin manager from herei https://github.com/tmux-plugins/tpm
 
 Put the following lines in ~/.tmux.conf
 
-Then do 
+Then do
 
 ```
 tmux conf ~/.tmux.conf
