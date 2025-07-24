@@ -27,7 +27,21 @@
   },
   {
     // Stop command pallete from opening when typing : in vim normal mode
-    "context": "Editor && vim_mode == normal && !menu",
-    "bindings": { ":": null }
+    // "context": "Editor && vim_mode == normal && !menu",
+    // "bindings": { ":": null }
+  },
+  {
+    // Tmux like keybindings
+    "context": "Workspace",
+    "bindings": {
+      // ---- Splits ----
+      "ctrl-b %": "pane::SplitRight", // like tmux % (vertical split)
+      "ctrl-b \"": "pane::SplitDown", // like tmux " (horizontal split)
+
+      "ctrl-b h": "workspace::ActivatePaneLeft",
+      "ctrl-b j": "workspace::ActivateNextPane",
+      "ctrl-b k": "workspace::ActivateNextPane",
+      "ctrl-b l": "workspace::ActivatePaneRight"
+    }
   }
 ]
