@@ -23,6 +23,7 @@
     "dock": "right"
   },
   "title_bar": {
-    "show_sign_in": false
+    "show_sign_in": false,
+    "show_branch_icon": true
   }
 }
