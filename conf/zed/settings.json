@@ -17,7 +17,7 @@
   "theme": {
     "mode": "system",
     "light": "One Light",
-    "dark": "Ayu Dark"
+    "dark": "Tokyo Night Storm"
   },
   "terminal": {
     "dock": "right"
@@ -25,5 +25,28 @@
   "title_bar": {
     "show_sign_in": false,
     "show_branch_icon": true
+  },
+  "show_completions_on_input": true,
+  "languages": {
+    "Python": {
+      "language_servers": ["pyright", "ruff"],
+      "format_on_save": "on",
+      "formatter": [
+        {
+          "code_actions": {
+            "source.organizeImports.ruff": true,
+            "source.fixAll.ruff": false
+          }
+        },
+        // NOTE: formatting through ruff doesn't work on remote machine
+        // The only way to make it work currently is to copy the settings file to the remote machine.
+        // So change aliases to first copy and then open zed.
+        {
+          "language_server": {
+            "name": "ruff"
+          }
+        }
+      ]
+    }
   }
 }
