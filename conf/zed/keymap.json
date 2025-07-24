@@ -22,7 +22,8 @@
   {
     "context": "Workspace",
     "bindings": {
-      "cmd-g up": "git::Push"
+      "cmd-g up": "git::Push",
+      "cmd-g .": "git::Add"
     }
   },
   {
