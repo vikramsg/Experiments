@@ -26,6 +26,7 @@
     "show_sign_in": false,
     "show_branch_icon": true
   },
+  "show_completions_on_input": true,
   "languages": {
     "Python": {
       "language_servers": ["pyright", "ruff"],
@@ -37,6 +38,8 @@
             "source.fixAll.ruff": false
           }
         },
+        // NOTE: formatting through ruff doesn't work on remote machine
+        // The only way to make it work currently is to copy the settings file to the remote machine,
         {
           "language_server": {
             "name": "ruff"
