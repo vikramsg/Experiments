@@ -52,5 +52,12 @@
       "ctrl-b l": "workspace::ActivatePaneRight",
       "ctrl-b right": "workspace::ActivatePaneRight"
     }
+  },
+  {
+    // Lazygit!
+    "context": "Workspace",
+    "bindings": {
+      "space g g": ["task::Spawn", { "lazygit": "Open lazygit" }]
+    }
   }
 ]

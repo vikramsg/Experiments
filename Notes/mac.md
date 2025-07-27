@@ -24,3 +24,19 @@ So do `Cmd + Space` and launch UTM.
 There are lots of distributions already available. 
 Open UTM and then click on `Browse` which opens their webpage. 
 Click on your desired version and then click on `Open in UTM`.
+
+
+### Arch on UTM
+
+If I install Arch on UTM using the default Arch UTM there is an `alarm login` prompt. 
+Use `alarm` as username and password.
+
+Next, the install finishes but there's nothing on Arch. So we first start by installing basic utilities
+
+```sh 
+# Install wget
+su - # Password is root
+
+pacman -Syu # Update arch
+pacman -S wget
+```
