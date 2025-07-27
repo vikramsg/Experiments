@@ -7,6 +7,20 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
+  "ssh_connections": [
+    {
+      "host": "localhost",
+      "username": "vscode",
+      "port": 2222,
+      "projects": [
+        {
+          "paths": [
+            "/workspaces/Experiments/conf"
+          ]
+        }
+      ]
+    }
+  ],
   "agent": {
     "default_profile": "write",
     "always_allow_tool_actions": true,

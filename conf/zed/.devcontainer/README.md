@@ -92,3 +92,11 @@ You can also SSH into the container from your terminal for command-line access.
 *   **`devcontainer.json`**: This is the primary configuration file. It specifies the base image and uses a "feature" to automatically install and configure an SSH server, eliminating the need for manual setup. It also forwards the SSH port.
 
 *   **`Dockerfile`**: This file contains the instructions to build the base Docker image. It now only installs essential development tools, as user and SSH setup are handled by the `sshd` feature.
+
+## Issues
+
+The devcontainer CLI does not support port forwarding.
+So we will have to do custom port forwarding by parsing the devcontainer config as a post create command.
+https://github.com/devcontainers/cli/issues/22
+
+To figure out if ports have been forwarded use `docker inspect <container id>` and check the port mappings.
