@@ -62,6 +62,15 @@ vim.api.nvim_create_autocmd("TextYankPost", {
 })
 
 ------------------------------------------------------------------------------
+-- Toggle autocomplete
+------------------------------------------------------------------------------
+-- initialize global var to false -> nvim-cmp turned off per default
+-- Go look at nvim-cmp setup to see how this is used
+vim.g.cmptoggle = false
+
+vim.keymap.set("n", "<leader>a", "<cmd>lua vim.g.cmptoggle = not vim.g.cmptoggle<CR>", { desc = "toggle nvim-cmp" })
+
+------------------------------------------------------------------------------
 -- Plugins
 ------------------------------------------------------------------------------
 
@@ -601,6 +610,10 @@ require("lazy").setup({
 			luasnip.config.setup({})
 
 			cmp.setup({
+				enabled = function()
+					return vim.g.cmptoggle
+				end,
+
 				snippet = {
 					expand = function(args)
 						luasnip.lsp_expand(args.body)
