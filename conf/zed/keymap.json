@@ -52,14 +52,17 @@
       "ctrl-b k": "workspace::ActivateNextPane",
 
       "ctrl-b l": "workspace::ActivatePaneRight",
-      "ctrl-b right": "workspace::ActivatePaneRight"
+      "ctrl-b right": "workspace::ActivatePaneRight",
+
+      // Full focus on a specific panel
+      "ctrl-b z": "workspace::ToggleZoom"
     }
   },
   {
     // Lazygit!
     "context": "Workspace",
     "bindings": {
-      "cmd-g space space": ["task::Spawn", { "lazygit": "Open lazygit" }]
+      "cmd-g space": ["task::Spawn", { "lazygit": "Open lazygit" }]
     }
   },
   {
