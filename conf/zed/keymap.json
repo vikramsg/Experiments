@@ -1,9 +1,11 @@
 [
+  // Some keybindings to note
+  // Shift + Esc to make a single window the full focus
   {
     // In editor/anywhere: pressing Cmd+J spawns a new terminal
     "context": "Workspace",
     "bindings": {
-      "cmd-j": "workspace::ToggleRightDock"
+      "cmd-j": "terminal_panel::ToggleFocus"
     }
   },
   {
@@ -57,7 +59,14 @@
     // Lazygit!
     "context": "Workspace",
     "bindings": {
-      "space g g": ["task::Spawn", { "lazygit": "Open lazygit" }]
+      "cmd-g space space": ["task::Spawn", { "lazygit": "Open lazygit" }]
+    }
+  },
+  {
+    // Agent panel
+    "context": "Editor",
+    "bindings": {
+      "cmd-l": "agent::ToggleFocus"
     }
   }
 ]
