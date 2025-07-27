@@ -1,0 +1,15 @@
+{
+  "name": "Zed Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "."
+  },
+  "runArgs": [
+    "-p",
+    "2222:22"
+  ],
+  "remoteUser": "zed",
+  // Start the SSH server after the container has started.
+  // The 'zed' user requires passwordless sudo privileges for this command to succeed.
+  "postStartCommand": "sudo /usr/sbin/sshd"
+}
