@@ -13,8 +13,6 @@ Before you begin, ensure you have the following software installed on your syste
 *   [Zed](https://zed.dev/)
 *   `git` is already setup and uses `ssh` to connect to `origin`. `ssh` key is in `~/.ssh`.
 
-## Setup Instructions
-
 ## Connecting with Zed
 
 With the container running, you can now connect to it from Zed.
@@ -69,6 +67,32 @@ devcontainer up --workspace-folder ../../ --config .devcontainer/devcontainer.js
 ```bash
 devcontainer up --workspace-folder . --remove-existing-container --build-no-cache --log-level trace < /dev/null &> out.log &
 ```
+
+4. `ssh` into devcontainer failed.
+
+Sometimes we get errors like the following.
+
+```bash
+ssh vscode@localhost -p 2222
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+...
+Host key verification failed.
+```
+
+Just pop the known hosts key from your local `~/.ssh/known_hosts`.
+
+## ssh
+
+The biggest issues setting up was with `ssh`.
+We want to be able to `ssh` into the container so the container must have an `ssh` server running.
+So we used the `sshd` feature which does this for us.
+However, there are some competing issues.
+
+1. To enable us to `ssh` in, we need to add the client's public key as an authorized key on the server and change the permissions so that the server is the ownder of the key.
+  - However this will change the permissions on the `ssh` folder on the host.
+2. We also want to be able to do `git push` from inside the container, so ideally we are mounting the host `ssh` keys into the container.
 
 ## Issues
 
