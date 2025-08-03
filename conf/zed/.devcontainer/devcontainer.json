@@ -1,0 +1,31 @@
+{
+  "name": "Zed Dev Container",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  // TODO: read how paths to workspaces work and fix this
+  "postCreateCommand": "bash ./conf/zed/.devcontainer/setup.sh",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "username": "vscode",
+      "uid": "1000",
+      "gid": "1000",
+      "installSudo": "true"
+    },
+    "ghcr.io/devcontainers/features/sshd:1": {
+      "version": "latest",
+      "serverPort": 2222,
+      "passwordAuth": "false"
+    }
+  },
+  "mounts": [
+    "type=bind,source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,consistency=cached",
+    "type=bind,source=${localEnv:HOME}/.ssh/known_hosts,target=/home/vscode/.ssh/known_hosts,consistency=cached",
+    // TODO: setting it to cached seems to make it not usable by the devcontainer
+    "type=bind,source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig"
+  ],
+  "remoteUser": "vscode",
+  // Not supported by the CLI
+  //"forwardPorts": [2222],
+  "appPort": ["2222:2222"]
+}

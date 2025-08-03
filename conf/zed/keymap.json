@@ -2,19 +2,40 @@
   // Some keybindings to note
   // Shift + Esc to make a single window the full focus
   {
+    /////////////////////////////////////////////////////////////////////////////////////
+    // Make Cmd + J and Cmd + Shift + J be the default to switch between panels
+    /////////////////////////////////////////////////////////////////////////////////////
     // In editor/anywhere: pressing Cmd+J spawns a new terminal
+    // If there was an existing terminal, it will open just that terminal
+    // Cmd+shift+j will just close that terminal
     "context": "Workspace",
     "bindings": {
-      "cmd-j": "terminal_panel::ToggleFocus"
+      "cmd-j": "terminal_panel::ToggleFocus",
+      "cmd-shift-j": "workspace::ToggleRightDock"
     }
   },
   {
     // When focus is already in the terminal: Cmd+J sends focus back
     "context": "Terminal",
     "bindings": {
-      "cmd-j": "terminal_panel::ToggleFocus"
+      "cmd-j": "terminal_panel::ToggleFocus",
+      "cmd-shift-j": "workspace::ToggleRightDock",
+      // Also toggle on agent from inside terminal
+      "cmd-l": "agent::ToggleFocus"
     }
   },
+  {
+    // When focus is in the AgentPanel have the toggle setup work as the workspace
+    "context": "AgentPanel",
+    "bindings": {
+      "cmd-shift-j": "workspace::ToggleRightDock"
+    }
+  },
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Git - Not yet happy with git. Cmd-y seems to be the only way to use it
+  // Right now, we use Cmd-y to stage, Cmd + Enter to write commit and
+  // Cmd + Enter to commit. Finally Cmd + g + up to push
+  /////////////////////////////////////////////////////////////////////////////////////
   {
     "context": "Workspace",
     "bindings": {
@@ -22,10 +43,15 @@
     }
   },
   {
+    "context": "Editor",
+    "bindings": {
+      "cmd-shift-g": "git_panel::ToggleFocus"
+    }
+  },
+  {
     "context": "Workspace",
     "bindings": {
-      "cmd-g up": "git::Push",
-      "cmd-g .": "git::Add"
+      "cmd-g up": "git::Push"
     }
   },
   {
