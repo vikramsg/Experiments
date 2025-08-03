@@ -21,6 +21,7 @@
   "mounts": [
     "type=bind,source=${localEnv:HOME}/.ssh/id_ed25519.pub,target=/home/vscode/.ssh/authorized_keys,consistency=cached",
     "type=bind,source=${localEnv:HOME}/.ssh/known_hosts,target=/home/vscode/.ssh/known_hosts,consistency=cached",
+    // TODO: setting it to cached seems to make it not usable by the devcontainer
     "type=bind,source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig"
   ],
   "remoteUser": "vscode",

@@ -2,6 +2,9 @@
   // Some keybindings to note
   // Shift + Esc to make a single window the full focus
   {
+    /////////////////////////////////////////////////////////////////////////////////////
+    // Make Cmd + J and Cmd + Shift + J be the default to switch between panels
+    /////////////////////////////////////////////////////////////////////////////////////
     // In editor/anywhere: pressing Cmd+J spawns a new terminal
     // If there was an existing terminal, it will open just that terminal
     // Cmd+shift+j will just close that terminal
@@ -48,8 +51,7 @@
   {
     "context": "Workspace",
     "bindings": {
-      "cmd-g up": "git::Push",
-      "cmd-g .": "git::Add"
+      "cmd-g up": "git::Push"
     }
   },
   {
