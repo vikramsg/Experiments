@@ -98,6 +98,15 @@ However, there are some competing issues.
   - However this will change the permissions on the `ssh` folder on the host.
 2. We also want to be able to do `git push` from inside the container, so ideally we are mounting the host `ssh` keys into the container.
 
+### ssh prompts
+
+Everytime we rebuild the container, we will get a prompt to allow `ssh`. So we have to automate that. One example is the following
+
+```bash
+alias zed-ssh="ssh-keygen -R '[localhost]:2222' && ssh-keyscan -p 2222 localhost >> ~/.ssh/known_hosts \
+                    && zed ssh://vscode@localhost:2222/workspaces/Experiments"
+```
+
 ### Remote
 
 1. To enable using `devcontainer` on a remote machine, the remote machine devcontainer should have an ssh server running.

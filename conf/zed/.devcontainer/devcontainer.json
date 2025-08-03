@@ -3,8 +3,6 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
-  // TODO: read how paths to workspaces work and fix this
-  "postCreateCommand": "bash ./conf/zed/.devcontainer/setup.sh",
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "username": "vscode",
@@ -27,5 +25,7 @@
   "remoteUser": "vscode",
   // Not supported by the CLI
   //"forwardPorts": [2222],
-  "appPort": ["2222:2222"]
+  "appPort": ["2222:2222"],
+  // TODO: read how paths to workspaces work and fix this
+  "postCreateCommand": "bash ./conf/zed/.devcontainer/setup.sh"
 }
