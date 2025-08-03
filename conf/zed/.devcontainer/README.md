@@ -26,19 +26,19 @@ With the container running, you can now connect to it from Zed.
     ```
 Zed will establish an SSH connection to the container. You can now browse and edit files within the `Experiments/conf/zed` directory, which is mounted as the workspace.
 
-## Connecting with SSH from the Terminal
+## Useful commands
 
 You can also SSH into the container from your terminal for command-line access.
 
-1.  **Run the SSH command**:
+1. SSHing
+
     ```bash
     ssh vscode@localhost -p 2222
     ```
     You will be logged in as the `vscode` user inside the container's shell.
 
-## Managing the Devcontainer
+2.  Shut down the devcontainer
 
-*   **To stop the container**, run the following command from the `Experiments/conf/zed` directory:
     ```bash
     devcontainer down --workspace-folder ../../ --config .devcontainer/devcontainer.json
     ```
