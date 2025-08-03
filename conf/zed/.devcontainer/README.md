@@ -73,7 +73,12 @@ You can also SSH into the container from your terminal for command-line access.
 
 *   **To rebuild the container** after making changes to the `Dockerfile` or `devcontainer.json`:
     ```bash
-    devcontainer rebuild --workspace-folder .
+    devcontainer up --workspace-folder . --remove-existing-container --build-no-cache
+    ```
+
+    To output the build to a log, doing `&>` does not seem to work. Instead do
+    ```bash
+    devcontainer up --workspace-folder . --remove-existing-container --build-no-cache --log-level trace < /dev/null &> out.log &
     ```
 
 ## Troubleshooting
@@ -86,6 +91,11 @@ You can also SSH into the container from your terminal for command-line access.
     ```
 
 * **CHANGES NOT APPEARING**: `devcontainer up --workspace-folder . --remove-existing-container --build-no-cache`
+
+* Checking where my local git config is sources from
+  ```bash
+  git config --list --show-origin
+  ```
 
 ## File Descriptions
 
