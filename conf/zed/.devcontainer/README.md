@@ -68,21 +68,6 @@ devcontainer up --workspace-folder ../../ --config .devcontainer/devcontainer.js
 devcontainer up --workspace-folder . --remove-existing-container --build-no-cache --log-level trace < /dev/null &> out.log &
 ```
 
-4. `ssh` into devcontainer failed.
-
-Sometimes we get errors like the following.
-
-```bash
-ssh vscode@localhost -p 2222
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-...
-Host key verification failed.
-```
-
-Just pop the known hosts key from your local `~/.ssh/known_hosts`.
-
 4. Terminal complains about `git` directory missing.
   - This seems to be an intermittent issue, and sometimes it just disappears after a while?
   - I should build from scratch to confirm.
