@@ -4,7 +4,7 @@
     "dockerfile": "Dockerfile"
   },
   // TODO: read how paths to workspaces work and fix this
-  "postCreateCommand": "cd /workspaces/Experiments && bash ./conf/zed/.devcontainer/setup.sh",
+  "postCreateCommand": "bash ./conf/zed/.devcontainer/setup.sh",
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "username": "vscode",

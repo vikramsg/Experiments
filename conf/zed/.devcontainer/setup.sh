@@ -1,2 +1,2 @@
-# Make the workspace a safe directory
-git config --local --add safe.directory /workspaces/Experiments
+# Add any extra commands here
+echo "Hello World"
