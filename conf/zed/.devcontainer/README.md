@@ -98,6 +98,13 @@ However, there are some competing issues.
   - However this will change the permissions on the `ssh` folder on the host.
 2. We also want to be able to do `git push` from inside the container, so ideally we are mounting the host `ssh` keys into the container.
 
+### Remote
+
+1. To enable using `devcontainer` on a remote machine, the remote machine devcontainer should have an ssh server running.
+  - In addition it should have the client machine's key as an authorized key.
+  - Also, the port of the ssh server on the devcontainer should be exposed on the VM to the internet.
+
+
 ## Issues
 
 The devcontainer CLI does not support port forwarding.
