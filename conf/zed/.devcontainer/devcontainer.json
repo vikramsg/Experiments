@@ -19,8 +19,8 @@
     }
   },
   "mounts": [
-    "type=bind,source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,consistency=cached",
-    "type=bind,source=${localEnv:HOME}/.ssh/known_hosts,target=/home/vscode/.ssh/known_hosts,consistency=cached",
+    // We are not going to directly mount because we want to fiddle around with the folder inside the container
+    "type=bind,source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh_host,consistency=cached,readonly=true",
     // TODO: setting it to cached seems to make it not usable by the devcontainer
     "type=bind,source=${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig"
   ],

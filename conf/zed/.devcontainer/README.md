@@ -83,6 +83,10 @@ Host key verification failed.
 
 Just pop the known hosts key from your local `~/.ssh/known_hosts`.
 
+4. Terminal complains about `git` directory missing.
+  - This seems to be an intermittent issue, and sometimes it just disappears after a while?
+  - I should build from scratch to confirm.
+
 ## ssh
 
 The biggest issues setting up was with `ssh`.
