@@ -13,8 +13,6 @@ Before you begin, ensure you have the following software installed on your syste
 *   [Zed](https://zed.dev/)
 *   `git` is already setup and uses `ssh` to connect to `origin`. `ssh` key is in `~/.ssh`.
 
-## Setup Instructions
-
 ## Connecting with Zed
 
 With the container running, you can now connect to it from Zed.
@@ -28,19 +26,19 @@ With the container running, you can now connect to it from Zed.
     ```
 Zed will establish an SSH connection to the container. You can now browse and edit files within the `Experiments/conf/zed` directory, which is mounted as the workspace.
 
-## Connecting with SSH from the Terminal
+## Useful commands
 
 You can also SSH into the container from your terminal for command-line access.
 
-1.  **Run the SSH command**:
+1. SSHing
+
     ```bash
     ssh vscode@localhost -p 2222
     ```
     You will be logged in as the `vscode` user inside the container's shell.
 
-## Managing the Devcontainer
+2.  Shut down the devcontainer
 
-*   **To stop the container**, run the following command from the `Experiments/conf/zed` directory:
     ```bash
     devcontainer down --workspace-folder ../../ --config .devcontainer/devcontainer.json
     ```
@@ -69,6 +67,37 @@ devcontainer up --workspace-folder ../../ --config .devcontainer/devcontainer.js
 ```bash
 devcontainer up --workspace-folder . --remove-existing-container --build-no-cache --log-level trace < /dev/null &> out.log &
 ```
+
+4. Terminal complains about `git` directory missing.
+  - This seems to be an intermittent issue, and sometimes it just disappears after a while?
+  - I should build from scratch to confirm.
+
+## ssh
+
+The biggest issues setting up was with `ssh`.
+We want to be able to `ssh` into the container so the container must have an `ssh` server running.
+So we used the `sshd` feature which does this for us.
+However, there are some competing issues.
+
+1. To enable us to `ssh` in, we need to add the client's public key as an authorized key on the server and change the permissions so that the server is the ownder of the key.
+  - However this will change the permissions on the `ssh` folder on the host.
+2. We also want to be able to do `git push` from inside the container, so ideally we are mounting the host `ssh` keys into the container.
+
+### ssh prompts
+
+Everytime we rebuild the container, we will get a prompt to allow `ssh`. So we have to automate that. One example is the following
+
+```bash
+alias zed-ssh="ssh-keygen -R '[localhost]:2222' && ssh-keyscan -p 2222 localhost >> ~/.ssh/known_hosts \
+                    && zed ssh://vscode@localhost:2222/workspaces/Experiments"
+```
+
+### Remote
+
+1. To enable using `devcontainer` on a remote machine, the remote machine devcontainer should have an ssh server running.
+  - In addition it should have the client machine's key as an authorized key.
+  - Also, the port of the ssh server on the devcontainer should be exposed on the VM to the internet.
+
 
 ## Issues
 
