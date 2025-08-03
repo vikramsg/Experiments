@@ -28,6 +28,11 @@
       "cmd-shift-j": "workspace::ToggleRightDock"
     }
   },
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Git - Not yet happy with git. Cmd-y seems to be the only way to use it
+  // Right now, we use Cmd-y to stage, Cmd + Enter to write commit and
+  // Cmd + Enter to commit. Finally Cmd + g + up to push
+  /////////////////////////////////////////////////////////////////////////////////////
   {
     "context": "Workspace",
     "bindings": {
