@@ -39,6 +39,11 @@ Start `nvim` for the first time, and `lazy` should automatically setup.
 - `Space`: To stage
 - `c` to commit
 
+### Vim
+
+- `"ay` To yank something to the register a. This is useful when your register gets easily over-written.
+- `"ap` To paste from register a 
+
 ### Mac issues
 
 To bind keys with things like `Cmd`, we need to do a 2 step process. 
