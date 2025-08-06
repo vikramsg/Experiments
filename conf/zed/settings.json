@@ -14,9 +14,7 @@
       "port": 2222,
       "projects": [
         {
-          "paths": [
-            "/workspaces/Experiments/conf"
-          ]
+          "paths": ["/workspaces/Experiments/conf"]
         }
       ]
     }
@@ -25,8 +23,8 @@
     "default_profile": "write",
     "always_allow_tool_actions": true,
     "default_model": {
-      "provider": "google",
-      "model": "gemini-2.5-pro"
+      "provider": "anthropic",
+      "model": "claude-sonnet-4-thinking-latest"
     }
   },
   "telemetry": {
@@ -44,6 +42,7 @@
   "terminal": {
     "dock": "right"
   },
+  "pane_split_direction_vertical": "right",
   "title_bar": {
     "show_sign_in": false,
     "show_branch_icon": true

@@ -55,6 +55,15 @@ IF anywhere in the keybinding menu, you have used `Esc`, it could mean needing t
 To use with Python and `uv` just do 
 `uv run nvim .` from your root workspace folder. It should automatically find the correct `venv`. 
 
+## Remote issues
+
+1. `ruff`
+
+Zed cannot find `ruff` if it is setup as LSP but you are going to a remote session.
+So first, make sure to duplicate the `settings.json` onto the remote session. 
+Next, and this is annoying, make sure to start `zed` from a folder
+where `ruff` is part of the `venv`. 
+Otherwise, it mysteriously refuses to start `ruff` even though it maybe globally available. 
 
 ## Config init 
 
