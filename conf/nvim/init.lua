@@ -44,7 +44,11 @@ vim.g.mapleader = " "
 --
 ----  See `:help wincmd` for a list of all window commands
 vim.keymap.set("n", "<C-h>", "<C-w><C-h>", { desc = "Move focus to the left window" })
+-- Does not seem to work
+vim.keymap.set("n", "<C-b><Left>", "<C-w><C-h>", { desc = "Move focus to the left window" })
 vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right window" })
+-- Does not seem to work
+vim.keymap.set("n", "<C-b><Right>", "<C-w><C-l>", { desc = "Move focus to the right window" })
 
 -- Normal, visual, insert mode mappings for "beginning/end of line"
 vim.keymap.set({ "n", "v", "i" }, "<Find>", "^", { desc = "Go to beginning of line" }) -- Fn + ←
