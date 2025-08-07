@@ -39,6 +39,11 @@
     "light": "One Light",
     "dark": "Tokyo Night Storm"
   },
+  "icon_theme": {
+    "mode": "system",
+    "light": "Light Icon Theme",
+    "dark": "Colored Zed Icons Theme Dark"
+  },
   "terminal": {
     "dock": "right"
   },
