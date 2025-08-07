@@ -1,4 +1,11 @@
 [
+  {
+    // Override default cmd+shift+l (SelectAllMatches) with context picker
+    "context": "Editor",
+    "bindings": {
+      "cmd-shift-l": "agent::ToggleContextPicker"
+    }
+  },
   // Some keybindings to note
   // Shift + Esc to make a single window the full focus
   {
@@ -28,7 +35,8 @@
     // When focus is in the AgentPanel have the toggle setup work as the workspace
     "context": "AgentPanel",
     "bindings": {
-      "cmd-shift-j": "workspace::ToggleRightDock"
+      "cmd-shift-j": "workspace::ToggleRightDock",
+      "cmd-l": "agent::ToggleFocus"
     }
   },
   /////////////////////////////////////////////////////////////////////////////////////
@@ -92,8 +100,22 @@
     }
   },
   {
-    // Agent panel
-    "context": "Editor",
+    // Agent panel - when text is selected (visual mode), quote it and move to agent
+    "context": "Editor && vim_mode == visual",
+    "bindings": {
+      "cmd-l": "assistant::QuoteSelection"
+    }
+  },
+  {
+    // Agent panel - when no text selected (normal mode), toggle focus
+    "context": "Editor && vim_mode == normal",
+    "bindings": {
+      "cmd-l": "agent::ToggleFocus"
+    }
+  },
+  {
+    // Agent panel - workspace level binding as fallback
+    "context": "Workspace",
     "bindings": {
       "cmd-l": "agent::ToggleFocus"
     }
