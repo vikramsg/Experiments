@@ -1,16 +1,37 @@
 [
+  ///////////////////////////////////////////////////////////////////////////////
+  // KEYMAPS: Some are defined in this file, some are default where we could not over-ride
+  //
+  // TERMINAL & PANEL MANAGEMENT:
+  // cmd-j → terminal_panel::ToggleFocus (Workspace)
+  // cmd-shift-j → workspace::ToggleRightDock (Workspace, Terminal, AgentPanel) Closes the right dock if open
+  // cmd-l → agent::ToggleFocus (Terminal)
+  //
+  // GIT:
+  // cmd-shift-g → git_panel::ToggleFocus (Workspace, Editor)
+  // cmd-g up → git::Push (Workspace)
+  // cmd-y       → Stage
+  // ctrl-cmd-y  → Stage All
+  //
+  // TMUX-LIKE PANE MANAGEMENT:
+  // ctrl-b % → pane::SplitRight (Workspace)
+  // ctrl-b " → pane::SplitDown (Workspace)
+  // ctrl-b h/left → workspace::ActivatePaneLeft (Workspace)
+  // ctrl-b up/down → workspace::ActivatePaneUp/Down (Workspace)
+  // ctrl-b j/k → workspace::ActivateNextPane (Workspace)
+  // ctrl-b l/right → workspace::ActivatePaneRight (Workspace)
+  // ctrl-b z → workspace::ToggleZoom (Workspace)
+  //
+  // SMART AGENT KEYBINDINGS (VIM MODE):
+  // cmd-l → assistant::QuoteSelection (Editor && vim_mode == visual)
+  // cmd-l → agent::ToggleFocus (Editor && vim_mode == normal)
+  // cmd-l → agent::ToggleFocus (Workspace fallback) In the agent pane, go to normal mode for the toggle to work
+  //
+  // DEFAULT AGENT KEYMAPS REFERENCE:
+  // cmd+shift+a → agent::ToggleContextPicker - Files to use in agent panel. Could not over-ride
+  ///////////////////////////////////////////////////////////////////////////////
+
   {
-    // Override default cmd+shift+l (SelectAllMatches) with context picker
-    "context": "Editor",
-    "bindings": {
-      "cmd-shift-l": "agent::ToggleContextPicker"
-    }
-  },
-  // Some keybindings to note
-  // Shift + Esc to make a single window the full focus
-  {
-    /////////////////////////////////////////////////////////////////////////////////////
-    // Make Cmd + J and Cmd + Shift + J be the default to switch between panels
     /////////////////////////////////////////////////////////////////////////////////////
     // In editor/anywhere: pressing Cmd+J spawns a new terminal
     // If there was an existing terminal, it will open just that terminal
@@ -92,13 +113,9 @@
       "ctrl-b z": "workspace::ToggleZoom"
     }
   },
-  {
-    // Lazygit!
-    "context": "Workspace",
-    "bindings": {
-      "cmd-g space": ["task::Spawn", { "lazygit": "Open lazygit" }]
-    }
-  },
+  /////////////////////////////////////////////////////////////////////////////////////
+  // AgentPanel - Make cmd-l be the default way to interact with the agent panel
+  /////////////////////////////////////////////////////////////////////////////////////
   {
     // Agent panel - when text is selected (visual mode), quote it and move to agent
     "context": "Editor && vim_mode == visual",
@@ -109,6 +126,14 @@
   {
     // Agent panel - when no text selected (normal mode), toggle focus
     "context": "Editor && vim_mode == normal",
+    "bindings": {
+      "cmd-l": "agent::ToggleFocus"
+    }
+  },
+  {
+    // Agent panel - When entering text in the agent panel we seem to be in Editor mode actually
+    // So we need this additional handling to make sure `cmd-l` always does the right thing
+    "context": "Editor && vim_mode == insert",
     "bindings": {
       "cmd-l": "agent::ToggleFocus"
     }
