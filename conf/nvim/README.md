@@ -55,6 +55,12 @@ IF anywhere in the keybinding menu, you have used `Esc`, it could mean needing t
 To use with Python and `uv` just do 
 `uv run nvim .` from your root workspace folder. It should automatically find the correct `venv`. 
 
+## Mason
+
+Nvim LSP binaries are controlled by `Mason`.
+Binaries are installed at `~/.local/share/nvim/mason/bin`.
+To update binaries, try doing `:Mason` inside Neovim and doing `U`.
+
 ## Remote issues
 
 1. `ruff`
