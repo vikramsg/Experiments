@@ -73,6 +73,10 @@
           }
         }
       ]
+    },
+    "JSON": {
+      "formatter": "prettier",
+      "format_on_save": "on"
     }
   }
 }

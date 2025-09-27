@@ -5,7 +5,9 @@
       "Bash(ls:*)",
       "WebFetch(domain:containers.dev)",
       "WebFetch(domain:github.com)",
-      "Bash(nvim:*)"
+      "Bash(nvim:*)",
+      "Read(//Users/vikramsingh/.config/ghostty/**)",
+      "Read(//Users/vikramsingh/**)"
     ],
     "deny": []
   }
