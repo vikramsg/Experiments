@@ -666,9 +666,10 @@ require("lazy").setup({
 						group_index = 0,
 					},
 					-- limit max suggestions from LSP, snippets and Path
-					{ name = "nvim_lsp", max_item_count = 8 },
-					{ name = "luasnip", max_item_count = 3 },
-					{ name = "path", max_item_count = 5 },
+					{ name = "nvim_lsp" },
+
+					{ name = "luasnip" },
+					{ name = "path" },
 					{ name = "nvim_lsp_signature_help" },
 				},
 			})
