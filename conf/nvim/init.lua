@@ -665,7 +665,7 @@ require("lazy").setup({
 						-- set group index to 0 to skip loading LuaLS completions as lazydev recommends it
 						group_index = 0,
 					},
-					-- limit max suggestions from LSP, snippets and Path
+					-- These are the sources from which autocompletions work
 					{ name = "nvim_lsp" },
 
 					{ name = "luasnip" },
