@@ -7,7 +7,8 @@
       "WebFetch(domain:github.com)",
       "Bash(nvim:*)",
       "Read(//Users/vikramsingh/.config/ghostty/**)",
-      "Read(//Users/vikramsingh/**)"
+      "Read(//Users/vikramsingh/**)",
+      "WebFetch(domain:docs.astral.sh)"
     ],
     "deny": []
   }
