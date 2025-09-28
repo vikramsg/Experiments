@@ -346,6 +346,9 @@ require("lazy").setup({
 					-- Alternative mapping in case the above doesn't work
 					map("<M-]>777;CmdDot", vim.lsp.buf.code_action, "Code Action (Leader+.)", { "n", "x" })
 
+					-- FIXME: Add missing import - dedicated keybinding for import suggestions
+					-- This is enabled for ty but does not seem to work
+
 					-- WARN: This is not Goto Definition, this is Goto Declaration.
 					--  For example, in C this would take you to the header.
 					map("gD", vim.lsp.buf.declaration, "[G]oto [D]eclaration")
@@ -623,7 +626,15 @@ require("lazy").setup({
 						luasnip.lsp_expand(args.body)
 					end,
 				},
-				completion = { completeopt = "menu,menuone,noinsert" },
+				-- Make completions less aggressive.
+				-- Start completions only after 2 entries, and only show 10 at a time.
+				completion = {
+					completeopt = "menu,menuone,noinsert",
+					keyword_length = 2,
+				},
+				performance = {
+					max_view_entries = 10,
+				},
 
 				-- For an understanding of why these mappings were
 				-- chosen, you will need to read `:help ins-completion`
@@ -654,9 +665,10 @@ require("lazy").setup({
 						-- set group index to 0 to skip loading LuaLS completions as lazydev recommends it
 						group_index = 0,
 					},
-					{ name = "nvim_lsp" },
-					{ name = "luasnip" },
-					{ name = "path" },
+					-- limit max suggestions from LSP, snippets and Path
+					{ name = "nvim_lsp", max_item_count = 8 },
+					{ name = "luasnip", max_item_count = 3 },
+					{ name = "path", max_item_count = 5 },
 					{ name = "nvim_lsp_signature_help" },
 				},
 			})
@@ -691,11 +703,21 @@ require("lazy").setup({
 	},
 })
 
------------------------
------ Setup ty here sunce its setup for vim 0.11 rather than 0.10
-vim.lsp.config(
-	"ty",
-	{ cmd = { "ty", "server" }, filetypes = { "python" }, root_markers = { "ty.toml", "pyproject.toml", ".git" } }
-)
+---------------------------------------------------------------------
+----- Setup ty here since its setup for vim 0.11 rather than 0.10
+----- Docs here - https://docs.astral.sh/ty/reference/editor-settings/
+vim.lsp.config("ty", {
+	cmd = { "ty", "server" },
+	filetypes = { "python" },
+	root_markers = { "ty.toml", "pyproject.toml", ".git" },
+	settings = {
+		ty = {
+			experimental = {
+				autoImport = true,
+				rename = true,
+			},
+		},
+	},
+})
 vim.lsp.enable("ty")
 -----------------------
