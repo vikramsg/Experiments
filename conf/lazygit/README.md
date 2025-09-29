@@ -18,12 +18,7 @@ ln -sf "/Users/vikramsingh/Projects/Personal/Experiments/conf/lazygit/config.yml
 
 ## Configuration Changes from Default
 
-**Important Note**: Lazygit does not have a built-in option to completely hide staged files by default. However, this configuration makes some improvements:
-
-### 1. Smart Diff Splitting
-- `splitDiff: 'auto'` - Only splits the diff view when a file has BOTH staged AND unstaged changes
-- This reduces visual clutter when files are either fully staged or fully unstaged
-- When a file is only staged or only unstaged, you won't see the unnecessary split
+1. <c-f> custom command. Press `Ctrl+f` twice to see a diff in full screen mode. 
 
 ## Workflow Tips
 

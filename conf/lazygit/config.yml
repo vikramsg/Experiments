@@ -4,3 +4,11 @@ gui:
 
   splitDiff: 'auto'
 
+customCommands:
+  - key: '<c-f>'  # Ctrl-f (think "full screen") to show selected commit
+    context: 'commits'
+    command: "git show {{.SelectedLocalCommit.Sha}}"
+    subprocess: true
+    description: "Show selected commit"
+    stream: true
+
