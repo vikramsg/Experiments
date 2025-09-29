@@ -16,14 +16,10 @@ Start `nvim` for the first time, and `lazy` should automatically setup.
 ### Neotree 
 
 - `Space + e`: Toggle File tree view 
+- `Space + E`: Show current file in File tree view. 
 - `a` in Neotree view to add a file.
 - `d` in Neotree view to delete a file.
 - `A` in Neotree view to create a dir.
-
-#### Within Oil buffer:
-- `Ctrl + s`: Open file in vertical split
-- `Ctrl + h`: Open file in horizontal split  
-- `Ctrl + t`: Open file in new tab
 
 ### Telescope 
 

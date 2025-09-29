@@ -179,6 +179,16 @@ require("lazy").setup({
 			vim.keymap.set("n", "<leader>sn", function()
 				builtin.find_files({ cwd = vim.fn.stdpath("config") })
 			end, { desc = "[S]earch [N]eovim files" })
+
+			-- Search all files including git-ignored files
+			vim.keymap.set("n", "<leader>sF", function()
+				builtin.find_files({ no_ignore = true, hidden = true })
+			end, { desc = "[S]earch [F]iles (including git-ignored)" })
+
+			-- Grep all files including git-ignored files
+			vim.keymap.set("n", "<leader>sG", function()
+				builtin.live_grep({ additional_args = { "--no-ignore", "--hidden" } })
+			end, { desc = "[S]earch by [G]rep (including git-ignored)" })
 		end,
 	},
 
