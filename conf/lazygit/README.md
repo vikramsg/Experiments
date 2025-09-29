@@ -13,7 +13,7 @@ However, note that `lazygit` does not directly use the config location so we lau
 mkdir -p ~/.config/lazygit
 
 # Create symlink from standard config location to this repo
-ln -sf "/Users/vikramsingh/Projects/Personal/Experiments/conf/lazygit/config.yml" ~/.config/lazygit/config.yml
+ln -sf "/path/to/lazygit/config.yml" ~/.config/lazygit/config.yml
 ```
 
 ## Configuration Changes from Default
