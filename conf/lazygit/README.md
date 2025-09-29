@@ -5,6 +5,8 @@ This directory contains the lazygit configuration for this repository.
 ## Setup
 
 The configuration is symlinked to the standard XDG config location:
+However, note that `lazygit` does not directly use the config location so we launch `lazygit` using
+`lazygit -ucf ~/.config/lazygit/config.yml`.
 
 ```bash
 # Create the lazygit config directory if it doesn't exist
@@ -16,42 +18,34 @@ ln -sf "/Users/vikramsingh/Projects/Personal/Experiments/conf/lazygit/config.yml
 
 ## Configuration Changes from Default
 
-The main customizations made to improve the diff view experience:
+**Important Note**: Lazygit does not have a built-in option to completely hide staged files by default. However, this configuration makes some improvements:
 
-### 1. Simplified File View
-- `showFileTree: false` - Disables the file tree view for a cleaner interface
-- `expandFocusedSidePanel: false` - Keeps panels at consistent sizes
-- `mainPanelSplitMode: 'flexible'` - Allows flexible panel sizing
+### 1. Smart Diff Splitting
+- `splitDiff: 'auto'` - Only splits the diff view when a file has BOTH staged AND unstaged changes
+- This reduces visual clutter when files are either fully staged or fully unstaged
+- When a file is only staged or only unstaged, you won't see the unnecessary split
 
-### 2. Focus on Unstaged Changes
-By default, lazygit shows both unstaged and staged changes simultaneously. This configuration:
-- Emphasizes unstaged changes as the primary focus
-- Provides easy ways to toggle between unstaged and staged views
+## Workflow Tips
 
-### 3. Key Bindings
-- `<space>` - Stage/unstage individual files
-- `A` - Stage/unstage all files
-- `<tab>` - Toggle between panels
-- `t` - Toggle tree view
-- `c` - Commit changes
-- `C` - Commit without hooks
+Since lazygit doesn't support hiding staged files completely, here are the best practices:
 
-### 4. Improved Navigation
-- `sidePanelWidth: 0.3333` - Sets optimal panel proportions
-- `mouseEvents: true` - Enables mouse interaction
-- Removed pager for faster navigation
+1. **Navigation**: Use `Tab` to switch between "Unstaged Changes" and "Staged Changes" sections
+2. **Staging**: Use `Space` to stage/unstage individual files
+3. **View modes**: Use `+` to expand panels for better visibility
+4. **File focus**: Arrow keys to navigate between files
 
 ## Why These Changes?
 
-The default lazygit interface shows both unstaged and staged changes in separate blocks, which can be visually cluttered when you primarily want to focus on unstaged changes first. This configuration:
+The `splitDiff: 'auto'` setting is the closest thing to your desired behavior:
+- When you have only unstaged changes, you won't see the split view
+- When you have only staged changes, you won't see the split view
+- You only see the split when a file has both staged AND unstaged changes
 
-1. **Reduces visual noise** - Focuses on unstaged changes by default
-2. **Maintains accessibility** - Staged changes are still easily accessible via keyboard shortcuts
-3. **Improves workflow** - Matches the typical git workflow of reviewing unstaged changes first
+This reduces the visual noise you were experiencing with unnecessary splits.
 
 ## Testing the Configuration
 
 1. Open lazygit from within Neovim: `<leader>lg` or `:LazyGit`
-2. You should see a cleaner interface focused on unstaged changes
-3. Use `<tab>` to navigate between different panels
-4. Use `t` to toggle different view modes if needed
+2. Make some changes to files (unstaged only)
+3. You should see a cleaner single-pane diff view
+4. Stage some files and notice the interface adapts
