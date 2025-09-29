@@ -1,0 +1,34 @@
+gui:
+  # Show only unstaged files by default
+  showFileTree: false
+  expandFocusedSidePanel: false
+  mainPanelSplitMode: 'flexible'
+  showBranchCommitHash: false
+  sidePanelWidth: 0.3333
+  skipDiscardChangeWarning: false
+  skipStashWarning: false
+  mouseEvents: true
+
+# Configure file display to focus on unstaged changes
+git:
+  paging:
+    colorArg: always
+    pager: ''
+  skipHookPrefix: WIP
+  autoFetch: true
+
+# Key bindings
+keybinding:
+  universal:
+    quit: 'q'
+    togglePanel: '<tab>'
+  files:
+    toggleStagedAll: 'A'
+    toggleStaged: '<space>'
+    commitChanges: 'c'
+    commitChangesWithoutHook: 'C'
+    # Toggle showing staged files
+    toggleTreeView: 't'
+
+# Configure which panels are shown by default
+startupPopupVersion: 5
