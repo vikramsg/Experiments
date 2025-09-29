@@ -5,6 +5,7 @@ gui:
   splitDiff: 'auto'
 
 customCommands:
+  # Copied from - https://github.com/jesseduffield/lazygit/issues/1113#issuecomment-1879886174
   - key: '<c-f>'  # Ctrl-f (think "full screen") to show selected commit
     context: 'commits'
     command: "git show {{.SelectedLocalCommit.Sha}}"
