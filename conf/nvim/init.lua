@@ -722,6 +722,16 @@ require("lazy").setup({
 			require("lualine").setup({
 				sections = {
 					lualine_b = { "branch" },
+					lualine_x = {
+						{
+							function()
+								return vim.g.cmptoggle and "AC:ON" or "AC:OFF"
+							end,
+							color = function()
+								return vim.g.cmptoggle and { fg = "#00ff00" } or { fg = "#ff0000" }
+							end,
+						},
+					},
 				},
 			})
 		end,
