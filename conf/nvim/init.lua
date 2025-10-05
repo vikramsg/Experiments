@@ -9,6 +9,7 @@ vim.o.tabstop = 4
 vim.o.swapfile = false
 vim.o.writebackup = false
 vim.o.undofile = true
+vim.o.cmdheight = 0 -- Remove gap between statusline and tmux
 -- Sync clipboard between OS and Neovim.
 --  Schedule the setting after `UiEnter` because it can increase startup-time.
 --  Remove this option if you want your OS clipboard to remain independent.
@@ -711,6 +712,19 @@ require("lazy").setup({
 		keys = {
 			{ "<leader>lg", "<cmd>LazyGit<cr>", desc = "LazyGit" },
 		},
+	},
+
+	-- Statusline with git branch
+	{
+		"nvim-lualine/lualine.nvim",
+		dependencies = { "nvim-tree/nvim-web-devicons" },
+		config = function()
+			require("lualine").setup({
+				sections = {
+					lualine_b = { "branch" },
+				},
+			})
+		end,
 	},
 })
 
