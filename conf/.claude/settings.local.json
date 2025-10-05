@@ -9,7 +9,8 @@
       "Read(//Users/vikramsingh/.config/ghostty/**)",
       "Read(//Users/vikramsingh/**)",
       "WebFetch(domain:docs.astral.sh)",
-      "Bash(lazygit:*)"
+      "Bash(lazygit:*)",
+      "WebSearch"
     ],
     "deny": []
   }
