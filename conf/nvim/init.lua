@@ -721,7 +721,10 @@ require("lazy").setup({
 		config = function()
 			require("lualine").setup({
 				sections = {
-					lualine_b = { "branch" },
+					-- Setting the letter after lualine decides which position the status is at.
+					-- Only a,b,c x,y,z are available
+					lualine_a = { "branch" },
+					lualine_b = { "buffers" },
 					lualine_x = {
 						{
 							function()
