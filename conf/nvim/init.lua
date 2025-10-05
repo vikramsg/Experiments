@@ -739,6 +739,16 @@ require("lazy").setup({
 			})
 		end,
 	},
+
+	-- autopairs plugin
+	{
+		"windwp/nvim-autopairs",
+		event = "InsertEnter",
+		opts = {},
+	},
+
+	-- "gc" to comment visual regions/lines
+	{ "numToStr/Comment.nvim", opts = {} },
 })
 
 ---------------------------------------------------------------------
