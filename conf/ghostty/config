@@ -47,6 +47,8 @@
 
 
 shell-integration = zsh
+# https://ghostty.org/docs/help/terminfo
+shell-integration-features = ssh-terminfo
 font-family = JetBrains Mono
 scrollback-limit = 1000000
 
