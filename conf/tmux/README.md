@@ -16,6 +16,12 @@ and then finally from inside a tmux session do
 ctrl + b + I
 ```
 
+This can also be done using 
+
+```
+tmux source-file ~/.tmux.conf
+```
+
 ## Linking
 
 We are going to link the `.tmux.conf` from here to our default config file to make it easy to manage config from git.
