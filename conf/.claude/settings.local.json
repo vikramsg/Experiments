@@ -10,7 +10,10 @@
       "Read(//Users/vikramsingh/**)",
       "WebFetch(domain:docs.astral.sh)",
       "Bash(lazygit:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(~/.local/share/nvim/mason/bin/lua-language-server --version)",
+      "Read(//opt/homebrew/Cellar/neovim/0.11.3/share/nvim/runtime/lua/**)",
+      "Bash(cat:*)"
     ],
     "deny": []
   }
