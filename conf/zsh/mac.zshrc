@@ -61,8 +61,3 @@ zinit cdreplay -q
 
 [[ -f ~/.zshenv ]] && source ~/.zshenv
 
-# direnv - installed using `curl -sfL https://direnv.net/install.sh | bash`
-# hook zsh so direnv runs automatically on `cd`
-eval "$(direnv hook zsh)"
-
-
