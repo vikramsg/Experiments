@@ -153,49 +153,315 @@ cd nextjs-app
 npm run dev
 ```
 
-### Manual Setup for reference 
+### Manual Setup (For Reference)
 
-To understand what create-next-app does, let's create a Next.js project manually:
+To understand what `create-next-app` does behind the scenes, here's how to create a Next.js project manually. This will give you insight into each configuration file's purpose.
+
+#### Step 1: Initialize Project Directory
 
 ```bash
 # Create project directory
-mkdir my-nextjs-app
-cd my-nextjs-app
+mkdir nextjs-app
+cd nextjs-app
 
-# Initialize npm
+# Initialize npm (creates package.json)
 npm init -y
+```
 
-# Install Next.js, React, React DOM, and TypeScript dependencies
+#### Step 2: Install Dependencies
+
+```bash
+# Core dependencies (required)
 npm install next react react-dom
-npm install --save-dev typescript @types/react @types/node
 
-# Create pages directory
-mkdir pages
+# TypeScript dependencies (for TypeScript support)
+npm install --save-dev typescript @types/react @types/react-dom @types/node
+
+# Tailwind CSS dependencies (optional, for styling)
+npm install --save-dev tailwindcss @tailwindcss/postcss
+
+# ESLint dependencies (optional, for code quality)
+npm install --save-dev eslint eslint-config-next @eslint/eslintrc
 ```
 
-Create a `tsconfig.json` file (Next.js will populate it on first run):
-```json
-{}
-```
+#### Step 3: Create Configuration Files
 
-Update `package.json` to add scripts:
+**package.json** - Update scripts section:
 ```json
 {
+  "name": "nextjs-app",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "next": "^15"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4",
+    "eslint": "^9",
+    "eslint-config-next": "^15",
+    "@eslint/eslintrc": "^3"
   }
 }
 ```
 
-Create your first page `pages/index.tsx`:
-```typescript
-export default function Home(): JSX.Element {
-  return <h1>Hello Next.js!</h1>
+**What it does:**
+- Defines project metadata and dependencies
+- `scripts` section provides commands for development, building, and linting
+- `--turbopack` flag enables Next.js's faster bundler (optional)
+
+**tsconfig.json** - TypeScript configuration:
+```json
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules"]
 }
 ```
+
+**What it does:**
+- Configures TypeScript compiler options
+- `jsx: "preserve"` - Keeps JSX syntax for Next.js to transform
+- `noEmit: true` - TypeScript only checks types, doesn't compile (Next.js handles compilation)
+- `paths: {"@/*": ["./*"]}` - Enables `@/` imports (e.g., `import Button from '@/components/Button'`)
+- `strict: true` - Enables all strict type-checking options
+- Next.js will auto-populate this file on first run if you start with `{}`
+
+**next.config.ts** - Next.js configuration:
+```typescript
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+  reactStrictMode: true,
+};
+
+export default nextConfig;
+```
+
+**What it does:**
+- Customizes Next.js behavior
+- `reactStrictMode: true` - Enables React's strict mode for better error detection
+- Can add image domains, redirects, rewrites, environment variables, etc.
+
+**postcss.config.mjs** - PostCSS configuration (for Tailwind):
+```javascript
+const config = {
+  plugins: ["@tailwindcss/postcss"],
+};
+
+export default config;
+```
+
+**What it does:**
+- Configures PostCSS (CSS processor)
+- Enables Tailwind CSS plugin
+- Only needed if using Tailwind CSS
+
+**eslint.config.mjs** - ESLint configuration:
+```javascript
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import { FlatCompat } from "@eslint/eslintrc";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+});
+
+const eslintConfig = [
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    ignores: [
+      "node_modules/**",
+      ".next/**",
+      "out/**",
+      "build/**",
+      "next-env.d.ts",
+    ],
+  },
+];
+
+export default eslintConfig;
+```
+
+**What it does:**
+- Configures ESLint for code quality checks
+- Uses Next.js's recommended rules for web vitals and TypeScript
+- Ignores build directories and generated files
+- Uses ESLint 9's flat config format
+
+**next-env.d.ts** - TypeScript declarations (auto-generated):
+```typescript
+/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+/// <reference path="./.next/types/routes.d.ts" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/pages/api-reference/config/typescript for more information.
+```
+
+**What it does:**
+- Auto-generated by Next.js (don't edit manually)
+- Provides TypeScript type definitions for Next.js
+- Enables autocomplete and type checking for Next.js features
+- Regenerated on every `next dev` or `next build`
+
+#### Step 4: Create Project Structure
+
+```bash
+# Create required directories
+mkdir pages
+mkdir pages/api
+mkdir public
+mkdir styles
+```
+
+#### Step 5: Create Core Files
+
+**pages/index.tsx** - Home page:
+```typescript
+export default function Home(): JSX.Element {
+  return (
+    <div>
+      <h1>Hello Next.js!</h1>
+      <p>Welcome to your manually created Next.js app</p>
+    </div>
+  )
+}
+```
+
+**pages/_app.tsx** - App wrapper (optional but recommended):
+```typescript
+import type { AppProps } from 'next/app'
+import '../styles/globals.css'
+
+export default function MyApp({ Component, pageProps }: AppProps): JSX.Element {
+  return <Component {...pageProps} />
+}
+```
+
+**pages/_document.tsx** - HTML document structure (optional):
+```typescript
+import { Html, Head, Main, NextScript } from 'next/document'
+
+export default function Document() {
+  return (
+    <Html lang="en">
+      <Head />
+      <body>
+        <Main />
+        <NextScript />
+      </body>
+    </Html>
+  )
+}
+```
+
+**pages/api/hello.ts** - Example API route:
+```typescript
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+type ResponseData = {
+  message: string
+}
+
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseData>
+): void {
+  res.status(200).json({ message: 'Hello from Next.js API!' })
+}
+```
+
+**styles/globals.css** - Global styles:
+```css
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+```
+
+#### Step 6: Run Your App
+
+```bash
+# Start development server
+npm run dev
+```
+
+Visit `http://localhost:3000` to see your app!
+
+#### File Structure Summary
+
+After manual setup, your project should look like this:
+
+```
+nextjs-app/
+├── .gitignore              # Git ignore rules
+├── .next/                  # Build output (auto-generated)
+├── eslint.config.mjs       # ESLint configuration
+├── next-env.d.ts           # Next.js TypeScript declarations (auto-generated)
+├── next.config.ts          # Next.js configuration
+├── node_modules/           # Dependencies
+├── package.json            # Project metadata and scripts
+├── package-lock.json       # Dependency lock file
+├── postcss.config.mjs      # PostCSS/Tailwind configuration
+├── tsconfig.json           # TypeScript configuration
+├── pages/                  # Page routes
+│   ├── _app.tsx           # App wrapper (wraps all pages)
+│   ├── _document.tsx      # HTML document structure
+│   ├── index.tsx          # Home page (/)
+│   └── api/               # API routes
+│       └── hello.ts       # Example API endpoint (/api/hello)
+├── public/                 # Static files
+│   └── (images, fonts, etc.)
+└── styles/                 # CSS files
+    └── globals.css        # Global styles
+```
+
+**Key Differences from Old Setup:**
+- Modern Next.js uses **TypeScript config files** (`.ts` instead of `.js`)
+- Uses **ESLint 9's flat config** format (`eslint.config.mjs`)
+- Includes **Turbopack** support for faster builds
+- Has **modern Tailwind CSS v4** configuration
+- Auto-generates **next-env.d.ts** for TypeScript types
+- Uses **React 19** and **Next.js 15+**
 
 ### Understanding the Dev Server
 
@@ -216,7 +482,7 @@ You should see your Next.js app running!
 Let's explore the structure of a Next.js project created with create-next-app:
 
 ```
-my-first-nextjs-app/
+nextjs-app/
 ├── node_modules/          # Dependencies (don't touch)
 ├── pages/                 # Your pages and routes
 │   ├── _app.tsx          # Custom App component (wraps all pages)
@@ -555,7 +821,7 @@ Next.js is built on React, so all React concepts apply. Let's review the fundame
 
 **Recommended structure:**
 ```
-my-nextjs-app/
+nextjs-app/
 ├── components/
 │   ├── Header.tsx
 │   ├── Footer.tsx
@@ -773,8 +1039,13 @@ Now every page automatically has Header and Footer!
 
 ### Conditional Rendering
 
-```javascript
-export default function Greeting({ isLoggedIn, username }) {
+```typescript
+interface GreetingProps {
+  isLoggedIn: boolean
+  username: string
+}
+
+export default function Greeting({ isLoggedIn, username }: GreetingProps): JSX.Element {
   // Method 1: if/else
   if (isLoggedIn) {
     return <h1>Welcome back, {username}!</h1>
@@ -801,9 +1072,15 @@ export default function Greeting({ isLoggedIn, username }) {
 
 ### Rendering Lists
 
-```javascript
-export default function BlogList() {
-  const posts = [
+```typescript
+interface Post {
+  id: number
+  title: string
+  author: string
+}
+
+export default function BlogList(): JSX.Element {
+  const posts: Post[] = [
     { id: 1, title: 'First Post', author: 'John' },
     { id: 2, title: 'Second Post', author: 'Jane' },
     { id: 3, title: 'Third Post', author: 'Bob' },
@@ -811,7 +1088,7 @@ export default function BlogList() {
 
   return (
     <ul>
-      {posts.map(post => (
+      {posts.map((post: Post) => (
         <li key={post.id}>
           <h2>{post.title}</h2>
           <p>By {post.author}</p>
@@ -855,18 +1132,17 @@ a:hover {
 }
 ```
 
-**Import in pages/_app.js:**
-```javascript
+**Import in pages/_app.tsx:**
+```typescript
+import type { AppProps } from 'next/app'
 import '../styles/globals.css'
 
-function MyApp({ Component, pageProps }) {
+export default function MyApp({ Component, pageProps }: AppProps): JSX.Element {
   return <Component {...pageProps} />
 }
-
-export default MyApp
 ```
 
-**Note:** Global CSS can ONLY be imported in `_app.js`, not in individual pages or components.
+**Note:** Global CSS can ONLY be imported in `_app.tsx`, not in individual pages or components.
 
 ### 2. CSS Modules (Recommended)
 
@@ -897,11 +1173,16 @@ CSS Modules scope styles to a specific component, preventing conflicts.
 }
 ```
 
-**components/Button.js:**
-```javascript
+**components/Button.tsx:**
+```typescript
 import styles from './Button.module.css'
 
-export default function Button({ text, variant = 'primary' }) {
+interface ButtonProps {
+  text: string
+  variant?: 'primary' | 'secondary'
+}
+
+export default function Button({ text, variant = 'primary' }: ButtonProps): JSX.Element {
   return (
     <button className={`${styles.button} ${styles[variant]}`}>
       {text}
@@ -918,9 +1199,11 @@ export default function Button({ text, variant = 'primary' }) {
 
 ### 3. Inline Styles
 
-```javascript
-export default function Box() {
-  const boxStyle = {
+```typescript
+import { CSSProperties } from 'react'
+
+export default function Box(): JSX.Element {
+  const boxStyle: CSSProperties = {
     backgroundColor: 'lightblue',
     padding: '20px',
     borderRadius: '10px',
@@ -954,8 +1237,13 @@ Tailwind is a utility-first CSS framework. Instead of writing CSS, you apply pre
 **If you selected Tailwind during setup, it's already configured!**
 
 **Example with Tailwind:**
-```javascript
-export default function Card({ title, description }) {
+```typescript
+interface CardProps {
+  title: string
+  description: string
+}
+
+export default function Card({ title, description }: CardProps): JSX.Element {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
       <h2 className="text-2xl font-bold text-gray-800 mb-2">
@@ -993,8 +1281,8 @@ export default function Card({ title, description }) {
 ```javascript
 module.exports = {
   content: [
-    './pages/**/*.{js,jsx}',
-    './components/**/*.{js,jsx}',
+    './pages/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {
@@ -1017,8 +1305,8 @@ Now use: `bg-brand`, `text-brand-dark`, etc.
 
 Next.js comes with styled-jsx for component-scoped CSS-in-JS.
 
-```javascript
-export default function StyledComponent() {
+```typescript
+export default function StyledComponent(): JSX.Element {
   return (
     <div>
       <h1>Styled with styled-jsx</h1>
@@ -1045,7 +1333,7 @@ export default function StyledComponent() {
 ```
 
 **For global styled-jsx:**
-```javascript
+```typescript
 <style jsx global>{`
   body {
     margin: 0;
@@ -1098,13 +1386,19 @@ Next.js provides multiple ways to fetch data. Each method serves different use c
 
 Fetch data in the browser using React hooks.
 
-```javascript
+```typescript
 import { useState, useEffect } from 'react'
 
-export default function Users() {
-  const [users, setUsers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+interface User {
+  id: number
+  name: string
+  email: string
+}
+
+export default function Users(): JSX.Element {
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('https://jsonplaceholder.typicode.com/users')
@@ -1112,11 +1406,11 @@ export default function Users() {
         if (!response.ok) throw new Error('Failed to fetch')
         return response.json()
       })
-      .then(data => {
+      .then((data: User[]) => {
         setUsers(data)
         setLoading(false)
       })
-      .catch(err => {
+      .catch((err: Error) => {
         setError(err.message)
         setLoading(false)
       })
@@ -1129,7 +1423,7 @@ export default function Users() {
     <div>
       <h1>Users</h1>
       <ul>
-        {users.map(user => (
+        {users.map((user: User) => (
           <li key={user.id}>{user.name}</li>
         ))}
       </ul>
@@ -1147,14 +1441,26 @@ export default function Users() {
 
 Fetch data on the server on every request.
 
-```javascript
-// pages/posts.js
-export default function Posts({ posts }) {
+```typescript
+// pages/posts.tsx
+import { GetServerSideProps } from 'next'
+
+interface Post {
+  id: number
+  title: string
+  body: string
+}
+
+interface PostsProps {
+  posts: Post[]
+}
+
+export default function Posts({ posts }: PostsProps): JSX.Element {
   return (
     <div>
       <h1>Blog Posts</h1>
       <ul>
-        {posts.map(post => (
+        {posts.map((post: Post) => (
           <li key={post.id}>
             <h2>{post.title}</h2>
             <p>{post.body}</p>
@@ -1166,9 +1472,9 @@ export default function Posts({ posts }) {
 }
 
 // This runs on the SERVER on every request
-export async function getServerSideProps() {
+export const getServerSideProps: GetServerSideProps<PostsProps> = async () => {
   const res = await fetch('https://jsonplaceholder.typicode.com/posts')
-  const posts = await res.json()
+  const posts: Post[] = await res.json()
 
   return {
     props: {
@@ -1192,9 +1498,22 @@ export async function getServerSideProps() {
 - User-specific content that needs SEO
 
 **With dynamic routes:**
-```javascript
-// pages/user/[id].js
-export default function UserProfile({ user }) {
+```typescript
+// pages/user/[id].tsx
+import { GetServerSideProps } from 'next'
+
+interface User {
+  id: number
+  name: string
+  email: string
+  phone: string
+}
+
+interface UserProfileProps {
+  user: User
+}
+
+export default function UserProfile({ user }: UserProfileProps): JSX.Element {
   return (
     <div>
       <h1>{user.name}</h1>
@@ -1204,10 +1523,10 @@ export default function UserProfile({ user }) {
   )
 }
 
-export async function getServerSideProps(context) {
-  const { id } = context.params // Get dynamic route parameter
+export const getServerSideProps: GetServerSideProps<UserProfileProps> = async (context) => {
+  const { id } = context.params as { id: string } // Get dynamic route parameter
   const res = await fetch(`https://jsonplaceholder.typicode.com/users/${id}`)
-  const user = await res.json()
+  const user: User = await res.json()
 
   // Handle 404
   if (!user.id) {
@@ -1226,9 +1545,21 @@ export async function getServerSideProps(context) {
 
 Generate static HTML at build time.
 
-```javascript
-// pages/about.js
-export default function About({ company }) {
+```typescript
+// pages/about.tsx
+import { GetStaticProps } from 'next'
+
+interface Company {
+  name: string
+  description: string
+  founded: number
+}
+
+interface AboutProps {
+  company: Company
+}
+
+export default function About({ company }: AboutProps): JSX.Element {
   return (
     <div>
       <h1>About {company.name}</h1>
@@ -1239,9 +1570,9 @@ export default function About({ company }) {
 }
 
 // This runs at BUILD TIME (once)
-export async function getStaticProps() {
+export const getStaticProps: GetStaticProps<AboutProps> = async () => {
   const res = await fetch('https://api.example.com/company')
-  const company = await res.json()
+  const company: Company = await res.json()
 
   return {
     props: {
@@ -1267,9 +1598,22 @@ export async function getStaticProps() {
 
 For dynamic routes like `/blog/[slug]`, you need both `getStaticProps` and `getStaticPaths`.
 
-```javascript
-// pages/blog/[slug].js
-export default function BlogPost({ post }) {
+```typescript
+// pages/blog/[slug].tsx
+import { GetStaticProps, GetStaticPaths } from 'next'
+
+interface Post {
+  slug: string
+  title: string
+  content: string
+  author: string
+}
+
+interface BlogPostProps {
+  post: Post
+}
+
+export default function BlogPost({ post }: BlogPostProps): JSX.Element {
   return (
     <article>
       <h1>{post.title}</h1>
@@ -1280,13 +1624,13 @@ export default function BlogPost({ post }) {
 }
 
 // Tell Next.js which paths to pre-generate
-export async function getStaticPaths() {
+export const getStaticPaths: GetStaticPaths = async () => {
   // Fetch list of all blog posts
   const res = await fetch('https://api.example.com/posts')
-  const posts = await res.json()
+  const posts: Post[] = await res.json()
 
   // Generate paths for each post
-  const paths = posts.map(post => ({
+  const paths = posts.map((post: Post) => ({
     params: { slug: post.slug },
   }))
 
@@ -1297,9 +1641,9 @@ export async function getStaticPaths() {
 }
 
 // Fetch data for each path
-export async function getStaticProps({ params }) {
-  const res = await fetch(`https://api.example.com/posts/${params.slug}`)
-  const post = await res.json()
+export const getStaticProps: GetStaticProps<BlogPostProps> = async ({ params }) => {
+  const res = await fetch(`https://api.example.com/posts/${params!.slug}`)
+  const post: Post = await res.json()
 
   return {
     props: { post },
@@ -1315,7 +1659,7 @@ export async function getStaticProps({ params }) {
 
 **Fallback options:**
 
-```javascript
+```typescript
 return {
   paths,
   fallback: false, // 404 for non-generated paths
@@ -1336,14 +1680,26 @@ return {
 
 Static pages that update in the background.
 
-```javascript
-export default function Products({ products, timestamp }) {
+```typescript
+import { GetStaticProps } from 'next'
+
+interface Product {
+  id: number
+  name: string
+}
+
+interface ProductsProps {
+  products: Product[]
+  timestamp: number
+}
+
+export default function Products({ products, timestamp }: ProductsProps): JSX.Element {
   return (
     <div>
       <h1>Products</h1>
       <p>Last updated: {new Date(timestamp).toLocaleString()}</p>
       <ul>
-        {products.map(product => (
+        {products.map((product: Product) => (
           <li key={product.id}>{product.name}</li>
         ))}
       </ul>
@@ -1351,9 +1707,9 @@ export default function Products({ products, timestamp }) {
   )
 }
 
-export async function getStaticProps() {
+export const getStaticProps: GetStaticProps<ProductsProps> = async () => {
   const res = await fetch('https://api.example.com/products')
-  const products = await res.json()
+  const products: Product[] = await res.json()
 
   return {
     props: {
@@ -1403,16 +1759,26 @@ Next.js allows you to create API endpoints in the same project as your frontend.
 **File location:** `pages/api/` directory
 
 **Routing:**
-- `pages/api/hello.js` → `/api/hello`
-- `pages/api/users/[id].js` → `/api/users/:id`
-- `pages/api/posts/index.js` → `/api/posts`
+- `pages/api/hello.ts` → `/api/hello`
+- `pages/api/users/[id].ts` → `/api/users/:id`
+- `pages/api/posts/index.ts` → `/api/posts`
 
 ### Basic API Route
 
-**pages/api/hello.js:**
-```javascript
+**pages/api/hello.ts:**
+```typescript
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+interface ResponseData {
+  message: string
+  timestamp: string
+}
+
 // This function runs on the server
-export default function handler(req, res) {
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseData>
+): void {
   // req = request object
   // res = response object
 
@@ -1429,14 +1795,21 @@ curl http://localhost:3000/api/hello
 ```
 
 **Access from frontend:**
-```javascript
-export default function HomePage() {
-  const [data, setData] = useState(null)
+```typescript
+import { useState, useEffect } from 'react'
+
+interface ApiData {
+  message: string
+  timestamp: string
+}
+
+export default function HomePage(): JSX.Element {
+  const [data, setData] = useState<ApiData | null>(null)
 
   useEffect(() => {
     fetch('/api/hello')
       .then(res => res.json())
-      .then(data => setData(data))
+      .then((data: ApiData) => setData(data))
   }, [])
 
   return <div>{data && <p>{data.message}</p>}</div>
@@ -1445,9 +1818,20 @@ export default function HomePage() {
 
 ### Handling Different HTTP Methods
 
-```javascript
-// pages/api/users.js
-export default function handler(req, res) {
+```typescript
+// pages/api/users.ts
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+type ResponseData = {
+  users?: string[]
+  message?: string
+  error?: string
+}
+
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseData>
+): void {
   const { method } = req
 
   switch (method) {
@@ -1458,7 +1842,7 @@ export default function handler(req, res) {
 
     case 'POST':
       // Handle POST request
-      const { name } = req.body
+      const { name } = req.body as { name: string }
       res.status(201).json({ message: `User ${name} created` })
       break
 
@@ -1474,20 +1858,33 @@ export default function handler(req, res) {
 
     default:
       res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE'])
-      res.status(405).end(`Method ${method} Not Allowed`)
+      res.status(405).json({ error: `Method ${method} Not Allowed` })
   }
 }
 ```
 
 ### Dynamic API Routes
 
-**pages/api/users/[id].js:**
-```javascript
-export default function handler(req, res) {
-  const { id } = req.query // Get dynamic parameter
+**pages/api/users/[id].ts:**
+```typescript
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+interface User {
+  id: number
+  name: string
+  email: string
+}
+
+type ResponseData = User | { error: string }
+
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseData>
+): void {
+  const { id } = req.query as { id: string } // Get dynamic parameter
 
   // Simulate database lookup
-  const users = {
+  const users: Record<string, User> = {
     '1': { id: 1, name: 'Alice', email: 'alice@example.com' },
     '2': { id: 2, name: 'Bob', email: 'bob@example.com' },
   }
@@ -1510,8 +1907,13 @@ export default function handler(req, res) {
 ### Request and Response Objects
 
 #### Request (req) Properties:
-```javascript
-export default function handler(req, res) {
+```typescript
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+): void {
   // HTTP method
   console.log(req.method) // 'GET', 'POST', etc.
 
@@ -1530,7 +1932,7 @@ export default function handler(req, res) {
 ```
 
 #### Response (res) Methods:
-```javascript
+```typescript
 // Send JSON
 res.status(200).json({ data: 'value' })
 
@@ -1552,15 +1954,28 @@ res.end()
 
 ### Example: Simple Todo API
 
-**pages/api/todos.js:**
-```javascript
+**pages/api/todos.ts:**
+```typescript
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+interface Todo {
+  id: number
+  text: string
+  completed: boolean
+}
+
+type ResponseData = Todo[] | Todo | { error: string }
+
 // In-memory storage (use a database in production)
-let todos = [
+let todos: Todo[] = [
   { id: 1, text: 'Learn Next.js', completed: false },
   { id: 2, text: 'Build an app', completed: false },
 ]
 
-export default function handler(req, res) {
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseData>
+): void {
   const { method } = req
 
   if (method === 'GET') {
@@ -1570,8 +1985,8 @@ export default function handler(req, res) {
 
   if (method === 'POST') {
     // Create new todo
-    const { text } = req.body
-    const newTodo = {
+    const { text } = req.body as { text: string }
+    const newTodo: Todo = {
       id: todos.length + 1,
       text,
       completed: false,
@@ -1584,22 +1999,35 @@ export default function handler(req, res) {
 }
 ```
 
-**pages/api/todos/[id].js:**
-```javascript
-let todos = [
+**pages/api/todos/[id].ts:**
+```typescript
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+interface Todo {
+  id: number
+  text: string
+  completed: boolean
+}
+
+type ResponseData = Todo | { error: string } | { message: string }
+
+let todos: Todo[] = [
   { id: 1, text: 'Learn Next.js', completed: false },
   { id: 2, text: 'Build an app', completed: false },
 ]
 
-export default function handler(req, res) {
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseData>
+): void {
   const { method } = req
-  const { id } = req.query
-  const todoId = parseInt(id)
+  const { id } = req.query as { id: string }
+  const todoId = parseInt(id, 10)
 
   if (method === 'PUT') {
     // Update todo
-    const { completed } = req.body
-    const todo = todos.find(t => t.id === todoId)
+    const { completed } = req.body as { completed: boolean }
+    const todo = todos.find((t: Todo) => t.id === todoId)
 
     if (!todo) {
       return res.status(404).json({ error: 'Todo not found' })
@@ -1611,7 +2039,7 @@ export default function handler(req, res) {
 
   if (method === 'DELETE') {
     // Delete todo
-    todos = todos.filter(t => t.id !== todoId)
+    todos = todos.filter((t: Todo) => t.id !== todoId)
     return res.status(200).json({ message: 'Todo deleted' })
   }
 
@@ -1620,48 +2048,54 @@ export default function handler(req, res) {
 ```
 
 **Frontend component to use the API:**
-```javascript
-import { useState, useEffect } from 'react'
+```typescript
+import { useState, useEffect, ChangeEvent } from 'react'
 
-export default function TodoApp() {
-  const [todos, setTodos] = useState([])
-  const [newTodo, setNewTodo] = useState('')
+interface Todo {
+  id: number
+  text: string
+  completed: boolean
+}
+
+export default function TodoApp(): JSX.Element {
+  const [todos, setTodos] = useState<Todo[]>([])
+  const [newTodo, setNewTodo] = useState<string>('')
 
   // Fetch todos
   useEffect(() => {
     fetch('/api/todos')
       .then(res => res.json())
-      .then(data => setTodos(data))
+      .then((data: Todo[]) => setTodos(data))
   }, [])
 
   // Add todo
-  const addTodo = async () => {
+  const addTodo = async (): Promise<void> => {
     const res = await fetch('/api/todos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: newTodo }),
     })
-    const todo = await res.json()
+    const todo: Todo = await res.json()
     setTodos([...todos, todo])
     setNewTodo('')
   }
 
   // Toggle todo
-  const toggleTodo = async (id, completed) => {
+  const toggleTodo = async (id: number, completed: boolean): Promise<void> => {
     await fetch(`/api/todos/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ completed: !completed }),
     })
-    setTodos(todos.map(t =>
+    setTodos(todos.map((t: Todo) =>
       t.id === id ? { ...t, completed: !completed } : t
     ))
   }
 
   // Delete todo
-  const deleteTodo = async (id) => {
+  const deleteTodo = async (id: number): Promise<void> => {
     await fetch(`/api/todos/${id}`, { method: 'DELETE' })
-    setTodos(todos.filter(t => t.id !== id))
+    setTodos(todos.filter((t: Todo) => t.id !== id))
   }
 
   return (
@@ -1670,13 +2104,13 @@ export default function TodoApp() {
 
       <input
         value={newTodo}
-        onChange={e => setNewTodo(e.target.value)}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => setNewTodo(e.target.value)}
         placeholder="New todo..."
       />
       <button onClick={addTodo}>Add</button>
 
       <ul>
-        {todos.map(todo => (
+        {todos.map((todo: Todo) => (
           <li key={todo.id}>
             <input
               type="checkbox"
@@ -1701,28 +2135,52 @@ export default function TodoApp() {
 
 Example with a simple JSON file (use a real database in production):
 
-**lib/db.js:**
-```javascript
+**lib/db.ts:**
+```typescript
 import fs from 'fs'
 import path from 'path'
 
-const dbPath = path.join(process.cwd(), 'data.json')
-
-export function getDB() {
-  const data = fs.readFileSync(dbPath, 'utf-8')
-  return JSON.parse(data)
+interface Post {
+  id: number
+  title: string
+  content: string
+  createdAt: string
 }
 
-export function saveDB(data) {
+interface Database {
+  posts: Post[]
+}
+
+const dbPath = path.join(process.cwd(), 'data.json')
+
+export function getDB(): Database {
+  const data = fs.readFileSync(dbPath, 'utf-8')
+  return JSON.parse(data) as Database
+}
+
+export function saveDB(data: Database): void {
   fs.writeFileSync(dbPath, JSON.stringify(data, null, 2))
 }
 ```
 
-**pages/api/posts.js:**
-```javascript
+**pages/api/posts.ts:**
+```typescript
+import type { NextApiRequest, NextApiResponse } from 'next'
 import { getDB, saveDB } from '../../lib/db'
 
-export default function handler(req, res) {
+interface Post {
+  id: number
+  title: string
+  content: string
+  createdAt: string
+}
+
+type ResponseData = Post[] | Post
+
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseData>
+): void {
   const db = getDB()
 
   if (req.method === 'GET') {
@@ -1730,9 +2188,9 @@ export default function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const newPost = {
+    const newPost: Post = {
       id: db.posts.length + 1,
-      ...req.body,
+      ...req.body as Omit<Post, 'id' | 'createdAt'>,
       createdAt: new Date().toISOString(),
     }
     db.posts.push(newPost)
@@ -1758,8 +2216,17 @@ NEXT_PUBLIC_API_URL=https://api.example.com
 - Other variables are only available on the server
 
 **Usage in API routes:**
-```javascript
-export default function handler(req, res) {
+```typescript
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+interface ResponseData {
+  apiKey: string | undefined
+}
+
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseData>
+): void {
   // Only available on server
   const apiKey = process.env.API_KEY
 
@@ -1772,8 +2239,15 @@ export default function handler(req, res) {
 
 ### Error Handling
 
-```javascript
-export default async function handler(req, res) {
+```typescript
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+type ResponseData = any | { error: string; message: string }
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseData>
+): Promise<void> {
   try {
     const response = await fetch('https://api.example.com/data')
 
@@ -1785,9 +2259,10 @@ export default async function handler(req, res) {
     res.status(200).json(data)
   } catch (error) {
     console.error('API Error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     res.status(500).json({
       error: 'Internal Server Error',
-      message: error.message
+      message: errorMessage
     })
   }
 }
@@ -1797,8 +2272,17 @@ export default async function handler(req, res) {
 
 If your API needs to be accessed from other domains:
 
-```javascript
-export default function handler(req, res) {
+```typescript
+import type { NextApiRequest, NextApiResponse } from 'next'
+
+interface ResponseData {
+  message: string
+}
+
+export default function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<ResponseData>
+): void {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
@@ -1835,14 +2319,14 @@ Continue learning with these topics:
 
 1. **Image Optimization** - Using next/image
 2. **Authentication** - Implementing user login
-3. **Database Integration** - PostgreSQL, MongoDB, Prisma
-4. **Form Handling** - React Hook Form, validation
-5. **State Management** - Context API, Zustand, Redux
-6. **Testing** - Jest, React Testing Library
+3. **Database Integration** - PostgreSQL, MongoDB, Prisma with TypeScript
+4. **Form Handling** - React Hook Form with TypeScript, Zod validation
+5. **State Management** - Context API, Zustand, Redux Toolkit with TypeScript
+6. **Testing** - Jest, React Testing Library with TypeScript
 7. **Deployment** - Vercel, AWS, Docker
 8. **Performance** - Code splitting, lazy loading
-9. **App Router** - New routing system (Next.js 13+)
-10. **TypeScript** - Type safety for larger projects
+9. **App Router** - New routing system (Next.js 13+) with TypeScript
+10. **Advanced TypeScript** - Generics, utility types, type guards for complex projects
 
 ### Practice Projects
 
