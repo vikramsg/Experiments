@@ -405,6 +405,8 @@ export default function handler(
 }
 ```
 
+This API route appears at `/api/hello`.
+
 **styles/globals.css** - Global styles:
 ```css
 * {
@@ -670,6 +672,9 @@ Now these URLs work:
 - `/blog/hello-world` → slug = "hello-world"
 - `/blog/nextjs-tutorial` → slug = "nextjs-tutorial"
 - `/blog/any-url-here` → slug = "any-url-here"
+
+Note that if there are pages like `blob/first-post.tsx` . they will be loaded first.
+But if nothing exists, the slug logic takes over.
 
 #### Example 4: Multiple Dynamic Segments
 ```
