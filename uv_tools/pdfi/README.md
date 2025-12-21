@@ -14,16 +14,18 @@ uv tool install pdfi
 ## Install from a git repo (as a uv tool)
 
 ```bash
-uv tool install "pdfi @ git+https://github.com/<org>/<repo>.git#subdirectory=uv_tools/pdfi"
+uv tool install "pdfi @ git+https://github.com/vikramsg/Experiments.git@master#subdirectory=uv_tools/pdfi"
 ```
 
 ### Monorepos / subdirectory installs
 
-If your repo is a monorepo, you can point `uv` at a subdirectory:
+If your repo is a monorepo, you can point `uv` at a subdirectory, and pin to a branch, tag, or commit:
 
 ```bash
-uv tool install "pdfi @ git+https://github.com/<org>/<repo>.git@<rev>#subdirectory=uv_tools/pdfi"
+uv tool install "pdfi @ git+https://github.com/vikramsg/Experiments.git@<rev>#subdirectory=uv_tools/pdfi"
 ```
+
+Note: `uv tool install` expects a PEP 508 direct reference for Git installs, so you must include `git+` and the package name (`pdfi @ ...`).
 
 The `subdirectory` must be a buildable Python package root with a `pyproject.toml` that includes:
 
