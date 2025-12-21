@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling>=1.25.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pdfi"
+version = "0.1.0"
+description = "CLI tool to work with PDFs."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "PDF Tool Contributors" }]
+dependencies = [
+  "pikepdf>=9.0.0",
+  "pypdf>=4.2.0",
+  "typer>=0.12.0",
+]
+
+[project.scripts]
+pdfi = "pdfi.cli:app"
+
+[dependency-groups]
+dev = [
+  "build>=1.2.2",
+  "pytest>=8.3.0",
+  "reportlab>=4.2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pdf_describe_compress"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/pdf_describe_compress", "README.md", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.uv]
+default-groups = ["dev"]
