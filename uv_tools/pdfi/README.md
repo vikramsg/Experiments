@@ -5,12 +5,6 @@
 - Describing PDFs (metadata, page count, size, optional text preview)
 - Compressing PDFs (lossless, via qpdf/pikepdf)
 
-## Install (as a uv tool)
-
-```bash
-uv tool install pdfi
-```
-
 ## Install from a git repo (as a uv tool)
 
 ```bash
