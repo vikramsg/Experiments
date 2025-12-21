@@ -7,8 +7,8 @@ import pytest
 from reportlab.pdfgen.canvas import Canvas
 from typer.testing import CliRunner
 
-from pdf_describe_compress.cli import app
-from pdf_describe_compress.pdf_ops import compress_pdf, describe_pdf
+from pdfi.cli import app
+from pdfi.pdf_ops import compress_pdf, describe_pdf
 
 
 @pytest.fixture()
