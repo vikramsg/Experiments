@@ -2,7 +2,7 @@ name: Deploy Image Editor
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'client_tools/image-editor/**'
       - '.github/workflows/image-editor-pages.yml'

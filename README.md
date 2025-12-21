@@ -2,6 +2,12 @@
 
 Personal experiments and notes across multiple languages and tools.
 
+## Image editor
+
+Web image editor (multi-layer compositor + single-image crop) lives in `client_tools/image-editor/`.
+
+Live site: https://vikramsg.github.io/Experiments/
+
 ## uv tools
 
 The `uv_tools/` directory contains small Python CLIs intended to be installed via `uv tool install`.
@@ -17,4 +23,3 @@ uv tool install "pdfi @ git+https://github.com/vikramsg/Experiments.git@master#s
 ```
 
 See `uv_tools/pdfi/README.md` for usage and development.
-
