@@ -26,10 +26,10 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/pdf_describe_compress"]
+packages = ["src/pdfi"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/pdf_describe_compress", "README.md", "pyproject.toml"]
+include = ["src/pdfi", "README.md", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
