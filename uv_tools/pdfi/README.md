@@ -3,7 +3,8 @@
 `pdfi` is a small CLI for:
 
 - Describing PDFs (metadata, page count, size, optional text preview)
-- Compressing PDFs (lossless, via qpdf/pikepdf)
+- Compressing PDFs (lossless compression via pymupdf)
+- Aggressive compression (lossy, renders pages as images for scanned documents)
 
 ## Install from a git repo (as a uv tool)
 
@@ -36,3 +37,37 @@ uv run pytest
 uv run pdfi describe path/to/file.pdf
 uv run pdfi compress path/to/in.pdf -o path/to/out.pdf
 ```
+
+## Usage
+
+### Describe a PDF
+
+```bash
+pdfi describe file.pdf
+pdfi describe file.pdf --json
+pdfi describe file.pdf --max-preview-chars 200
+```
+
+### Compress a PDF
+
+**Lossless compression** (default):
+```bash
+pdfi compress input.pdf -o output.pdf
+```
+
+**Aggressive compression** (lossy, for scanned documents):
+```bash
+# Use default settings (120 DPI, JPEG quality 65)
+pdfi compress input.pdf -o output.pdf --aggressive
+
+# Custom DPI and JPEG quality
+pdfi compress input.pdf -o output.pdf --aggressive --dpi 100 --jpeg-quality 60
+```
+
+Aggressive compression renders each page as an image and compresses it, which can significantly reduce file size for scanned documents or PDFs with many images. This is lossy compression - text becomes unsearchable and quality may be reduced, but file sizes can be reduced by 40-60% or more.
+
+**Options:**
+- `--dpi`: DPI for rendering pages (default: 120 when using `--aggressive`)
+- `--jpeg-quality`: JPEG quality 1-100 (default: 65 when using `--aggressive`)
+- `--linearize`: Linearize PDF for web viewing (currently not supported, ignored)
+- `--overwrite`: Overwrite output file if it exists
