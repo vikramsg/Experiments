@@ -6,7 +6,7 @@ type PdfInfo = {
   name: string;
   sizeBytes: number;
   sizeLabel: string;
-  pages: number;
+  pages: number | null;
   version: string;
   title?: string;
   author?: string;
@@ -42,17 +42,28 @@ const getPdfVersion = (buffer: ArrayBuffer) => {
 
 const readPdfInfo = async (file: File) => {
   const buffer = await file.arrayBuffer();
-  const pdfDoc = await PDFDocument.load(buffer);
-  return {
-    name: file.name,
-    sizeBytes: file.size,
-    sizeLabel: formatBytes(file.size),
-    pages: pdfDoc.getPageCount(),
-    version: getPdfVersion(buffer),
-    title: pdfDoc.getTitle(),
-    author: pdfDoc.getAuthor(),
-    producer: pdfDoc.getProducer()
-  };
+  try {
+    const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+    return {
+      name: file.name,
+      sizeBytes: file.size,
+      sizeLabel: formatBytes(file.size),
+      pages: pdfDoc.getPageCount(),
+      version: getPdfVersion(buffer),
+      title: pdfDoc.getTitle(),
+      author: pdfDoc.getAuthor(),
+      producer: pdfDoc.getProducer()
+    };
+  } catch (error) {
+    console.warn('Describe PDF failed, using basic info.', error);
+    return {
+      name: file.name,
+      sizeBytes: file.size,
+      sizeLabel: formatBytes(file.size),
+      pages: null,
+      version: getPdfVersion(buffer)
+    };
+  }
 };
 
 const repackPdf = async (buffer: ArrayBuffer, extraAggressive: boolean) => {
@@ -74,6 +85,7 @@ const PdfTool = forwardRef<PdfToolHandle>((_, ref) => {
   const [compressResult, setCompressResult] = useState<CompressResult | null>(null);
   const [isWorking, setIsWorking] = useState(false);
   const [extraAggressive, setExtraAggressive] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'original' | 'compressed'>('original');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const fileSummary = useMemo(() => {
@@ -110,6 +122,7 @@ const PdfTool = forwardRef<PdfToolHandle>((_, ref) => {
       return null;
     });
     setIsWorking(false);
+    setPreviewMode('original');
     event.target.value = '';
   };
 
@@ -148,6 +161,7 @@ const PdfTool = forwardRef<PdfToolHandle>((_, ref) => {
         url
       });
       setCompressStatus('done');
+      setPreviewMode('compressed');
     } catch (error) {
       console.error('Compress PDF failed', error);
       setCompressStatus('error');
@@ -234,7 +248,7 @@ const PdfTool = forwardRef<PdfToolHandle>((_, ref) => {
                 <div className="space-y-2 text-xs text-slate-600">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Pages</span>
-                    <span className="font-semibold text-slate-700">{info.pages}</span>
+                    <span className="font-semibold text-slate-700">{info.pages ?? 'Unknown'}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Version</span>
@@ -309,18 +323,40 @@ const PdfTool = forwardRef<PdfToolHandle>((_, ref) => {
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Preview</p>
                 <p className="text-sm font-semibold text-slate-800">PDF Canvas</p>
               </div>
-              {fileSummary && (
-                <div className="text-right text-xs text-slate-500">
-                  <p className="font-semibold text-slate-700">{fileSummary.name}</p>
-                  <p>{fileSummary.sizeLabel}</p>
-                </div>
-              )}
+              <div className="flex items-center gap-4">
+                {compressResult && (
+                  <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 text-[11px] font-semibold">
+                    <button
+                      onClick={() => setPreviewMode('original')}
+                      className={`px-3 py-1 rounded-full transition-all ${
+                        previewMode === 'original' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                      }`}
+                    >
+                      Original
+                    </button>
+                    <button
+                      onClick={() => setPreviewMode('compressed')}
+                      className={`px-3 py-1 rounded-full transition-all ${
+                        previewMode === 'compressed' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                      }`}
+                    >
+                      Compressed
+                    </button>
+                  </div>
+                )}
+                {fileSummary && (
+                  <div className="text-right text-xs text-slate-500">
+                    <p className="font-semibold text-slate-700">{fileSummary.name}</p>
+                    <p>{fileSummary.sizeLabel}</p>
+                  </div>
+                )}
+              </div>
             </div>
             {fileUrl ? (
               <div className="h-[520px] bg-slate-50">
                 <iframe
                   title="PDF preview"
-                  src={fileUrl}
+                  src={previewMode === 'compressed' ? compressResult?.url ?? fileUrl : fileUrl}
                   className="w-full h-full"
                   data-testid="pdf-preview"
                 />
