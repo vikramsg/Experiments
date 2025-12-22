@@ -10,8 +10,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 authors = [{ name = "PDF Tool Contributors" }]
 dependencies = [
-  "pikepdf>=9.0.0",
-  "pypdf>=4.2.0",
+  "pymupdf>=1.26.7",
+  "pillow>=10.0.0",
   "typer>=0.12.0",
 ]
 
