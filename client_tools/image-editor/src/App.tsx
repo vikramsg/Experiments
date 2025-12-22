@@ -1,30 +1,40 @@
 import React, { useRef, useState } from 'react';
-import { Download, Layers, Upload } from 'lucide-react';
+import { Download, FileDown, Layers, Upload } from 'lucide-react';
 import CompositorEditor, { type CompositorEditorHandle } from './components/CompositorEditor';
+import PdfTool, { type PdfToolHandle } from './components/PdfTool';
 import SingleEditor, { type SingleEditorHandle } from './components/SingleEditor';
 
-type TabKey = 'compositor' | 'single';
+type TabKey = 'compositor' | 'single' | 'pdf';
 
 const App = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('compositor');
   const compositorRef = useRef<CompositorEditorHandle | null>(null);
   const singleRef = useRef<SingleEditorHandle | null>(null);
+  const pdfRef = useRef<PdfToolHandle | null>(null);
 
   const handleAddImage = () => {
     if (activeTab === 'compositor') {
       compositorRef.current?.openFileDialog();
-    } else {
+    } else if (activeTab === 'single') {
       singleRef.current?.openFileDialog();
+    } else {
+      pdfRef.current?.openFileDialog();
     }
   };
 
   const handleExport = () => {
     if (activeTab === 'compositor') {
       compositorRef.current?.exportImage();
-    } else {
+    } else if (activeTab === 'single') {
       singleRef.current?.exportImage();
+    } else {
+      pdfRef.current?.exportPdf();
     }
   };
+
+  const primaryLabel = activeTab === 'pdf' ? 'Upload PDF' : 'Add Image';
+  const exportLabel = activeTab === 'pdf' ? 'Download PDF' : 'Export';
+  const exportIcon = activeTab === 'pdf' ? <FileDown size={18} /> : <Download size={18} />;
 
   return (
     <div className="flex flex-col h-screen bg-slate-100 font-sans text-slate-900 overflow-hidden">
@@ -60,6 +70,14 @@ const App = () => {
           >
             Single Image
           </button>
+          <button
+            onClick={() => setActiveTab('pdf')}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              activeTab === 'pdf' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            PDF Tools
+          </button>
         </div>
 
         <div className="flex items-center gap-4">
@@ -68,20 +86,26 @@ const App = () => {
             className="flex items-center gap-2 bg-slate-800 text-white px-5 py-2 rounded-lg font-medium hover:bg-slate-700 transition-all active:scale-95"
           >
             <Upload size={18} />
-            Add Image
+            {primaryLabel}
           </button>
           <button
             onClick={handleExport}
             className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 active:scale-95"
           >
-            <Download size={18} />
-            Export
+            {exportIcon}
+            {exportLabel}
           </button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {activeTab === 'compositor' ? <CompositorEditor ref={compositorRef} /> : <SingleEditor ref={singleRef} />}
+        {activeTab === 'compositor' ? (
+          <CompositorEditor ref={compositorRef} />
+        ) : activeTab === 'single' ? (
+          <SingleEditor ref={singleRef} />
+        ) : (
+          <PdfTool ref={pdfRef} />
+        )}
       </div>
     </div>
   );
