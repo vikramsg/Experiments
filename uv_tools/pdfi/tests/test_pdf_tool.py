@@ -28,7 +28,7 @@ def test_describe_pdf_extracts_metadata_and_preview(make_uncompressed_pdf) -> No
     pdf_path = make_uncompressed_pdf(name="sample.pdf", text="Hello PDF tool")
 
     desc = describe_pdf(pdf_path, max_preview_chars=200)
-    assert desc.bytes > 0
+    assert desc.kilo_bytes > 0
     assert desc.pages == 1
     assert desc.encrypted is False
     assert desc.text_preview is not None
@@ -70,3 +70,46 @@ def test_cli_compress(tmp_path: Path, make_uncompressed_pdf) -> None:
     assert res.exit_code == 0, res.output
     assert out_path.exists()
     assert out_path.stat().st_size < pdf_path.stat().st_size
+
+
+def test_compress_pdf_aggressive(tmp_path: Path, make_uncompressed_pdf) -> None:
+    pdf_path = make_uncompressed_pdf(name="aggressive.pdf", text="Test aggressive compression")
+    out_path = tmp_path / "aggressive-out.pdf"
+
+    result = compress_pdf(pdf_path, out_path, aggressive=True, dpi=100, jpeg_quality=60)
+    assert Path(result.output_path).exists()
+    # Aggressive compression may increase size for small PDFs, so just verify it works
+    assert result.output_bytes > 0
+
+    desc_in = describe_pdf(pdf_path, max_preview_chars=0)
+    desc_out = describe_pdf(out_path, max_preview_chars=0)
+    assert desc_in.pages == desc_out.pages == 1
+
+
+def test_compress_pdf_linearize(tmp_path: Path, make_uncompressed_pdf) -> None:
+    pdf_path = make_uncompressed_pdf(name="linearize.pdf", text="Test linearize")
+    out_path = tmp_path / "linearize-out.pdf"
+
+    result = compress_pdf(pdf_path, out_path, linearize=True)
+    assert Path(result.output_path).exists()
+    
+    desc_out = describe_pdf(out_path, max_preview_chars=0)
+    assert desc_out.pages == 1
+
+
+def test_describe_pdf_with_metadata(tmp_path: Path) -> None:
+    from reportlab.pdfgen.canvas import Canvas
+    
+    pdf_path = tmp_path / "metadata.pdf"
+    canvas = Canvas(str(pdf_path))
+    canvas.setTitle("Test Title")
+    canvas.setAuthor("Test Author")
+    canvas.setSubject("Test Subject")
+    canvas.drawString(72, 720, "Test content")
+    canvas.save()
+
+    desc = describe_pdf(pdf_path, max_preview_chars=0)
+    assert desc.pages == 1
+    assert desc.encrypted is False
+    # Metadata extraction may vary, so just check it doesn't crash
+    assert isinstance(desc.metadata, dict)
