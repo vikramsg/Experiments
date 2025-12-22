@@ -15,6 +15,6 @@
     }
   },
   "forwardPorts": [5173, 4173],
-  "postCreateCommand": "npm install && npx playwright install --with-deps",
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
   "remoteUser": "node"
 }
