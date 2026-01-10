@@ -57,6 +57,22 @@ autoload -Uz compinit && compinit
 zinit cdreplay -q
 
 #########################################
+# Tools
+
+### Ripgrep
+# Installs ripgrep binary from GitHub Releases
+zinit ice from"gh-r" as"program" mv"ripgrep* -> ripgrep" pick"ripgrep/rg"
+zinit light BurntSushi/ripgrep
+
+### FZF
+# Installs fzf binary from GitHub Releases
+zinit ice from"gh-r" as"program"
+zinit light junegunn/fzf
+# Load FZF Keybindings (Ctrl+R, etc.)
+zinit ice wait lucid
+zinit snippet https://raw.githubusercontent.com/junegunn/fzf/master/shell/key-bindings.zsh
+
+#########################################
 # Aliases
 
 [[ -f ~/.zshenv ]] && source ~/.zshenv
