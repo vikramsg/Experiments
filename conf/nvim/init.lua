@@ -58,6 +58,9 @@ vim.keymap.set("n", "<C-b><Right>", "<C-w><C-l>", { desc = "Move focus to the ri
 vim.keymap.set({ "n", "v", "i" }, "<Find>", "^", { desc = "Go to beginning of line" }) -- Fn + ←
 vim.keymap.set({ "n", "v", "i" }, "<Select>", "$", { desc = "Go to end of line" }) -- Fn + →
 
+-- Paste over selection without overwriting register
+vim.keymap.set("x", "p", "P", { desc = "Paste without overwriting register" })
+
 -- Highlight when yanking (copying) text
 --  Try it with `yap` in normal mode
 --  See `:help vim.highlight.on_yank()`
