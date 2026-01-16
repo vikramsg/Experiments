@@ -8,6 +8,20 @@ ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 source "${ZINIT_HOME}/zinit.zsh"
 
 #########################################
+# History Configuration
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=10000
+SAVEHIST=10000
+
+# History Options
+setopt EXTENDED_HISTORY      # Write the history file in the ":start:elapsed;command" format.
+setopt SHARE_HISTORY         # Share history between all sessions.
+setopt APPEND_HISTORY        # Append to history file, don't overwrite.
+setopt INC_APPEND_HISTORY    # Write to the history file immediately, not when the shell exits.
+setopt HIST_IGNORE_DUPS      # Don't record an entry that was just recorded.
+setopt HIST_REDUCE_BLANKS    # Remove superfluous blanks before recording an entry.
+
+#########################################
 # Plugins
 
 ## Prompt
