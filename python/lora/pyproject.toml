@@ -10,6 +10,7 @@ dependencies = [
     "evaluate>=0.4",
     "jiwer>=3.0",
     "librosa>=0.10",
+    "moonshine-voice",
     "peft>=0.11",
     "rich>=13.7",
     "soundfile>=0.12",
@@ -42,3 +43,6 @@ select = ["E", "F", "I", "UP"]
 
 [tool.uv.workspace]
 members = ["packages/*"]
+
+[tool.uv.sources]
+moonshine-voice = { git = "https://github.com/moonshine-ai/moonshine", subdirectory = "python" }

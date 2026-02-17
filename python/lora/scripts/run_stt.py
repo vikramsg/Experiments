@@ -30,12 +30,7 @@ import torch
 from datasets import Dataset
 from evaluate import load
 from peft import PeftModel
-from transformers import (
-    AutoConfig,
-    AutoModelForCTC,
-    AutoModelForSpeechSeq2Seq,
-    MoonshineForConditionalGeneration,
-)
+from transformers import AutoConfig, AutoModelForCTC, AutoModelForSpeechSeq2Seq, MoonshineForConditionalGeneration
 
 from lora.data_loader import load_manifest, normalize_audio, prepare_dataset
 from lora.logging_utils import get_logger, setup_logging
@@ -65,6 +60,16 @@ LOGGER = get_logger(__name__)
 def normalize_text(text: str) -> str:
     text = re.sub(r"[^\w\s]", "", text)
     return text.lower().strip()
+
+
+def normalize_audio_rms(audio_data: list[float], target_rms: float = 0.075) -> list[float]:
+    array = torch.tensor(audio_data, dtype=torch.float32)
+    rms = torch.sqrt(torch.mean(array**2))
+    if rms > 0.001:
+        scale_factor = target_rms / rms
+        normalized = array * scale_factor
+        return torch.clamp(normalized, -1.0, 1.0).tolist()
+    return audio_data
 
 
 def parse_args() -> argparse.Namespace:
@@ -120,36 +125,65 @@ def run_stt(args: argparse.Namespace) -> SttReport:
     for idx, item in enumerate(prepared):
         if idx == 0 or (idx + 1) % 10 == 0:
             LOGGER.info("Inference progress | sample=%s/%s", idx + 1, len(prepared))
-        input_key = "input_features" if "input_features" in item else "input_values"
-        input_values = torch.tensor(item[input_key]).unsqueeze(0)
-        attention_mask = torch.tensor(item["attention_mask"]).unsqueeze(0)
-        batch = {
-            input_key: input_values,
-            "attention_mask": attention_mask,
-        }
-        with torch.no_grad():
-            if is_ctc_config(config):
-                logits = model(
-                    **{
-                        input_key: batch[input_key].to(device),
-                        "attention_mask": batch["attention_mask"].to(device),
-                    }
-                ).logits
-                predicted_ids = logits.argmax(dim=-1)
-                prediction = processor.batch_decode(predicted_ids)[0]
-            else:
+        if config.model_type == "moonshine":
+            entry = entries[idx]
+            audio = normalize_audio_rms(entry["audio"])
+            inputs = processor(
+                audio,
+                sampling_rate=processor.feature_extractor.sampling_rate,
+                return_tensors="pt",
+                return_attention_mask=True,
+            )
+            input_values = inputs.input_values.to(device)
+            attention_mask = inputs.attention_mask.to(device)
+            duration = len(audio) / processor.feature_extractor.sampling_rate
+            max_new_tokens = max(10, min(int(duration * 5), 150))
+            with torch.no_grad():
                 predicted_ids = model.generate(
-                    **{
-                        input_key: batch[input_key].to(device),
-                        "attention_mask": batch["attention_mask"].to(device),
-                    },
+                    input_values=input_values,
+                    attention_mask=attention_mask,
+                    max_new_tokens=max_new_tokens,
+                    num_beams=5,
+                    repetition_penalty=1.3,
+                    no_repeat_ngram_size=2,
+                    do_sample=False,
+                    early_stopping=True,
                 )
-                prediction = processor.decode(predicted_ids[0], skip_special_tokens=True)
-        label_ids = item["labels"]
-        if hasattr(label_ids, "tolist"):
-            label_ids = label_ids.tolist()
-        label_ids = [token for token in label_ids if token != -100]
-        reference = processor.tokenizer.decode(label_ids, skip_special_tokens=True)
+            prediction = processor.tokenizer.batch_decode(
+                predicted_ids, skip_special_tokens=True
+            )[0]
+            reference = entry["text"]
+        else:
+            input_key = "input_features" if "input_features" in item else "input_values"
+            input_values = torch.tensor(item[input_key]).unsqueeze(0)
+            attention_mask = torch.tensor(item["attention_mask"]).unsqueeze(0)
+            batch = {
+                input_key: input_values,
+                "attention_mask": attention_mask,
+            }
+            with torch.no_grad():
+                if is_ctc_config(config):
+                    logits = model(
+                        **{
+                            input_key: batch[input_key].to(device),
+                            "attention_mask": batch["attention_mask"].to(device),
+                        }
+                    ).logits
+                    predicted_ids = logits.argmax(dim=-1)
+                    prediction = processor.batch_decode(predicted_ids)[0]
+                else:
+                    predicted_ids = model.generate(
+                        **{
+                            input_key: batch[input_key].to(device),
+                            "attention_mask": batch["attention_mask"].to(device),
+                        },
+                    )
+                    prediction = processor.decode(predicted_ids[0], skip_special_tokens=True)
+            label_ids = item["labels"]
+            if hasattr(label_ids, "tolist"):
+                label_ids = label_ids.tolist()
+            label_ids = [token for token in label_ids if token != -100]
+            reference = processor.tokenizer.decode(label_ids, skip_special_tokens=True)
         metric.add_batch(
             predictions=[normalize_text(prediction)],
             references=[normalize_text(reference)],
