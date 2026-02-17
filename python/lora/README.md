@@ -1,46 +1,34 @@
-## Moonshine LoRA POC
+## Moonshine LoRA
 
-Quick proof-of-concept runner that fine-tunes a Moonshine checkpoint on the
-LibriSpeech dummy dataset (or a synthetic fallback) and saves a LoRA adapter.
+Fine-tunes a Moonshine checkpoint using LoRA. 
 
 ### Setup
 
-- `uv venv`
+Prefer `make` targets when available.
+
+- `make venv`
 - `source .venv/bin/activate`
-- `uv sync`
+- `make sync`
 
 ### Run
 
-- `HF_TOKEN=... uv run python main.py` (required if the Moonshine repo is gated)
+Prefer `make` targets when available.
 
-Artifacts are written to `outputs/poc` by default.
+- `HF_TOKEN=... make run` (required if the Moonshine repo is gated)
+
+Artifacts are written to `outputs` by default.
 
 ## Documentation
 
-### POC Flow
+### Training Guide
 
-1. Creates a tiny LibriSpeech dummy dataset (or synthetic fallback).
-2. Loads Moonshine + LoRA adapters.
-3. Trains for a short run.
-4. Runs before/after inference.
-5. Saves adapter + processor + metrics.
+Use `docs/training.md` for full requirements, evaluation plan, and the report
+template to capture results for each run.
 
-### Verification
+### Recommended Run Flow
 
-- Run: `HF_TOKEN=... uv run python main.py --dataset librispeech_dummy --dataset-samples 8`
-- Verify training happened by checking:
-  - `outputs/poc/poc_metrics.json` contains `train_loss`, `eval_loss`, `elapsed_seconds`.
-  - `outputs/poc/lora_adapter` and `outputs/poc/processor` exist.
-
-### Results (Example)
-
-- `train_loss`: ~7.99
-- `eval_loss`: ~6.12
-- `device`: `mps`
-- `elapsed_seconds`: ~23.46
-
-### Outputs
-
-- `outputs/poc/lora_adapter`
-- `outputs/poc/processor`
-- `outputs/poc/poc_metrics.json`
+1. Prepare dataset and confirm splits.
+2. Evaluate baseline metrics on validation data.
+3. Train LoRA adapter and capture metrics.
+4. Re-evaluate and compare to success criteria.
+5. Record results using the training report template.

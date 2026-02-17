@@ -11,7 +11,11 @@ This repository is currently a minimal Python project.
 
 As the codebase grows, prefer adding feature modules in a dedicated package directory and tests under `tests/`.
 
+## Training Workflow References
+- `docs/training.md`: data requirements, evaluation plan, artifacts, and report template.
+
 ## Build, Test, and Development Commands
+- Prefer using `make` targets over direct `uv` commands when available.
 - `uv run python main.py`: run the current entrypoint locally.
 - `make help`: list available Make targets.
 - `make venv`: create the local virtual environment with `uv`.
@@ -20,7 +24,16 @@ As the codebase grows, prefer adding feature modules in a dedicated package dire
 - `make test`: run tests with `pytest`.
 - `make lint`: run Ruff lint checks.
 
-Use `uv` strictly for environment management, dependency installation, and command execution. Do not use `pip`, `python -m venv`, `poetry`, or other package managers in this repository.
+Use `uv` strictly for environment management, dependency installation, and command execution. Do not use `pip` in this repository.
+
+## Artifact Conventions
+- Capture adapter checkpoints, processor snapshots, and metrics reports for every training run.
+- Record run summaries using the report template in `docs/training.md`.
+
+## Expansion Guidance
+- Place training config objects in `training_config.py`.
+- Place dataset loading and preprocessing in `data_loader.py`.
+- Place evaluation helpers in `evaluation.py`.
 
 ## Coding Style & Naming Conventions
 - Follow PEP 8 with 4-space indentation.
@@ -44,4 +57,4 @@ Ruff is the standard linter for this repository. Configure linting rules only in
   - concise summary of what changed and why,
   - linked issue/task when available,
   - test evidence (command + result),
-  - sample output or logs for behavior changes.
+  - sample output for behavior changes.

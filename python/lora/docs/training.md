@@ -1,37 +1,36 @@
 # Training Guide
 
-## Requirements
+## Purpose & Scope
 
-### Environment
-- Python 3.11 or 3.12.
-- `uv` for environment management.
-- A Hugging Face token (`HF_TOKEN`) if the model repo is gated.
+- Fine-tune Moonshine ASR models with LoRA adapters for domain adaptation.
+- Optimize for domain WER/CER improvements while staying within Apple Silicon memory limits.
 
-### Dependencies
-- `torch`
-- `transformers`
-- `peft`
-- `datasets`
-- `librosa`
-- `soundfile`
-- `evaluate`
-- `jiwer`
+## Data Requirements
 
-### Data
-- A small labeled ASR dataset (dummy or domain-specific).
-- Optional synthetic audio fallback (tone generator) for sanity checks.
+- Labeled ASR dataset: audio files + transcripts.
+- Train/validation/test split (e.g., 80/10/10).
+- Audio: 16 kHz mono WAV/FLAC recommended; normalize loudness.
+- Keep a small “quick check” subset (20–100 samples) for POC runs.
 
-## Training Outputs
+## Training Configuration
+
+- Model: Moonshine tiny/base/medium (start tiny for POC).
+- LoRA: start with attention projections (`q_proj`, `v_proj`).
+- Batch size: 1–2 on MPS; use gradient accumulation.
+- Precision: fp16 on MPS where stable.
+
+## Evaluation Plan
+
+- Metrics: WER (primary), CER (secondary), loss curves.
+- Baseline: evaluate base model on validation set before training.
+- Success measured against explicit thresholds (see report template).
+
+## Outputs & Artifacts
 
 - Adapter checkpoint (LoRA weights).
 - Processor snapshot (tokenizer + feature extractor).
 - Metrics report (loss, runtime, device, sample outputs).
-
-## Artifacts Created
-
-- **Adapter checkpoint**: PEFT LoRA weights (directory of safetensors/config).
-- **Processor snapshot**: tokenizer + feature extractor.
-- **Metrics JSON**: train/eval loss, device, runtime, sample transcripts.
+- Optional: merged model checkpoint for deployment.
 
 ## Final Report Template
 
@@ -46,12 +45,23 @@
 - Samples:
 - Device:
 
+## Hypothesis
+- What improvement is expected and why:
+
+## Success Criteria
+- Explicit thresholds to accept/reject hypothesis:
+
 ## Training Configuration
 - Max steps:
 - Batch size:
 - Gradient accumulation:
 - Learning rate:
 - LoRA config:
+
+## Evaluation Plan
+- Baseline metrics:
+- Post-training metrics:
+- Comparison method:
 
 ## Results
 - Train loss:
@@ -64,6 +74,10 @@
 - Adapter path:
 - Processor path:
 - Metrics path:
+
+## Decision
+- Meets success criteria? (yes/no)
+- Next steps:
 
 ## Notes
 - Any warnings:
