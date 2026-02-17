@@ -58,6 +58,7 @@ def resample_audio(audio: list[float], original_rate: int, target_rate: int) -> 
 
 
 def load_librispeech_stream(split: str, sample_rate: int, max_samples: int | None) -> Dataset:
+    LOGGER.info("Streaming LibriSpeech | split=%s | max_samples=%s", split, max_samples)
     dataset = load_dataset(
         "librispeech_asr",
         "clean",
@@ -160,6 +161,12 @@ def split_by_speaker(
     if len(speaker_ids) < 3:
         split = dataset.train_test_split(test_size=test_ratio, seed=seed)
         val_test = split["test"].train_test_split(test_size=0.5, seed=seed)
+        LOGGER.info(
+            "Speaker split (fallback) | train=%s | val=%s | test=%s",
+            len(split["train"]),
+            len(val_test["train"]),
+            len(val_test["test"]),
+        )
         return split["train"], val_test["train"], val_test["test"]
 
     rng = np.random.default_rng(seed)
@@ -178,13 +185,21 @@ def split_by_speaker(
     train = filter_by(train_ids)
     val = filter_by(val_ids)
     test = filter_by(test_ids)
+    LOGGER.info(
+        "Speaker split | train=%s | val=%s | test=%s",
+        len(train),
+        len(val),
+        len(test),
+    )
     return train, val, test
 
 
 def load_dataset_split(config: DatasetConfig, sample_rate: int) -> Dataset:
     if config.dataset == "synthetic":
+        LOGGER.info("Loading synthetic dataset | max_seconds=%s", config.max_seconds)
         return build_synthetic_dataset(sample_rate, config.max_seconds)
     if config.dataset == "librispeech_dummy":
+        LOGGER.info("Loading dummy dataset | split=validation")
         dummy = load_dataset(
             "hf-internal-testing/librispeech_asr_dummy",
             "clean",
@@ -197,6 +212,11 @@ def load_dataset_split(config: DatasetConfig, sample_rate: int) -> Dataset:
         }
         return Dataset.from_dict(records)
     if config.dataset == "librispeech_clean":
+        LOGGER.info(
+            "Loading librispeech clean | split=%s | max_samples=%s",
+            config.split,
+            config.max_samples,
+        )
         return load_librispeech_stream(config.split, sample_rate, config.max_samples)
     raise ValueError(f"Unsupported dataset: {config.dataset}")
 
@@ -226,3 +246,6 @@ def prepare_dataset(dataset: Dataset, processor: Any) -> Dataset:
         lambda batch: prepare_features(batch, processor, sample_rate),
         remove_columns=[col for col in dataset.column_names if col != "speaker_id"],
     )
+from lora.logging_utils import get_logger
+
+LOGGER = get_logger(__name__)

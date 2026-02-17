@@ -29,6 +29,7 @@ Use `uv` strictly for environment management, dependency installation, and comma
 ## Artifact Conventions
 - Capture adapter checkpoints, processor snapshots, and metrics reports for every training run.
 - Record run summaries using the report template in `docs/training.md`.
+- Ensure training, verification, and validation workflows emit verbose, step-by-step logs so progress is always visible.
 
 ## Expansion Guidance
 - Place training config objects in `training_config.py`.

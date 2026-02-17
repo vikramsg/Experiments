@@ -9,6 +9,9 @@ import torch
 from evaluate import load
 
 from lora.model_utils import unwrap_peft
+from lora.logging_utils import get_logger
+
+LOGGER = get_logger(__name__)
 
 
 @dataclass
@@ -53,7 +56,9 @@ def eval_loss(model: Any, batch: dict[str, Any], device: torch.device) -> float:
     base_model.eval()
     with torch.no_grad():
         outputs = base_model(**payload)
-    return float(outputs.loss.item())
+    loss_value = float(outputs.loss.item())
+    LOGGER.info("Eval loss computed | loss=%.4f", loss_value)
+    return loss_value
 
 
 def eval_wer(
@@ -68,6 +73,7 @@ def eval_wer(
     model_dtype = next(model.parameters()).dtype
     base_model.eval()
     batches = 0
+    LOGGER.info("WER evaluation start")
     for batch in dataloader:
         payload = {k: v.to(device) for k, v in batch.items()}
         payload["input_values"] = payload["input_values"].to(model_dtype)
@@ -86,12 +92,16 @@ def eval_wer(
 
         metric.add_batch(predictions=preds, references=references)
         if batches == 0:
-            print(f"DEBUG: Pred: '{preds[0]}'")
-            print(f"DEBUG: Ref: '{references[0]}'")
+            LOGGER.debug("First prediction | pred='%s'", preds[0])
+            LOGGER.debug("First reference | ref='%s'", references[0])
         batches += 1
+        if batches == 1 or batches % 5 == 0:
+            LOGGER.info("WER progress | batches=%s", batches)
         if max_batches and batches >= max_batches:
             break
-    return float(metric.compute())
+    wer_value = float(metric.compute())
+    LOGGER.info("WER evaluation complete | wer=%.4f", wer_value)
+    return wer_value
 
 
 def summarize_losses(losses: list[float]) -> float:

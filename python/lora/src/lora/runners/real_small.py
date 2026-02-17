@@ -20,6 +20,7 @@ from lora.data_loader import (
     split_by_speaker,
 )
 from lora.evaluation import eval_loss, eval_wer, summarize_losses
+from lora.logging_utils import get_logger, setup_logging
 from lora.model_utils import (
     choose_device,
     configure_generation,
@@ -32,6 +33,8 @@ from lora.training_config import RealRunConfig
 
 DEFAULT_MODEL_ID = "UsefulSensors/moonshine-tiny"
 DEFAULT_OUTPUT_DIR = "outputs/real_small"
+
+LOGGER = get_logger(__name__)
 
 
 @dataclass
@@ -80,6 +83,13 @@ def train_loop(
     losses: list[float] = []
     step = 0
     optimizer.zero_grad()
+    total_updates = max_steps // gradient_accumulation_steps
+    LOGGER.info(
+        "Training start | steps=%s updates=%s grad_accum=%s",
+        max_steps,
+        total_updates,
+        gradient_accumulation_steps,
+    )
 
     while step < max_steps:
         for batch in train_loader:
@@ -92,10 +102,20 @@ def train_loop(
             if (step + 1) % gradient_accumulation_steps == 0:
                 optimizer.step()
                 optimizer.zero_grad()
+                update_step = (step + 1) // gradient_accumulation_steps
+                if update_step == 1 or update_step % 10 == 0 or step + 1 == max_steps:
+                    LOGGER.info(
+                        "Update %s/%s | step=%s | loss=%.4f",
+                        update_step,
+                        total_updates,
+                        step + 1,
+                        losses[-1],
+                    )
             step += 1
             if step >= max_steps:
                 break
 
+    LOGGER.info("Training loop complete | steps=%s", step)
     return summarize_losses(losses)
 
 
@@ -106,10 +126,18 @@ def save_metrics(metrics: RealRunMetrics, output_dir: Path) -> None:
 
 
 def run_real(config: RealRunConfig) -> RealRunMetrics:
+    setup_logging()
     set_seed(config.seed)
     device = choose_device(config.device)
+    LOGGER.info("Device selected | device=%s", device)
     processor = load_processor(config.model_id)
+    LOGGER.info("Processor loaded | model_id=%s", config.model_id)
     sample_rate = processor.feature_extractor.sampling_rate
+    LOGGER.info(
+        "Loading dataset | name=librispeech_clean | split=%s | sample_rate=%s",
+        config.train_split,
+        sample_rate,
+    )
 
     dataset_config = DatasetConfig(
         dataset="librispeech_clean",
@@ -121,6 +149,12 @@ def run_real(config: RealRunConfig) -> RealRunMetrics:
     raw_dataset = load_dataset_split(dataset_config, sample_rate)
     train_raw, val_raw, test_raw = split_by_speaker(
         raw_dataset, test_ratio=0.1, val_ratio=0.1, seed=config.seed
+    )
+    LOGGER.info(
+        "Data split | train=%s | val=%s | test=%s",
+        len(train_raw),
+        len(val_raw),
+        len(test_raw),
     )
     train_dataset = prepare_dataset(train_raw, processor)
     val_dataset = prepare_dataset(val_raw, processor)
@@ -137,6 +171,7 @@ def run_real(config: RealRunConfig) -> RealRunMetrics:
         lora_targets = ["q_proj", "v_proj"]
     if not lora_targets:
         lora_targets = ["q_proj", "v_proj"]
+    LOGGER.info("LoRA targets | modules=%s", lora_targets)
 
     lora_config = LoraConfig(
         r=config.lora_r,
@@ -148,11 +183,17 @@ def run_real(config: RealRunConfig) -> RealRunMetrics:
     )
     model = setup_model(config.model_id, device, lora_config)
     configure_generation(model, processor)
+    LOGGER.info("Model ready | model_id=%s", config.model_id)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
 
     baseline_eval_loss = eval_loss(model, next(iter(val_loader)), device)
     baseline_wer = eval_wer(model, processor, test_loader, device, max_batches=config.wer_batches)
+    LOGGER.info(
+        "Baseline metrics | eval_loss=%.4f | wer=%.4f",
+        baseline_eval_loss,
+        baseline_wer,
+    )
 
     start = time.time()
     train_loss = train_loop(
@@ -164,13 +205,20 @@ def run_real(config: RealRunConfig) -> RealRunMetrics:
         gradient_accumulation_steps=config.gradient_accumulation_steps,
     )
     elapsed = time.time() - start
+    LOGGER.info("Training finished | elapsed=%.2fs", elapsed)
 
     tuned_eval_loss = eval_loss(model, next(iter(val_loader)), device)
     tuned_wer = eval_wer(model, processor, test_loader, device, max_batches=config.wer_batches)
+    LOGGER.info(
+        "Tuned metrics | eval_loss=%.4f | wer=%.4f",
+        tuned_eval_loss,
+        tuned_wer,
+    )
 
     output_dir = Path(config.output_dir)
     model.save_pretrained(output_dir / "lora_adapter")
     processor.save_pretrained(output_dir / "processor")
+    LOGGER.info("Artifacts saved | output_dir=%s", output_dir)
 
     return RealRunMetrics(
         train_loss=train_loss,

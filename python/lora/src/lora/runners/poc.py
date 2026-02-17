@@ -20,6 +20,7 @@ from lora.data_loader import (
     prepare_dataset,
 )
 from lora.evaluation import decode_prediction, eval_loss, summarize_losses
+from lora.logging_utils import get_logger, setup_logging
 from lora.model_utils import (
     choose_device,
     configure_generation,
@@ -35,6 +36,8 @@ DEFAULT_MAX_STEPS = 100
 DEFAULT_EVAL_STEPS = 50
 DEFAULT_SEED = 42
 DEFAULT_DATASET = "librispeech_dummy"
+
+LOGGER = get_logger(__name__)
 
 
 @dataclass
@@ -107,6 +110,13 @@ def train_loop(
     losses: list[float] = []
     step = 0
     optimizer.zero_grad()
+    total_updates = max_steps // gradient_accumulation_steps
+    LOGGER.info(
+        "Training start | steps=%s updates=%s grad_accum=%s",
+        max_steps,
+        total_updates,
+        gradient_accumulation_steps,
+    )
 
     while step < max_steps:
         for batch in train_loader:
@@ -119,11 +129,22 @@ def train_loop(
             if (step + 1) % gradient_accumulation_steps == 0:
                 optimizer.step()
                 optimizer.zero_grad()
+                update_step = (step + 1) // gradient_accumulation_steps
+                if update_step == 1 or update_step % 5 == 0 or step + 1 == max_steps:
+                    LOGGER.info(
+                        "Update %s/%s | step=%s | loss=%.4f",
+                        update_step,
+                        total_updates,
+                        step + 1,
+                        losses[-1],
+                    )
             step += 1
             if step >= max_steps:
                 break
 
+    LOGGER.info("Training loop complete | steps=%s", step)
     eval_loss_value = eval_loss(model, eval_batch, device)
+    LOGGER.info("Eval loss complete | loss=%.4f", eval_loss_value)
     avg_train_loss = summarize_losses(losses)
     return {"train_loss": avg_train_loss, "eval_loss": eval_loss_value}
 
@@ -135,11 +156,15 @@ def save_metrics(metrics: POCMetrics, output_dir: Path) -> None:
 
 
 def run_poc(config: POCConfig) -> POCMetrics:
+    setup_logging()
     set_seed(config.seed)
     device = choose_device()
+    LOGGER.info("Device selected | device=%s", device)
     processor = load_processor(config.model_id)
+    LOGGER.info("Processor loaded | model_id=%s", config.model_id)
 
     sample_rate = processor.feature_extractor.sampling_rate
+    LOGGER.info("Loading dataset | name=%s | sample_rate=%s", config.dataset, sample_rate)
     dataset_config = DatasetConfig(
         dataset=config.dataset,
         split="validation",
@@ -152,14 +177,21 @@ def run_poc(config: POCConfig) -> POCMetrics:
     else:
         dataset = load_dataset_split(dataset_config, sample_rate)
     dataset = prepare_dataset(dataset, processor)
+    LOGGER.info("Prepared dataset | samples=%s", len(dataset))
 
     split = dataset.train_test_split(test_size=0.2, seed=config.seed)
     train_loader = create_dataloader(split["train"], config.batch_size, shuffle=True)
     eval_batch = next(iter(create_dataloader(split["test"], config.batch_size, shuffle=False)))
+    LOGGER.info(
+        "Data split | train=%s | eval=%s",
+        len(split["train"]),
+        len(split["test"]),
+    )
 
     lora_targets = find_lora_targets(AutoModelForSpeechSeq2Seq.from_pretrained(config.model_id))
     if not lora_targets:
         lora_targets = ["q_proj", "v_proj"]
+    LOGGER.info("LoRA targets | modules=%s", lora_targets)
 
     lora_config = LoraConfig(
         r=config.lora_r,
@@ -172,10 +204,12 @@ def run_poc(config: POCConfig) -> POCMetrics:
 
     model = setup_model(config.model_id, device, lora_config)
     configure_generation(model, processor)
+    LOGGER.info("Model ready | model_id=%s", config.model_id)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
 
     baseline_text = decode_prediction(model, processor, eval_batch, device)
+    LOGGER.info("Baseline decode complete")
 
     start = time.time()
     losses = train_loop(
@@ -189,12 +223,15 @@ def run_poc(config: POCConfig) -> POCMetrics:
         eval_steps=config.eval_steps,
     )
     elapsed = time.time() - start
+    LOGGER.info("Training finished | elapsed=%.2fs", elapsed)
 
     tuned_text = decode_prediction(model, processor, eval_batch, device)
+    LOGGER.info("Tuned decode complete")
 
     output_dir = Path(config.output_dir)
     model.save_pretrained(output_dir / "lora_adapter")
     processor.save_pretrained(output_dir / "processor")
+    LOGGER.info("Artifacts saved | output_dir=%s", output_dir)
 
     return POCMetrics(
         train_loss=losses["train_loss"],
