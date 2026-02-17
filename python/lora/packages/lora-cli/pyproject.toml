@@ -1,0 +1,23 @@
+[project]
+name = "lora-cli"
+version = "0.1.0"
+description = "Voice interface for Moonshine LoRA models"
+requires-python = ">=3.11"
+dependencies = [
+    "lora",
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "sounddevice>=0.4.6",
+    "numpy>=1.26.0",
+    "pynput>=1.7.6",
+]
+
+[project.scripts]
+moonshine = "lora_cli.main:app"
+
+[tool.uv.sources]
+lora = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
