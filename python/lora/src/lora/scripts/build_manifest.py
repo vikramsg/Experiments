@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Build a JSONL manifest of audio arrays + transcripts for STT checks.
 
 Usage:
@@ -8,8 +10,6 @@ Flags:
     --samples   Number of samples to include in the manifest
     --output    Output JSONL file path
 """
-
-from __future__ import annotations
 
 import argparse
 import io

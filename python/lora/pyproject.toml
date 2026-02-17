@@ -16,9 +16,16 @@ dependencies = [
     "transformers>=4.40",
 ]
 
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [dependency-groups]
 dev = [
     "ruff>=0.9.6",
+    "pytest>=8.0",
 ]
 
 [tool.ruff]
