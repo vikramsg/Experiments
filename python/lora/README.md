@@ -33,6 +33,21 @@ Artifact STT check:
 
 Artifacts are written to `outputs` by default.
 
+## Voice CLI (Interactive)
+
+We include a standalone CLI tool for live voice interaction with the models.
+
+- **Location:** `packages/lora-cli`
+- **Features:** Push-to-Talk, terminal UI, live transcription.
+- **Usage:**
+  ```bash
+  cd packages/lora-cli
+  uv sync
+  uv run moonshine
+  ```
+
+See [packages/lora-cli/README.md](packages/lora-cli/README.md) for full details.
+
 ## Documentation
 
 ### Training Guide
