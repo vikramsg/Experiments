@@ -18,11 +18,11 @@
 
 ## Plan
 1. **Dataset prep:** use `librispeech_asr` streaming (`train.100`) with 200–500 samples and speaker-split.
-2. **Manifest build (FFmpeg available):** generate a real held-out manifest with `scripts/build_manifest.py`.
+2. **Manifest build (FFmpeg available):** generate a real held-out manifest with `uv run python scripts/build_manifest.py`.
 3. **Training run:** execute `uv run python -m lora.runners.real_small` with `max_steps=500–1500`, `batch_size=1`, `grad_accum=8–16`.
 4. **Baseline + tuned eval:** compute loss and WER on a fixed held-out split.
 5. **Artifacts:** ensure adapter, processor, metrics JSON are saved under `outputs/<run>/`.
-6. **Artifact STT test:** generate a real held-out manifest and run `uv run python -m lora.scripts.run_stt`.
+6. **Artifact STT test:** generate a real held-out manifest and run `uv run python scripts/run_stt.py`.
 7. **Report:** update `docs/training_report.md` with run config + results.
 
 ## Verification

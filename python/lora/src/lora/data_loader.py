@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import io
+import json
 import math
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import librosa
@@ -184,6 +186,25 @@ def load_dataset_split(config: DatasetConfig, sample_rate: int) -> Dataset:
     if config.dataset == "librispeech_clean":
         return load_librispeech_stream(config.split, sample_rate, config.max_samples)
     raise ValueError(f"Unsupported dataset: {config.dataset}")
+
+
+def load_manifest(path: Path) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        entries.append(json.loads(line))
+    return entries
+
+
+def normalize_audio(value: Any) -> list[float]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict) and "array" in value:
+        return value["array"]
+    if isinstance(value, dict) and "bytes" in value:
+        raise ValueError("Audio bytes are not supported; provide arrays")
+    raise ValueError("Unsupported audio format in manifest")
 
 
 def prepare_dataset(dataset: Dataset, processor: Any) -> Dataset:

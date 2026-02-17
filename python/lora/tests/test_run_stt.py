@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from lora.scripts.run_stt import load_manifest, normalize_audio
+from lora.data_loader import load_manifest, normalize_audio
 
 
 def test_normalize_audio_accepts_array() -> None:

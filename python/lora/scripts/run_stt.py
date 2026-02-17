@@ -20,28 +20,10 @@ Flags:
 
 from __future__ import annotations
 
-"""Run STT inference with a saved LoRA adapter and processor artifacts.
-
-Usage:
-    uv run python -m lora.scripts.run_stt \
-        --model-id UsefulSensors/moonshine-tiny \
-        --adapter-dir outputs/real_small/lora_adapter \
-        --processor-dir outputs/real_small/processor \
-        --audio-list data/heldout_manifest.jsonl \
-        --output outputs/real_small/artifact_test.json \
-        --device mps
-
-Flags:
-    --model-id       Base model ID
-    --adapter-dir    LoRA adapter directory
-    --processor-dir  Processor directory
-    --audio-list     JSONL manifest with audio arrays and text
-    --output         Output JSON report path
-    --device         Device override (mps, cuda, cpu)
-"""
 
 import argparse
 import json
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -53,7 +35,7 @@ from transformers import AutoModelForSpeechSeq2Seq
 
 from datasets import Dataset
 
-from lora.data_loader import prepare_dataset
+from lora.data_loader import load_manifest, normalize_audio, prepare_dataset
 from lora.model_utils import choose_device, configure_generation, load_processor
 
 
@@ -83,25 +65,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", required=True)
     parser.add_argument("--device", choices=["mps", "cuda", "cpu"], default=None)
     return parser.parse_args()
-
-
-def load_manifest(path: Path) -> list[dict[str, Any]]:
-    entries: list[dict[str, Any]] = []
-    for line in path.read_text().splitlines():
-        if not line.strip():
-            continue
-        entries.append(json.loads(line))
-    return entries
-
-
-def normalize_audio(value: Any) -> list[float]:
-    if isinstance(value, list):
-        return value
-    if isinstance(value, dict) and "array" in value:
-        return value["array"]
-    if isinstance(value, dict) and "bytes" in value:
-        raise ValueError("Audio bytes are not supported; provide arrays")
-    raise ValueError("Unsupported audio format in manifest")
 
 
 def run_stt(args: argparse.Namespace) -> SttReport:
