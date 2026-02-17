@@ -6,6 +6,12 @@ Fine-tunes a Moonshine checkpoint using LoRA.
 
 Prefer `make` targets when available.
 
+FFmpeg is required for audio decoding (used by `datasets`/`torchcodec`). Install it with Homebrew:
+
+```
+brew install ffmpeg
+```
+
 - `make venv`
 - `source .venv/bin/activate`
 - `make sync`

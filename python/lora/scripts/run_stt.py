@@ -1,3 +1,23 @@
+"""Run STT inference with a saved LoRA adapter and processor artifacts.
+
+Usage:
+    uv run python scripts/run_stt.py \
+        --model-id UsefulSensors/moonshine-tiny \
+        --adapter-dir outputs/real_small/lora_adapter \
+        --processor-dir outputs/real_small/processor \
+        --audio-list data/heldout_manifest.jsonl \
+        --output outputs/real_small/artifact_test.json \
+        --device mps
+
+Flags:
+    --model-id       Base model ID
+    --adapter-dir    LoRA adapter directory
+    --processor-dir  Processor directory
+    --audio-list     JSONL manifest with audio arrays and text
+    --output         Output JSON report path
+    --device         Device override (mps, cuda, cpu)
+"""
+
 from __future__ import annotations
 
 import argparse

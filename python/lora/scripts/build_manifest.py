@@ -1,3 +1,14 @@
+"""Build a JSONL manifest of audio arrays + transcripts for STT checks.
+
+Usage:
+    uv run python scripts/build_manifest.py --split test --samples 3 --output data/heldout_manifest.jsonl
+
+Flags:
+    --split     LibriSpeech split name (e.g. test, validation, train.100)
+    --samples   Number of samples to include in the manifest
+    --output    Output JSONL file path
+"""
+
 from __future__ import annotations
 
 import argparse
