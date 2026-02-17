@@ -16,6 +16,15 @@ Prefer `make` targets when available.
 
 - `HF_TOKEN=... make run` (required if the Moonshine repo is gated)
 
+Small real-world run:
+
+- `HF_TOKEN=... uv run python train_real_small.py`
+
+Artifact STT check:
+
+- `uv run python scripts/build_manifest.py --split test.clean --samples 5 --output data/heldout_manifest.jsonl`
+- `uv run python scripts/run_stt.py --model-id UsefulSensors/moonshine-tiny --adapter-dir outputs/real_small/lora_adapter --processor-dir outputs/real_small/processor --audio-list data/heldout_manifest.jsonl --output outputs/real_small/artifact_test.json`
+
 Artifacts are written to `outputs` by default.
 
 ## Documentation

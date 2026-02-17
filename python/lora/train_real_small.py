@@ -7,7 +7,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import torch
 from peft import LoraConfig
 from torch.utils.data import DataLoader
@@ -15,12 +14,12 @@ from transformers import AutoModelForSpeechSeq2Seq, set_seed
 
 from data_loader import (
     DatasetConfig,
-    build_synthetic_dataset,
     create_dataloader,
     load_dataset_split,
     prepare_dataset,
+    split_by_speaker,
 )
-from evaluation import decode_prediction, eval_loss, summarize_losses
+from evaluation import eval_loss, eval_wer, summarize_losses
 from model_utils import (
     choose_device,
     configure_generation,
@@ -29,79 +28,52 @@ from model_utils import (
     mark_mps_fallback,
     setup_model,
 )
+from training_config import RealRunConfig
 
 DEFAULT_MODEL_ID = "UsefulSensors/moonshine-tiny"
-DEFAULT_OUT_DIR = "outputs/poc"
-DEFAULT_MAX_STEPS = 100
-DEFAULT_EVAL_STEPS = 50
-DEFAULT_SEED = 42
-DEFAULT_DATASET = "librispeech_dummy"
+DEFAULT_OUTPUT_DIR = "outputs/real_small"
 
 
 @dataclass
-class POCConfig:
-    model_id: str
-    output_dir: str
-    max_steps: int
-    eval_steps: int
-    learning_rate: float
-    lora_r: int
-    lora_alpha: int
-    lora_dropout: float
-    batch_size: int
-    gradient_accumulation_steps: int
-    max_seconds: float
-    use_mps: bool
-    seed: int
-    dataset: str
-    dataset_samples: int
-
-
-@dataclass
-class POCMetrics:
+class RealRunMetrics:
     train_loss: float
-    eval_loss: float
-    baseline_text: str
-    tuned_text: str
+    baseline_eval_loss: float
+    baseline_wer: float
+    tuned_eval_loss: float
+    tuned_wer: float
     elapsed_seconds: float
     device: str
     used_mps_fallback: bool
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Moonshine LoRA POC runner")
+    parser = argparse.ArgumentParser(description="Small real-world LoRA run")
     parser.add_argument("--model-id", default=DEFAULT_MODEL_ID)
-    parser.add_argument("--output-dir", default=DEFAULT_OUT_DIR)
-    parser.add_argument("--max-steps", type=int, default=DEFAULT_MAX_STEPS)
-    parser.add_argument("--eval-steps", type=int, default=DEFAULT_EVAL_STEPS)
+    parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--max-steps", type=int, default=800)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--lora-r", type=int, default=8)
     parser.add_argument("--lora-alpha", type=int, default=16)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=8)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--dataset-samples", type=int, default=400)
+    parser.add_argument("--train-split", default="train.100")
+    parser.add_argument("--device", choices=["mps", "cuda", "cpu"], default=None)
     parser.add_argument("--max-seconds", type=float, default=8.0)
-    parser.add_argument(
-        "--dataset",
-        choices=["librispeech_dummy", "synthetic"],
-        default=DEFAULT_DATASET,
-    )
-    parser.add_argument("--dataset-samples", type=int, default=8)
-    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument("--wer-batches", type=int, default=12)
     return parser.parse_args()
 
 
 def train_loop(
     model: Any,
     train_loader: DataLoader,
-    eval_batch: dict[str, Any],
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     max_steps: int,
     gradient_accumulation_steps: int,
-    eval_steps: int,
-) -> dict[str, float]:
-    _ = eval_steps
+) -> float:
     base_model = model.get_base_model()
     model_dtype = next(model.parameters()).dtype
     base_model.train()
@@ -124,43 +96,45 @@ def train_loop(
             if step >= max_steps:
                 break
 
-    eval_loss_value = eval_loss(model, eval_batch, device)
-    avg_train_loss = summarize_losses(losses)
-    return {"train_loss": avg_train_loss, "eval_loss": eval_loss_value}
+    return summarize_losses(losses)
 
 
-def save_metrics(metrics: POCMetrics, output_dir: Path) -> None:
+def save_metrics(metrics: RealRunMetrics, output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
-    path = output_dir / "poc_metrics.json"
+    path = output_dir / "real_metrics.json"
     path.write_text(json.dumps(asdict(metrics), indent=2))
 
 
-def run_poc(config: POCConfig) -> POCMetrics:
+def run_real(config: RealRunConfig) -> RealRunMetrics:
     set_seed(config.seed)
-    device = choose_device()
+    device = choose_device(config.device)
     processor = load_processor(config.model_id)
-
     sample_rate = processor.feature_extractor.sampling_rate
+
     dataset_config = DatasetConfig(
-        dataset=config.dataset,
-        split="validation",
+        dataset="librispeech_clean",
+        split=config.train_split,
         max_samples=config.dataset_samples,
         max_seconds=config.max_seconds,
         seed=config.seed,
     )
-    if config.dataset == "synthetic":
-        dataset = build_synthetic_dataset(sample_rate, config.max_seconds)
-    else:
-        dataset = load_dataset_split(dataset_config, sample_rate)
-    dataset = prepare_dataset(dataset, processor)
-
-    split = dataset.train_test_split(test_size=0.2, seed=config.seed)
-    train_loader = create_dataloader(split["train"], config.batch_size, shuffle=True)
-    eval_batch = next(iter(create_dataloader(split["test"], config.batch_size, shuffle=False)))
-
-    lora_targets = find_lora_targets(
-        AutoModelForSpeechSeq2Seq.from_pretrained(config.model_id)
+    raw_dataset = load_dataset_split(dataset_config, sample_rate)
+    train_raw, val_raw, test_raw = split_by_speaker(
+        raw_dataset, test_ratio=0.1, val_ratio=0.1, seed=config.seed
     )
+    train_dataset = prepare_dataset(train_raw, processor)
+    val_dataset = prepare_dataset(val_raw, processor)
+    test_dataset = prepare_dataset(test_raw, processor)
+
+    train_loader = create_dataloader(train_dataset, config.batch_size, shuffle=True)
+    val_loader = create_dataloader(val_dataset, config.batch_size, shuffle=False)
+    test_loader = create_dataloader(test_dataset, config.batch_size, shuffle=False)
+
+    base_probe = AutoModelForSpeechSeq2Seq.from_pretrained(config.model_id)
+    lora_targets = find_lora_targets(model=base_probe)
+    del base_probe
+    if not lora_targets:
+        lora_targets = ["q_proj", "v_proj"]
     if not lora_targets:
         lora_targets = ["q_proj", "v_proj"]
 
@@ -172,38 +146,42 @@ def run_poc(config: POCConfig) -> POCMetrics:
         target_modules=lora_targets,
         task_type="SEQ_2_SEQ_LM",
     )
-
     model = setup_model(config.model_id, device, lora_config)
     configure_generation(model, processor)
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
 
-    baseline_text = decode_prediction(model, processor, eval_batch, device)
+    baseline_eval_loss = eval_loss(model, next(iter(val_loader)), device)
+    baseline_wer = eval_wer(
+        model, processor, test_loader, device, max_batches=config.wer_batches
+    )
 
     start = time.time()
-    losses = train_loop(
-        model=model,
-        train_loader=train_loader,
-        eval_batch=eval_batch,
-        optimizer=optimizer,
-        device=device,
+    train_loss = train_loop(
+        model,
+        train_loader,
+        optimizer,
+        device,
         max_steps=config.max_steps,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
-        eval_steps=config.eval_steps,
     )
     elapsed = time.time() - start
 
-    tuned_text = decode_prediction(model, processor, eval_batch, device)
+    tuned_eval_loss = eval_loss(model, next(iter(val_loader)), device)
+    tuned_wer = eval_wer(
+        model, processor, test_loader, device, max_batches=config.wer_batches
+    )
 
     output_dir = Path(config.output_dir)
     model.save_pretrained(output_dir / "lora_adapter")
     processor.save_pretrained(output_dir / "processor")
 
-    return POCMetrics(
-        train_loss=losses["train_loss"],
-        eval_loss=losses["eval_loss"],
-        baseline_text=baseline_text,
-        tuned_text=tuned_text,
+    return RealRunMetrics(
+        train_loss=train_loss,
+        baseline_eval_loss=baseline_eval_loss,
+        baseline_wer=baseline_wer,
+        tuned_eval_loss=tuned_eval_loss,
+        tuned_wer=tuned_wer,
         elapsed_seconds=elapsed,
         device=str(device),
         used_mps_fallback=mark_mps_fallback(),
@@ -212,24 +190,24 @@ def run_poc(config: POCConfig) -> POCMetrics:
 
 def main() -> None:
     args = parse_args()
-    config = POCConfig(
+    config = RealRunConfig(
         model_id=args.model_id,
         output_dir=args.output_dir,
         max_steps=args.max_steps,
-        eval_steps=args.eval_steps,
         learning_rate=args.learning_rate,
         lora_r=args.lora_r,
         lora_alpha=args.lora_alpha,
         lora_dropout=args.lora_dropout,
         batch_size=args.batch_size,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
-        max_seconds=args.max_seconds,
-        use_mps=True,
         seed=args.seed,
-        dataset=args.dataset,
         dataset_samples=args.dataset_samples,
+        train_split=args.train_split,
+        device=args.device,
+        max_seconds=args.max_seconds,
+        wer_batches=args.wer_batches,
     )
-    metrics = run_poc(config)
+    metrics = run_real(config)
     save_metrics(metrics, Path(config.output_dir))
     print(json.dumps(asdict(metrics), indent=2))
 
