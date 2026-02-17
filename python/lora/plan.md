@@ -1,43 +1,46 @@
-# Plan: Proper Training + Verification
+# Plan: Demonstrate Improved STT
 
-## Goal
-- Run a real tiny training pass with actual audio samples.
-- Verify training artifacts and STT inference outputs are correct.
-- Record results in `docs/training_report.md`.
+## Outcome
+- Demonstrate measurable STT improvement on real audio (WER improvement over baseline).
 
-## Known Issues From Last Run
-- **Manifest audio decoding failed** without FFmpeg/torchcodec, so artifact test used synthetic silence.
-- **Long runtimes** on larger sample sizes; quick run completed but is too small.
-- **Split mismatch risk** if LibriSpeech split names are wrong (needs `train.100`).
+## Constraints + Assumptions
+- Use `UsefulSensors/moonshine-tiny` on MPS.
+- Use LibriSpeech real audio and a larger held-out manifest.
+- Run long enough to observe WER movement (not just loss).
+- FFmpeg is available for manifest decoding.
 
-## What Must Be Checked/Changed
-- **FFmpeg availability confirmed** (2026-02-17) so manifest builder should use real audio.
-- Use a real held-out manifest (no synthetic silence) for artifact STT.
-- Verify split names and dataset streaming config are correct.
-- Confirm MPS does not fall back to CPU during training.
+## What Was Wrong Last Time
+- WER did not improve (baseline and tuned WER were both 1.0).
+- Training was too small/short to move WER on real audio.
 
 ## Plan
-1. **Dataset prep:** use `librispeech_asr` streaming (`train.100`) with 200–500 samples and speaker-split.
-2. **Manifest build (FFmpeg available):** generate a real held-out manifest with `uv run python scripts/build_manifest.py`.
-3. **Training run:** execute `uv run python -m lora.runners.real_small` with `max_steps=500–1500`, `batch_size=1`, `grad_accum=8–16`.
-4. **Baseline + tuned eval:** compute loss and WER on a fixed held-out split.
-5. **Artifacts:** ensure adapter, processor, metrics JSON are saved under `outputs/<run>/`.
-6. **Artifact STT test:** generate a real held-out manifest and run `uv run python scripts/run_stt.py`.
-7. **Report:** update `docs/training_report.md` with run config + results.
+1. **Dataset scope:** 800–1200 samples from `librispeech_asr` `train.100` with speaker split.
+2. **Held-out manifest:** build 100–200 real audio clips from `validation` or `test` split.
+3. **Training config:** `max_steps=1500–2500`, `batch_size=1`, `grad_accum=8–16`, `lr=2e-4–4e-4`.
+4. **Baseline eval:** compute WER on the full held-out manifest before training.
+5. **Fine-tune run:** train LoRA adapter, log loss over time.
+6. **Post-train eval:** compute WER on the same held-out manifest.
+7. **Artifacts + report:** save adapter, processor, metrics JSON, artifact test JSON, and update `docs/training_report.md`.
+
+## Final Artifact Test (STT)
+- Build a real held-out manifest:
+  `uv run python scripts/build_manifest.py --split test --samples 120 --output data/heldout_manifest.jsonl`
+- Run baseline STT (no adapter):
+  `uv run python scripts/run_stt.py --model-id UsefulSensors/moonshine-tiny --processor-dir outputs/<run>/processor --audio-list data/heldout_manifest.jsonl --output outputs/<run>/baseline_stt.json --device mps`
+- Run tuned STT (adapter):
+  `uv run python scripts/run_stt.py --model-id UsefulSensors/moonshine-tiny --adapter-dir outputs/<run>/lora_adapter --processor-dir outputs/<run>/processor --audio-list data/heldout_manifest.jsonl --output outputs/<run>/tuned_stt.json --device mps`
 
 ## Verification
-- `outputs/<run>/real_metrics.json` exists with train/eval loss + WER.
-- `outputs/<run>/artifact_test.json` exists with `samples` and `wer`.
-- Adapter reloads and reproduces the artifact test output on rerun.
-- Manifest uses real audio arrays (not synthetic silence).
+- Held-out manifest contains real audio arrays (not synthetic silence).
+- `real_metrics.json` reports baseline + tuned WER and loss.
+- `artifact_test.json` includes ≥100 samples and WER.
 
 ## Acceptance Criteria
-- Eval loss improves by ≥0.1 or WER improves by ≥5% relative.
-- Training completes without crashes or MPS fallback.
-- Artifact test runs on real audio (not synthetic silence).
+- WER improves by ≥5% relative on the held-out manifest.
+- Training completes without MPS fallback or crashes.
 
 ## Guidance
-- I will not stop until the entire plan is complete.
+- I will not stop until the outcome is demonstrated.
 - I will not stop for clarifications; I will make decisions using best practices and documentation.
 
 ## Ref

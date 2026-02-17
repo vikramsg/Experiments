@@ -45,7 +45,7 @@ class SttSample:
 @dataclass
 class SttReport:
     model_id: str
-    adapter_dir: str
+    adapter_dir: str | None
     processor_dir: str
     device: str
     wer: float
@@ -55,7 +55,7 @@ class SttReport:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run STT using saved LoRA artifacts")
     parser.add_argument("--model-id", required=True)
-    parser.add_argument("--adapter-dir", required=True)
+    parser.add_argument("--adapter-dir")
     parser.add_argument("--processor-dir", required=True)
     parser.add_argument("--audio-list", required=True)
     parser.add_argument("--output", required=True)
@@ -79,34 +79,44 @@ def run_stt(args: argparse.Namespace) -> SttReport:
 
     prepared = prepare_dataset(dataset, processor)
     base_model = AutoModelForSpeechSeq2Seq.from_pretrained(args.model_id)
-    model = PeftModel.from_pretrained(base_model, args.adapter_dir)
+    if args.adapter_dir:
+        model = PeftModel.from_pretrained(base_model, args.adapter_dir)
+        adapter_dir = args.adapter_dir
+    else:
+        model = base_model
+        adapter_dir = None
     model.to(device)
     configure_generation(model, processor)
     metric = load("wer")
     samples: list[SttSample] = []
 
     for idx, item in enumerate(prepared):
-        input_values = torch.tensor(item["input_values"]).unsqueeze(0)
+        input_key = "input_features" if "input_features" in item else "input_values"
+        input_values = torch.tensor(item[input_key]).unsqueeze(0)
         attention_mask = torch.tensor(item["attention_mask"]).unsqueeze(0)
         batch = {
-            "input_values": input_values,
+            input_key: input_values,
             "attention_mask": attention_mask,
         }
         with torch.no_grad():
             predicted_ids = model.generate(
-                input_values=batch["input_values"].to(device),
-                attention_mask=batch["attention_mask"].to(device),
+                **{
+                    input_key: batch[input_key].to(device),
+                    "attention_mask": batch["attention_mask"].to(device),
+                }
             )
         prediction = processor.tokenizer.batch_decode(predicted_ids, skip_special_tokens=True)[0]
-        reference = processor.tokenizer.decode(
-            item["labels"][item["labels"] != -100], skip_special_tokens=True
-        )
+        label_ids = item["labels"]
+        if hasattr(label_ids, "tolist"):
+            label_ids = label_ids.tolist()
+        label_ids = [token for token in label_ids if token != -100]
+        reference = processor.tokenizer.decode(label_ids, skip_special_tokens=True)
         metric.add_batch(predictions=[prediction], references=[reference])
         samples.append(SttSample(index=idx, reference=reference, prediction=prediction))
 
     report = SttReport(
         model_id=args.model_id,
-        adapter_dir=args.adapter_dir,
+        adapter_dir=adapter_dir,
         processor_dir=args.processor_dir,
         device=str(device),
         wer=float(metric.compute()),

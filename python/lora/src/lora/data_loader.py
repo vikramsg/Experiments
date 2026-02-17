@@ -64,17 +64,21 @@ def load_librispeech_stream(split: str, sample_rate: int, max_samples: int | Non
         split=split,
         streaming=True,
     )
-    dataset = dataset.cast_column("audio", Audio(sampling_rate=sample_rate, decode=False))
+    dataset = dataset.cast_column("audio", Audio(sampling_rate=sample_rate))
     if max_samples:
         dataset = dataset.take(max_samples)
     records: dict[str, list[Any]] = {"audio": [], "text": [], "speaker_id": []}
     for sample in dataset:
         audio_info = sample["audio"]
-        audio_array, original_rate = sf.read(io.BytesIO(audio_info["bytes"]))
-        if audio_array.ndim > 1:
-            audio_array = np.mean(audio_array, axis=1)
-        resampled = resample_audio(audio_array.tolist(), original_rate, sample_rate)
-        records["audio"].append(resampled)
+        audio_array = audio_info["array"]
+        if isinstance(audio_array, np.ndarray) and audio_array.dtype == np.float64:
+             audio_array = audio_array.astype(np.float32)
+        
+        # Audio feature handles resampling if sampling_rate is specified in cast_column
+        # But we double check or just use it.
+        # Actually Audio(sampling_rate=...) does resampling automatically on access.
+        
+        records["audio"].append(audio_array)
         records["text"].append(sample["text"])
         records["speaker_id"].append(sample.get("speaker_id", -1))
     return Dataset.from_dict(records)
@@ -84,9 +88,19 @@ def prepare_features(batch: dict[str, Any], processor: Any, sample_rate: int) ->
     audio = batch["audio"]
     inputs = processor(audio, sampling_rate=sample_rate, return_tensors="pt")
     labels = processor.tokenizer(batch["text"], return_tensors="pt").input_ids
+    if hasattr(inputs, "input_features"):
+        input_key = "input_features"
+        input_tensor = inputs.input_features[0]
+    else:
+        input_key = "input_values"
+        input_tensor = inputs.input_values[0]
+    if hasattr(inputs, "attention_mask") and inputs.attention_mask is not None:
+        attention_mask = inputs.attention_mask[0]
+    else:
+        attention_mask = torch.ones(input_tensor.shape[-1], dtype=torch.long)
     return {
-        "input_values": inputs.input_values[0],
-        "attention_mask": inputs.attention_mask[0],
+        input_key: input_tensor,
+        "attention_mask": attention_mask,
         "labels": labels[0],
     }
 
@@ -98,7 +112,8 @@ def to_tensor(values: Any) -> torch.Tensor:
 
 
 def collate_features(features: list[dict[str, Any]]) -> dict[str, torch.Tensor]:
-    input_values_list = [to_tensor(item["input_values"]).squeeze() for item in features]
+    input_key = "input_features" if "input_features" in features[0] else "input_values"
+    input_values_list = [to_tensor(item[input_key]).squeeze() for item in features]
     attention_list = [to_tensor(item["attention_mask"]).squeeze() for item in features]
     labels_list = [to_tensor(item["labels"]) for item in features]
     input_lengths = [item.shape[-1] for item in input_values_list]
@@ -123,7 +138,7 @@ def collate_features(features: list[dict[str, Any]]) -> dict[str, torch.Tensor]:
         label_batch.append(labels)
 
     return {
-        "input_values": torch.stack(input_batch),
+        input_key: torch.stack(input_batch),
         "attention_mask": torch.stack(attention_batch),
         "labels": torch.stack(label_batch),
     }

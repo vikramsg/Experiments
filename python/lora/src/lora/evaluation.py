@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -14,6 +15,13 @@ from lora.model_utils import unwrap_peft
 class EvalResult:
     loss: float
     wer: float
+
+
+def normalize_text(text: str) -> str:
+    # Remove punctuation
+    text = re.sub(r"[^\w\s]", "", text)
+    # Convert to lowercase
+    return text.lower().strip()
 
 
 def decode_prediction(
@@ -32,7 +40,9 @@ def decode_prediction(
         predicted_ids = base_model.generate(
             input_values=input_values, attention_mask=attention_mask
         )
-    return processor.tokenizer.batch_decode(predicted_ids, skip_special_tokens=True)[0]
+    return normalize_text(
+        processor.tokenizer.batch_decode(predicted_ids, skip_special_tokens=True)[0]
+    )
 
 
 def eval_loss(model: Any, batch: dict[str, Any], device: torch.device) -> float:
@@ -67,10 +77,17 @@ def eval_wer(
                 attention_mask=payload["attention_mask"],
             )
         preds = processor.tokenizer.batch_decode(predicted_ids, skip_special_tokens=True)
+        preds = [normalize_text(p) for p in preds]
+
         labels = batch["labels"].clone()
         labels[labels == -100] = processor.tokenizer.pad_token_id
         references = processor.tokenizer.batch_decode(labels, skip_special_tokens=True)
+        references = [normalize_text(r) for r in references]
+
         metric.add_batch(predictions=preds, references=references)
+        if batches == 0:
+            print(f"DEBUG: Pred: '{preds[0]}'")
+            print(f"DEBUG: Ref: '{references[0]}'")
         batches += 1
         if max_batches and batches >= max_batches:
             break

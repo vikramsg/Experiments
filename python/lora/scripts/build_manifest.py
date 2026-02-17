@@ -59,16 +59,24 @@ def main() -> None:
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     entries = []
-    for sample in dataset.take(args.samples):
-        audio_info = sample["audio"]
-        with SoundFile(io.BytesIO(audio_info["bytes"])) as sound:
-            audio_array = sound.read(dtype="float32")
-        entry = ManifestEntry(
-            audio=audio_array.tolist(),
-            text=sample["text"],
-            speaker_id=sample.get("speaker_id", -1),
-        )
-        entries.append(json.dumps(asdict(entry)))
+    sample_iter = iter(dataset)
+    while len(entries) < args.samples:
+        try:
+            sample = next(sample_iter)
+        except StopIteration:
+            break
+        try:
+            audio_info = sample["audio"]
+            with SoundFile(io.BytesIO(audio_info["bytes"])) as sound:
+                audio_array = sound.read(dtype="float32")
+            entry = ManifestEntry(
+                audio=audio_array.tolist(),
+                text=sample["text"],
+                speaker_id=sample.get("speaker_id", -1),
+            )
+            entries.append(json.dumps(asdict(entry)))
+        except Exception:
+            continue
     output_path.write_text("\n".join(entries))
 
 
