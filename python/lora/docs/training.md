@@ -68,6 +68,7 @@
 - Eval loss:
 - Baseline text (sample):
 - Tuned text (sample):
+- Training duration (h:m:s):
 - Elapsed seconds:
 
 ## Artifacts

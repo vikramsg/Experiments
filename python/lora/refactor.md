@@ -20,7 +20,7 @@ The goal is a **real** tiny run with actual audio (not synthetic silence) while 
 Example command:
 
 ```
-uv run python train_real_small.py \
+uv run python -m lora.runners.real_small \
   --train-split train.100 \
   --dataset-samples 20 \
   --max-steps 20 \
@@ -30,7 +30,7 @@ uv run python train_real_small.py \
 ```
 
 ### Real Held‑Out Manifest Without FFmpeg Issues
-Use `scripts/build_manifest.py` with FFmpeg installed to create a real held‑out manifest
+Use `lora.scripts.build_manifest` with FFmpeg installed to create a real held‑out manifest
 from the `test` or `validation` splits.
 
 ### Debug Steps (FFmpeg Available)
@@ -61,9 +61,9 @@ uv run python scripts/run_stt.py \
 ```
 
 ## Verification Criteria
-- `train_real_small.py` completes with metrics JSON written to `outputs/<run>/real_metrics.json`.
-- `scripts/build_manifest.py` emits JSONL rows with `audio` arrays and `text` values.
-- `scripts/run_stt.py` produces `outputs/<run>/artifact_test.json` with `samples` and `wer`.
+- `uv run python -m lora.runners.real_small` completes with metrics JSON written to `outputs/<run>/real_metrics.json`.
+- `uv run python scripts/build_manifest.py` emits JSONL rows with `audio` arrays and `text` values.
+- `uv run python scripts/run_stt.py` produces `outputs/<run>/artifact_test.json` with `samples` and `wer`.
 
 ## Acceptance Criteria
 - Training produces a non-zero `train_loss` and a valid `baseline_eval_loss`/`tuned_eval_loss`.
@@ -94,8 +94,8 @@ src/lora/
 ### Refactor Steps
 1. Create `src/lora/` and move shared modules there.
 2. Move `main.py` logic into `src/lora/runners/poc.py`.
-3. Move `train_real_small.py` into `src/lora/runners/real_small.py`.
-4. Update entrypoints to import from `src/lora`.
+3. Move `train_real_small.py` into `src/lora/runners/real_small.py` (now done).
+4. Move scripts into `src/lora/scripts/` and update module paths.
 5. Add a thin `main.py` that delegates to `lora.runners.poc`.
 6. Update `README.md` and `plan.md` command examples.
 

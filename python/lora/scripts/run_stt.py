@@ -20,20 +20,16 @@ Flags:
 
 from __future__ import annotations
 
-
 import argparse
 import json
-import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
 
 import torch
+from datasets import Dataset
 from evaluate import load
 from peft import PeftModel
 from transformers import AutoModelForSpeechSeq2Seq
-
-from datasets import Dataset
 
 from lora.data_loader import load_manifest, normalize_audio, prepare_dataset
 from lora.model_utils import choose_device, configure_generation, load_processor
@@ -101,9 +97,7 @@ def run_stt(args: argparse.Namespace) -> SttReport:
                 input_values=batch["input_values"].to(device),
                 attention_mask=batch["attention_mask"].to(device),
             )
-        prediction = processor.tokenizer.batch_decode(
-            predicted_ids, skip_special_tokens=True
-        )[0]
+        prediction = processor.tokenizer.batch_decode(predicted_ids, skip_special_tokens=True)[0]
         reference = processor.tokenizer.decode(
             item["labels"][item["labels"] != -100], skip_special_tokens=True
         )

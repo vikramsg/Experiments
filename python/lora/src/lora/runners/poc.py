@@ -157,9 +157,7 @@ def run_poc(config: POCConfig) -> POCMetrics:
     train_loader = create_dataloader(split["train"], config.batch_size, shuffle=True)
     eval_batch = next(iter(create_dataloader(split["test"], config.batch_size, shuffle=False)))
 
-    lora_targets = find_lora_targets(
-        AutoModelForSpeechSeq2Seq.from_pretrained(config.model_id)
-    )
+    lora_targets = find_lora_targets(AutoModelForSpeechSeq2Seq.from_pretrained(config.model_id))
     if not lora_targets:
         lora_targets = ["q_proj", "v_proj"]
 

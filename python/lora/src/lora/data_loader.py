@@ -57,9 +57,7 @@ def resample_audio(audio: list[float], original_rate: int, target_rate: int) -> 
     return resampled.astype(np.float32).tolist()
 
 
-def load_librispeech_stream(
-    split: str, sample_rate: int, max_samples: int | None
-) -> Dataset:
+def load_librispeech_stream(split: str, sample_rate: int, max_samples: int | None) -> Dataset:
     dataset = load_dataset(
         "librispeech_asr",
         "clean",

@@ -4,3 +4,6 @@ outputs
 .ruff_cache
 __pycache__
 *.egg-info
+
+# Build manifest files
+data/*.jsonl

@@ -152,9 +152,7 @@ def run_real(config: RealRunConfig) -> RealRunMetrics:
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
 
     baseline_eval_loss = eval_loss(model, next(iter(val_loader)), device)
-    baseline_wer = eval_wer(
-        model, processor, test_loader, device, max_batches=config.wer_batches
-    )
+    baseline_wer = eval_wer(model, processor, test_loader, device, max_batches=config.wer_batches)
 
     start = time.time()
     train_loss = train_loop(
@@ -168,9 +166,7 @@ def run_real(config: RealRunConfig) -> RealRunMetrics:
     elapsed = time.time() - start
 
     tuned_eval_loss = eval_loss(model, next(iter(val_loader)), device)
-    tuned_wer = eval_wer(
-        model, processor, test_loader, device, max_batches=config.wer_batches
-    )
+    tuned_wer = eval_wer(model, processor, test_loader, device, max_batches=config.wer_batches)
 
     output_dir = Path(config.output_dir)
     model.save_pretrained(output_dir / "lora_adapter")
