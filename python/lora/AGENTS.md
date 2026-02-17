@@ -12,12 +12,15 @@ This repository is currently a minimal Python project.
 As the codebase grows, prefer adding feature modules in a dedicated package directory and tests under `tests/`.
 
 ## Build, Test, and Development Commands
-- `python3 -m venv .venv && source .venv/bin/activate`: create and activate local virtual environment.
-- `pip install -e .`: install the project in editable mode from `pyproject.toml`.
-- `python main.py`: run the current entrypoint locally.
-- `python -m pytest`: run tests (expected once test files are added).
+- `uv run python main.py`: run the current entrypoint locally.
+- `make help`: list available Make targets.
+- `make venv`: create the local virtual environment with `uv`.
+- `make sync`: install project dependencies with `uv`.
+- `make run`: run the current entrypoint.
+- `make test`: run tests with `pytest`.
+- `make lint`: run Ruff lint checks.
 
-If dependency management is moved to `uv` or another tool, document the exact replacement commands in `README.md`.
+Use `uv` strictly for environment management, dependency installation, and command execution. Do not use `pip`, `python -m venv`, `poetry`, or other package managers in this repository.
 
 ## Coding Style & Naming Conventions
 - Follow PEP 8 with 4-space indentation.
@@ -26,7 +29,7 @@ If dependency management is moved to `uv` or another tool, document the exact re
 - Add type hints for public functions and non-trivial internal APIs.
 - Use clear module names that describe purpose (for example, `training_config.py`, `data_loader.py`).
 
-No formatter/linter is configured yet; when adding one, standardize it in `pyproject.toml` and apply consistently.
+Ruff is the standard linter for this repository. Configure linting rules only in `pyproject.toml` under `[tool.ruff]` and `[tool.ruff.lint]`; avoid duplicating config in separate linter config files.
 
 ## Testing Guidelines
 - Use `pytest` for new tests.

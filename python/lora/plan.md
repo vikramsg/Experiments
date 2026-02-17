@@ -10,6 +10,27 @@
 2. **Verify MPS availability** with a short Python script (`torch.backends.mps.is_available()`), and record CPU fallback performance.
 3. **Confirm Moonshine checkpoint format**: identify the **medium** model checkpoint and tokenizer/feature-extractor assets (safetensors preferred). If only ONNX is available, note conversion requirements.
 
+## POC — Quick Proof of Concept (1–2 hours)
+Goal: demonstrate a full LoRA fine-tune + inference loop on this Mac with minimal data.
+1. **Lock Python/runtime**: use Python 3.11/3.12; create venv via `uv venv`, install deps via `uv sync`.
+2. **Smoke test MPS**: run a tiny forward/backward pass on `mps` and confirm no fallback.
+3. **Pick smallest viable ASR model**: use the smallest Moonshine-compatible checkpoint; otherwise a tiny HF ASR model supported by `transformers` + `peft`.
+4. **Prepare tiny dataset**: 20–100 labeled utterances (5–10 minutes total), short clips (5–15s), WAV/FLAC + transcripts.
+5. **Run LoRA fine-tune**:
+   - `batch_size=1`
+   - `gradient_accumulation_steps=8-16`
+   - `max_steps=50-200`
+   - `lora_r=4-8`
+   - `learning_rate=1e-4 to 5e-4`
+6. **Validate success**: loss decreases and a before/after transcript comparison shows improvement.
+7. **Save + reload adapter**: verify inference uses the saved LoRA checkpoint.
+8. **Record outcomes**: wall-clock time, peak memory, and any MPS issues.
+9. **POC stopping criteria**: loss decreases, transcript improves, and saved adapter reloads for inference.
+
+## Guidance
+- I will not stop until the POC is complete, including running verification and confirming it behaves as intended.
+- I will not stop for clarifications and will instead use best practices.
+
 ## Phase 1 — Tiny-Model Proof of Life (Required)
 Goal: demonstrate the fine-tuning pipeline works end-to-end on this Mac before scaling up.
 1. **Select a tiny ASR model** compatible with `transformers` + `peft` (smallest available Moonshine checkpoint if compatible; otherwise a tiny HF ASR model).
@@ -41,3 +62,8 @@ Goal: demonstrate the fine-tuning pipeline works end-to-end on this Mac before s
 - Tiny-model training notebook/script (phase 1).
 - Medium-model training script with LoRA config (phase 3).
 - Evaluation report + adapter checkpoint (phase 4).
+
+## Ref
+
+- peft repo is at /tmp/peft
+- moonshine repo is at /tmp/moonshine

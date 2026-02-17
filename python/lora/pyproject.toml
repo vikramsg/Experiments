@@ -3,5 +3,27 @@ name = "lora"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "accelerate>=0.29",
+    "datasets[audio]>=2.19",
+    "evaluate>=0.4",
+    "jiwer>=3.0",
+    "librosa>=0.10",
+    "peft>=0.11",
+    "soundfile>=0.12",
+    "torch>=2.2",
+    "transformers>=4.40",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9.6",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

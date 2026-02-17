@@ -82,3 +82,8 @@ Goal: produce production-ready artifacts for Moonshine runtime.
 - https://github.com/huggingface/peft/blob/main/examples/int8_training/peft_adalora_whisper_large_training.py
 - https://pytorch.org/docs/stable/notes/mps.html
 - https://github.com/pierre-cheneau/moonshine-finetune
+
+## Ref
+
+- peft repo is at /tmp/peft
+- moonshine repo is at /tmp/moonshine
