@@ -24,6 +24,7 @@ import argparse
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
+import re
 
 import torch
 from datasets import Dataset
@@ -50,6 +51,11 @@ class SttReport:
     device: str
     wer: float
     samples: list[SttSample]
+
+
+def normalize_text(text: str) -> str:
+    text = re.sub(r"[^\w\s]", "", text)
+    return text.lower().strip()
 
 
 def parse_args() -> argparse.Namespace:
@@ -111,7 +117,10 @@ def run_stt(args: argparse.Namespace) -> SttReport:
             label_ids = label_ids.tolist()
         label_ids = [token for token in label_ids if token != -100]
         reference = processor.tokenizer.decode(label_ids, skip_special_tokens=True)
-        metric.add_batch(predictions=[prediction], references=[reference])
+        metric.add_batch(
+            predictions=[normalize_text(prediction)],
+            references=[normalize_text(reference)],
+        )
         samples.append(SttSample(index=idx, reference=reference, prediction=prediction))
 
     report = SttReport(
