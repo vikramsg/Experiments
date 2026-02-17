@@ -5,7 +5,16 @@ from typing import Any
 
 import torch
 from peft import LoraConfig, get_peft_model
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
+from transformers import AutoConfig, AutoModelForCTC, AutoModelForSpeechSeq2Seq, AutoProcessor
+
+CTC_MODEL_TYPES = {
+    "hubert",
+    "unispeech",
+    "unispeech_sat",
+    "wav2vec2",
+    "wav2vec2_conformer",
+    "wavlm",
+}
 
 
 def choose_device(preferred: str | None = None) -> torch.device:
@@ -35,23 +44,68 @@ def resolve_dtype(device: torch.device) -> torch.dtype:
     return torch.float32
 
 
+def is_ctc_config(config: Any) -> bool:
+    return getattr(config, "model_type", None) in CTC_MODEL_TYPES
+
+
+def is_ctc_model(model_id: str) -> bool:
+    config = AutoConfig.from_pretrained(model_id)
+    return is_ctc_config(config)
+
+
+def _safe_set_token(tokenizer: Any, token_id: int | None, attr: str) -> None:
+    if token_id is None:
+        return
+    token = tokenizer.convert_ids_to_tokens(token_id)
+    if token is None:
+        return
+    setattr(tokenizer, attr, token)
+
+
+def _register_special_tokens(tokenizer: Any) -> None:
+    get_added_vocab = getattr(tokenizer, "get_added_vocab", None)
+    if not callable(get_added_vocab):
+        return
+    added_vocab = get_added_vocab()
+    if not added_vocab:
+        return
+    moonshine_tokens = [token for token in added_vocab if token.startswith("<<ST_")]
+    if not moonshine_tokens:
+        return
+    tokenizer.add_special_tokens({"additional_special_tokens": moonshine_tokens})
+    tokenizer.add_tokens(["<|en|>", "<|transcribe|>"])
+
+
 def load_processor(model_id: str, processor_dir: str | None = None) -> Any:
     token = os.environ.get("HF_TOKEN")
     source = processor_dir or model_id
     processor = AutoProcessor.from_pretrained(source, token=token)
+    config = AutoConfig.from_pretrained(model_id, token=token)
+    if processor.tokenizer.pad_token_id is None:
+        _safe_set_token(processor.tokenizer, config.pad_token_id, "pad_token")
+    if processor.tokenizer.bos_token_id is None:
+        _safe_set_token(processor.tokenizer, config.bos_token_id, "bos_token")
+    if processor.tokenizer.eos_token_id is None:
+        _safe_set_token(processor.tokenizer, config.eos_token_id, "eos_token")
     if processor.tokenizer.pad_token_id is None:
         processor.tokenizer.pad_token = "<unk>"
     if processor.tokenizer.bos_token_id is None:
         processor.tokenizer.bos_token = "<s>"
     if processor.tokenizer.eos_token_id is None:
         processor.tokenizer.eos_token = "</s>"
+    _register_special_tokens(processor.tokenizer)
     return processor
 
 
 def setup_model(model_id: str, device: torch.device, lora_config: LoraConfig) -> Any:
     token = os.environ.get("HF_TOKEN")
     dtype = resolve_dtype(device)
-    model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id, torch_dtype=dtype, token=token)
+    if is_ctc_model(model_id):
+        model = AutoModelForCTC.from_pretrained(model_id, torch_dtype=dtype, token=token)
+    else:
+        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+            model_id, torch_dtype=dtype, token=token
+        )
     model = get_peft_model(model, lora_config)
     model.to(device)
     model.config.use_cache = False
@@ -59,9 +113,11 @@ def setup_model(model_id: str, device: torch.device, lora_config: LoraConfig) ->
 
 
 def configure_generation(model: Any, processor: Any) -> None:
-    pad_token_id = processor.tokenizer.pad_token_id
-    bos_token_id = processor.tokenizer.bos_token_id
-    eos_token_id = processor.tokenizer.eos_token_id
+    if is_ctc_config(model.config):
+        return
+    pad_token_id = processor.tokenizer.pad_token_id or model.config.pad_token_id
+    bos_token_id = processor.tokenizer.bos_token_id or model.config.bos_token_id
+    eos_token_id = processor.tokenizer.eos_token_id or model.config.eos_token_id
     model.config.pad_token_id = pad_token_id
     model.config.decoder_start_token_id = bos_token_id
     model.config.bos_token_id = bos_token_id

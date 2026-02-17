@@ -87,8 +87,13 @@ def load_librispeech_stream(split: str, sample_rate: int, max_samples: int | Non
 
 def prepare_features(batch: dict[str, Any], processor: Any, sample_rate: int) -> dict[str, Any]:
     audio = batch["audio"]
-    inputs = processor(audio, sampling_rate=sample_rate, return_tensors="pt")
-    labels = processor.tokenizer(batch["text"], return_tensors="pt").input_ids
+    if hasattr(processor, "as_target_processor"):
+        inputs = processor(audio, sampling_rate=sample_rate, return_tensors="pt")
+        with processor.as_target_processor():
+            labels = processor(batch["text"], return_tensors="pt").input_ids
+    else:
+        inputs = processor(audio, sampling_rate=sample_rate, return_tensors="pt")
+        labels = processor.tokenizer(batch["text"], return_tensors="pt").input_ids
     if hasattr(inputs, "input_features"):
         input_key = "input_features"
         input_tensor = inputs.input_features[0]

@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from evaluate import load
 
-from lora.model_utils import unwrap_peft
+from lora.model_utils import is_ctc_config, unwrap_peft
 from lora.logging_utils import get_logger
 
 LOGGER = get_logger(__name__)
@@ -40,12 +40,18 @@ def decode_prediction(
         attention_mask = attention_mask.unsqueeze(0)
     input_values = input_values.to(model_dtype)
     with torch.no_grad():
-        predicted_ids = base_model.generate(
-            input_values=input_values, attention_mask=attention_mask
-        )
-    return normalize_text(
-        processor.tokenizer.batch_decode(predicted_ids, skip_special_tokens=True)[0]
-    )
+        if is_ctc_config(base_model.config):
+            logits = base_model(
+                input_values=input_values, attention_mask=attention_mask
+            ).logits
+            predicted_ids = logits.argmax(dim=-1)
+            decoded = processor.batch_decode(predicted_ids)
+        else:
+            predicted_ids = base_model.generate(
+                input_values=input_values, attention_mask=attention_mask
+            )
+            decoded = [processor.decode(predicted_ids[0], skip_special_tokens=True)]
+    return normalize_text(decoded[0])
 
 
 def eval_loss(model: Any, batch: dict[str, Any], device: torch.device) -> float:
@@ -78,11 +84,19 @@ def eval_wer(
         payload = {k: v.to(device) for k, v in batch.items()}
         payload["input_values"] = payload["input_values"].to(model_dtype)
         with torch.no_grad():
-            predicted_ids = base_model.generate(
-                input_values=payload["input_values"],
-                attention_mask=payload["attention_mask"],
-            )
-        preds = processor.tokenizer.batch_decode(predicted_ids, skip_special_tokens=True)
+            if is_ctc_config(base_model.config):
+                logits = base_model(
+                    input_values=payload["input_values"],
+                    attention_mask=payload["attention_mask"],
+                ).logits
+                predicted_ids = logits.argmax(dim=-1)
+                preds = processor.batch_decode(predicted_ids)
+            else:
+                predicted_ids = base_model.generate(
+                    input_values=payload["input_values"],
+                    attention_mask=payload["attention_mask"],
+                )
+                preds = [processor.decode(seq, skip_special_tokens=True) for seq in predicted_ids]
         preds = [normalize_text(p) for p in preds]
 
         labels = batch["labels"].clone()
