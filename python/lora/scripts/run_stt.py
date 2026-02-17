@@ -1,9 +1,7 @@
-from __future__ import annotations
-
 """Run STT inference with a saved LoRA adapter and processor artifacts.
 
 Usage:
-    uv run python -m lora.scripts.run_stt \
+    uv run python scripts/run_stt.py \
         --model-id UsefulSensors/moonshine-tiny \
         --adapter-dir outputs/real_small/lora_adapter \
         --processor-dir outputs/real_small/processor \
@@ -19,6 +17,8 @@ Flags:
     --output         Output JSON report path
     --device         Device override (mps, cuda, cpu)
 """
+
+from __future__ import annotations
 
 """Run STT inference with a saved LoRA adapter and processor artifacts.
 

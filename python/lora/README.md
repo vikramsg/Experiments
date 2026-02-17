@@ -28,8 +28,8 @@ Small real-world run:
 
 Artifact STT check:
 
-- `uv run python -m lora.scripts.build_manifest --split test --samples 5 --output data/heldout_manifest.jsonl`
-- `uv run python -m lora.scripts.run_stt --model-id UsefulSensors/moonshine-tiny --adapter-dir outputs/real_small/lora_adapter --processor-dir outputs/real_small/processor --audio-list data/heldout_manifest.jsonl --output outputs/real_small/artifact_test.json`
+- `uv run python scripts/build_manifest.py --split test --samples 5 --output data/heldout_manifest.jsonl`
+- `uv run python scripts/run_stt.py --model-id UsefulSensors/moonshine-tiny --adapter-dir outputs/real_small/lora_adapter --processor-dir outputs/real_small/processor --audio-list data/heldout_manifest.jsonl --output outputs/real_small/artifact_test.json`
 
 Artifacts are written to `outputs` by default.
 

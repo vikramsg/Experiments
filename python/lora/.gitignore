@@ -1,2 +1,5 @@
-.ruff_cache
 outputs
+
+# Python
+.ruff_cache
+__pycache__
