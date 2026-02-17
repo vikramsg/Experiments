@@ -18,11 +18,30 @@ Flags:
     --device         Device override (mps, cuda, cpu)
 """
 
+"""Run STT inference with a saved LoRA adapter and processor artifacts.
+
+Usage:
+    uv run python -m lora.scripts.run_stt \
+        --model-id UsefulSensors/moonshine-tiny \
+        --adapter-dir outputs/real_small/lora_adapter \
+        --processor-dir outputs/real_small/processor \
+        --audio-list data/heldout_manifest.jsonl \
+        --output outputs/real_small/artifact_test.json \
+        --device mps
+
+Flags:
+    --model-id       Base model ID
+    --adapter-dir    LoRA adapter directory
+    --processor-dir  Processor directory
+    --audio-list     JSONL manifest with audio arrays and text
+    --output         Output JSON report path
+    --device         Device override (mps, cuda, cpu)
+"""
+
 from __future__ import annotations
 
 import argparse
 import json
-import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -32,14 +51,10 @@ from evaluate import load
 from peft import PeftModel
 from transformers import AutoModelForSpeechSeq2Seq
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
-
 from datasets import Dataset
 
-from data_loader import prepare_dataset
-from model_utils import choose_device, configure_generation, load_processor
+from lora.data_loader import prepare_dataset
+from lora.model_utils import choose_device, configure_generation, load_processor
 
 
 @dataclass

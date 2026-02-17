@@ -1,7 +1,7 @@
 """Build a JSONL manifest of audio arrays + transcripts for STT checks.
 
 Usage:
-    uv run python scripts/build_manifest.py --split test --samples 3 --output data/heldout_manifest.jsonl
+    uv run python -m lora.scripts.build_manifest --split test --samples 3 --output data/heldout_manifest.jsonl
 
 Flags:
     --split     LibriSpeech split name (e.g. test, validation, train.100)
@@ -14,13 +14,8 @@ from __future__ import annotations
 import argparse
 import io
 import json
-import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.append(str(PROJECT_ROOT))
 
 from datasets import Audio, load_dataset
 from soundfile import SoundFile
