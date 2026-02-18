@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import json
 import math
 from dataclasses import dataclass
@@ -9,7 +8,6 @@ from typing import Any
 
 import librosa
 import numpy as np
-import soundfile as sf
 import torch
 from datasets import Audio, Dataset, load_dataset
 from torch.nn import functional as F

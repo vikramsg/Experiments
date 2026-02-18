@@ -22,15 +22,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
-import re
 
 import torch
 from datasets import Dataset
 from evaluate import load
 from peft import PeftModel
-from transformers import AutoConfig, AutoModelForCTC, AutoModelForSpeechSeq2Seq, MoonshineForConditionalGeneration
+from transformers import (
+    AutoConfig,
+    AutoModelForCTC,
+    AutoModelForSpeechSeq2Seq,
+    MoonshineForConditionalGeneration,
+)
 
 from lora.data_loader import load_manifest, normalize_audio, prepare_dataset
 from lora.logging_utils import get_logger, setup_logging

@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 
+
 class SpeechRecognizer:
     def __init__(self, model_id: str, mock: bool = False):
         self.mock = mock

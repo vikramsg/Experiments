@@ -1,9 +1,8 @@
+import time
+
 from rich.console import Console
 from rich.panel import Panel
-from rich.live import Live
-from rich.spinner import Spinner
-from rich.text import Text
-import time
+
 
 class VoiceUI:
     def __init__(self, console: Console):

@@ -1,5 +1,6 @@
-import sounddevice as sd
 import numpy as np
+import sounddevice as sd
+
 
 class AudioRecorder:
     def __init__(self, sample_rate=16000):

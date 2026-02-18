@@ -8,8 +8,8 @@ import numpy as np
 import torch
 from evaluate import load
 
-from lora.model_utils import is_ctc_config, unwrap_peft
 from lora.logging_utils import get_logger
+from lora.model_utils import is_ctc_config, unwrap_peft
 
 LOGGER = get_logger(__name__)
 

@@ -1,13 +1,13 @@
-import typer
-from rich.console import Console
-from typing_extensions import Annotated
 import time
+
 import numpy as np
+import typer
 from pynput import keyboard
+from rich.console import Console
 
 from lora_cli.audio import AudioRecorder
-from lora_cli.ui import VoiceUI
 from lora_cli.model import SpeechRecognizer
+from lora_cli.ui import VoiceUI
 
 app = typer.Typer()
 console = Console()
