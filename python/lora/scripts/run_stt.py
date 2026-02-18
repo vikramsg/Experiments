@@ -27,7 +27,6 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import torch
-from datasets import Dataset
 from evaluate import load
 from peft import PeftModel
 from transformers import (
@@ -37,7 +36,7 @@ from transformers import (
     MoonshineForConditionalGeneration,
 )
 
-from lora.data_loader import load_manifest, normalize_audio, prepare_dataset
+from lora.data_loader import build_manifest_dataset, load_manifest, prepare_dataset
 from lora.logging_utils import get_logger, setup_logging
 from lora.model_utils import (
     choose_device,
@@ -93,15 +92,8 @@ def run_stt(args: argparse.Namespace) -> SttReport:
     config = AutoConfig.from_pretrained(args.model_id)
     manifest_path = Path(args.audio_list)
     entries = load_manifest(manifest_path)
-    if not entries:
-        raise ValueError("Audio manifest is empty")
+    dataset = build_manifest_dataset(entries)
     LOGGER.info("Loaded manifest | path=%s | samples=%s", manifest_path, len(entries))
-    records = {
-        "audio": [normalize_audio(item["audio"]) for item in entries],
-        "text": [item["text"] for item in entries],
-        "speaker_id": [item.get("speaker_id", -1) for item in entries],
-    }
-    dataset = Dataset.from_dict(records)
 
     prepared = prepare_dataset(dataset, processor)
     LOGGER.info("Prepared dataset | samples=%s", len(prepared))

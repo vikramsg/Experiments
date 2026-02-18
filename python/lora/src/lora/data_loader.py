@@ -251,6 +251,37 @@ def normalize_audio(value: Any) -> list[float]:
     raise ValueError("Unsupported audio format in manifest")
 
 
+def build_manifest_dataset(entries: list[dict[str, Any]]) -> Dataset:
+    """Create a dataset from manifest entries.
+
+    Args:
+        entries: Parsed manifest entries.
+
+    Returns:
+        Dataset containing audio, text, and speaker_id fields.
+    """
+    if not entries:
+        raise ValueError("Manifest is empty")
+    records = {
+        "audio": [normalize_audio(item["audio"]) for item in entries],
+        "text": [item["text"] for item in entries],
+        "speaker_id": [item.get("speaker_id", -1) for item in entries],
+    }
+    return Dataset.from_dict(records)
+
+
+def load_manifest_dataset(path: Path) -> Dataset:
+    """Load a JSONL manifest into a Hugging Face dataset.
+
+    Args:
+        path: Path to the manifest file.
+
+    Returns:
+        Dataset containing audio, text, and speaker_id fields.
+    """
+    return build_manifest_dataset(load_manifest(path))
+
+
 def prepare_dataset(dataset: Dataset, processor: Any) -> Dataset:
     sample_rate = processor.feature_extractor.sampling_rate
     return dataset.map(
