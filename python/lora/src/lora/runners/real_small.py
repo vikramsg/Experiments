@@ -15,6 +15,7 @@ from transformers import AutoModelForSpeechSeq2Seq, set_seed
 from lora.data_loader import (
     DatasetConfig,
     create_dataloader,
+    load_manifest_dataset,
     load_dataset_split,
     prepare_dataset,
     split_by_speaker,
@@ -63,6 +64,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--dataset-samples", type=int, default=400)
     parser.add_argument("--train-split", default="train.100")
+    parser.add_argument("--manifest-path")
     parser.add_argument("--device", choices=["mps", "cuda", "cpu"], default=None)
     parser.add_argument("--max-seconds", type=float, default=8.0)
     parser.add_argument("--wer-batches", type=int, default=12)
@@ -173,14 +175,19 @@ def run_real(config: RealRunConfig) -> RealRunMetrics:
         sample_rate,
     )
 
-    dataset_config = DatasetConfig(
-        dataset="librispeech_clean",
-        split=config.train_split,
-        max_samples=config.dataset_samples,
-        max_seconds=config.max_seconds,
-        seed=config.seed,
-    )
-    raw_dataset = load_dataset_split(dataset_config, sample_rate)
+    if config.manifest_path:
+        manifest_path = Path(config.manifest_path)
+        raw_dataset = load_manifest_dataset(manifest_path)
+        LOGGER.info("Loading manifest dataset | path=%s", manifest_path)
+    else:
+        dataset_config = DatasetConfig(
+            dataset="librispeech_clean",
+            split=config.train_split,
+            max_samples=config.dataset_samples,
+            max_seconds=config.max_seconds,
+            seed=config.seed,
+        )
+        raw_dataset = load_dataset_split(dataset_config, sample_rate)
     train_raw, val_raw, test_raw = split_by_speaker(
         raw_dataset, test_ratio=0.1, val_ratio=0.1, seed=config.seed
     )
@@ -292,6 +299,7 @@ def main() -> None:
         device=args.device,
         max_seconds=args.max_seconds,
         wer_batches=args.wer_batches,
+        manifest_path=args.manifest_path,
     )
     metrics = run_real(config)
     save_metrics(metrics, Path(config.output_dir))

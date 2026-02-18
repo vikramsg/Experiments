@@ -60,3 +60,4 @@ class RealRunConfig:
     device: str | None
     max_seconds: float
     wer_batches: int
+    manifest_path: str | None
