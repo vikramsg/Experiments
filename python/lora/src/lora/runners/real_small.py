@@ -111,6 +111,7 @@ def train_loop(
             loss = outputs.loss / gradient_accumulation_steps
             loss.backward()
             if not first_grad_logged:
+                # TODO: remove inline grad fallback; make explicit and fail fast.
                 grad_values = [
                     float(param.grad.detach().norm().item()) if param.grad is not None else 0.0
                     for param in trainable_params
@@ -198,8 +199,17 @@ def run_real(config: RealRunConfig) -> RealRunMetrics:
     test_loader = create_dataloader(test_dataset, config.batch_size, shuffle=False)
 
     base_probe = AutoModelForSpeechSeq2Seq.from_pretrained(config.model_id)
+    # Prefer broad auto-detected LoRA targets (attention + projection/MLP modules)
+    # when available. This captures more adaptation capacity while still letting
+    # model-specific module names drive the final set.
     lora_targets = find_lora_targets(model=base_probe)
     del base_probe
+    # Fallback to q/v attention projections only when detection finds nothing.
+    # This is the conservative baseline: lower memory/compute on MPS and lower
+    # overfitting risk on small datasets, at the cost of reduced adaptation scope.
+    # TODO: Make target_modules explicit in RealRunConfig/CLI and stop relying on
+    # implicit fallback behavior from model probing.
+    # TODO: remove fallback to q/v projections; require explicit targets and fail fast.
     if not lora_targets:
         lora_targets = ["q_proj", "v_proj"]
     if not lora_targets:

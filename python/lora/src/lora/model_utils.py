@@ -25,6 +25,7 @@ def choose_device(preferred: str | None = None) -> torch.device:
             return torch.device("cuda")
         if preferred == "cpu":
             return torch.device("cpu")
+        # TODO: remove fallback device selection; fail fast on unsupported preference.
     if torch.backends.mps.is_available():
         return torch.device("mps")
     if torch.cuda.is_available():
@@ -107,10 +108,13 @@ def load_processor(model_id: str, processor_dir: str | None = None) -> Any:
     if processor.tokenizer.eos_token_id is None:
         _safe_set_token(processor.tokenizer, config.eos_token_id, "eos_token")
     if processor.tokenizer.pad_token_id is None:
+        # TODO: remove fallback pad token; make explicit token setup and fail fast.
         processor.tokenizer.pad_token = "<unk>"
     if processor.tokenizer.bos_token_id is None:
+        # TODO: remove fallback BOS token; make explicit token setup and fail fast.
         processor.tokenizer.bos_token = "<s>"
     if processor.tokenizer.eos_token_id is None:
+        # TODO: remove fallback EOS token; make explicit token setup and fail fast.
         processor.tokenizer.eos_token = "</s>"
     _register_special_tokens(processor.tokenizer)
     return processor
@@ -122,6 +126,7 @@ def setup_model(model_id: str, device: torch.device, lora_config: LoraConfig) ->
     if is_ctc_model(model_id):
         model = AutoModelForCTC.from_pretrained(model_id, torch_dtype=dtype, token=token)
     else:
+        # TODO: remove fallback model type selection; make explicit model class choice.
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             model_id, torch_dtype=dtype, token=token
         )
@@ -137,6 +142,7 @@ def configure_generation(model: Any, processor: Any) -> None:
     pad_token_id = processor.tokenizer.pad_token_id or model.config.pad_token_id
     bos_token_id = processor.tokenizer.bos_token_id or model.config.bos_token_id
     eos_token_id = processor.tokenizer.eos_token_id or model.config.eos_token_id
+    # TODO: remove fallback token resolution; make explicit token IDs and fail fast.
     model.config.pad_token_id = pad_token_id
     model.config.decoder_start_token_id = bos_token_id
     model.config.bos_token_id = bos_token_id
@@ -166,4 +172,5 @@ def unwrap_peft(model: Any) -> Any:
         return model.get_base_model()
     if hasattr(model, "base_model"):
         return model.base_model
+    # TODO: remove fallback unwrap; require explicit base model access.
     return model

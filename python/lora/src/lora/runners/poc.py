@@ -138,6 +138,7 @@ def train_loop(
             loss = outputs.loss / gradient_accumulation_steps
             loss.backward()
             if not first_grad_logged:
+                # TODO: remove inline grad fallback; make explicit and fail fast.
                 grad_values = [
                     float(param.grad.detach().norm().item()) if param.grad is not None else 0.0
                     for param in trainable_params
@@ -208,6 +209,7 @@ def run_poc(config: POCConfig) -> POCMetrics:
     if config.dataset == "synthetic":
         dataset = build_synthetic_dataset(sample_rate, config.max_seconds)
     else:
+        # TODO: remove fallback else; make dataset choice explicit and fail fast.
         dataset = load_dataset_split(dataset_config, sample_rate)
     dataset = prepare_dataset(dataset, processor)
     LOGGER.info("Prepared dataset | samples=%s", len(dataset))

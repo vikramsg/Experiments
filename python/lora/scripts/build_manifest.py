@@ -64,6 +64,7 @@ def main() -> None:
         try:
             sample = next(sample_iter)
         except StopIteration:
+            # TODO: remove fallback StopIteration handling; fail fast with explicit sample-count checks.
             break
         try:
             audio_info = sample["audio"]
@@ -76,6 +77,7 @@ def main() -> None:
             )
             entries.append(json.dumps(asdict(entry)))
         except Exception:
+            # TODO: remove fallback exception swallowing; fail fast with explicit error handling.
             continue
     output_path.write_text("\n".join(entries))
 

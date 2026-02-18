@@ -54,6 +54,7 @@ def build_synthetic_dataset(sample_rate: int, max_seconds: float) -> Dataset:
 def resample_audio(audio: list[float], original_rate: int, target_rate: int) -> list[float]:
     if original_rate == target_rate:
         return audio
+    # TODO: remove fallback resampling; make caller explicitly handle mismatched rates.
     resampled = librosa.resample(np.asarray(audio), orig_sr=original_rate, target_sr=target_rate)
     return resampled.astype(np.float32).tolist()
 
@@ -91,17 +92,20 @@ def prepare_features(batch: dict[str, Any], processor: Any, sample_rate: int) ->
         with processor.as_target_processor():
             labels = processor(batch["text"], return_tensors="pt").input_ids
     else:
+        # TODO: remove fallback for missing target processor; require explicit processor behavior.
         inputs = processor(audio, sampling_rate=sample_rate, return_tensors="pt")
         labels = processor.tokenizer(batch["text"], return_tensors="pt").input_ids
     if hasattr(inputs, "input_features"):
         input_key = "input_features"
         input_tensor = inputs.input_features[0]
     else:
+        # TODO: remove fallback for missing input_features; require explicit input key.
         input_key = "input_values"
         input_tensor = inputs.input_values[0]
     if hasattr(inputs, "attention_mask") and inputs.attention_mask is not None:
         attention_mask = inputs.attention_mask[0]
     else:
+        # TODO: remove fallback attention mask; require explicit mask generation.
         attention_mask = torch.ones(input_tensor.shape[-1], dtype=torch.long)
     return {
         input_key: input_tensor,
@@ -117,6 +121,7 @@ def to_tensor(values: Any) -> torch.Tensor:
 
 
 def collate_features(features: list[dict[str, Any]]) -> dict[str, torch.Tensor]:
+    # TODO: remove fallback input_key detection; make explicit in dataset mapping.
     input_key = "input_features" if "input_features" in features[0] else "input_values"
     input_values_list = [to_tensor(item[input_key]).squeeze() for item in features]
     attention_list = [to_tensor(item["attention_mask"]).squeeze() for item in features]

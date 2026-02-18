@@ -39,19 +39,20 @@ def decode_prediction(
     if attention_mask.dim() == 1:
         attention_mask = attention_mask.unsqueeze(0)
     input_values = input_values.to(model_dtype)
-    with torch.no_grad():
-        if is_ctc_config(base_model.config):
-            logits = base_model(
-                input_values=input_values, attention_mask=attention_mask
-            ).logits
-            predicted_ids = logits.argmax(dim=-1)
-            decoded = processor.batch_decode(predicted_ids)
-        else:
-            duration = input_values.shape[-1] / processor.feature_extractor.sampling_rate
-            max_new_tokens = max(10, min(int(duration * 5), 150))
-            predicted_ids = base_model.generate(
-                input_values=input_values,
-                attention_mask=attention_mask,
+        with torch.no_grad():
+            if is_ctc_config(base_model.config):
+                logits = base_model(
+                    input_values=input_values, attention_mask=attention_mask
+                ).logits
+                predicted_ids = logits.argmax(dim=-1)
+                decoded = processor.batch_decode(predicted_ids)
+            else:
+                # TODO: remove fallback branch; make decoding strategy explicit and fail fast.
+                duration = input_values.shape[-1] / processor.feature_extractor.sampling_rate
+                max_new_tokens = max(10, min(int(duration * 5), 150))
+                predicted_ids = base_model.generate(
+                    input_values=input_values,
+                    attention_mask=attention_mask,
                 max_new_tokens=max_new_tokens,
                 num_beams=5,
                 repetition_penalty=1.3,
@@ -101,6 +102,7 @@ def eval_wer(
                 predicted_ids = logits.argmax(dim=-1)
                 preds = processor.batch_decode(predicted_ids)
             else:
+                # TODO: remove fallback branch; make decoding strategy explicit and fail fast.
                 duration = (
                     payload["input_values"].shape[-1]
                     / processor.feature_extractor.sampling_rate
@@ -139,4 +141,5 @@ def eval_wer(
 
 
 def summarize_losses(losses: list[float]) -> float:
+    # TODO: remove fallback empty-loss handling; require explicit loss values.
     return float(np.mean(losses)) if losses else 0.0

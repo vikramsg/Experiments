@@ -110,11 +110,13 @@ def run_stt(args: argparse.Namespace) -> SttReport:
     elif config.model_type == "moonshine":
         base_model = MoonshineForConditionalGeneration.from_pretrained(args.model_id)
     else:
+        # TODO: remove fallback model selection; make explicit model class choice and fail fast.
         base_model = AutoModelForSpeechSeq2Seq.from_pretrained(args.model_id)
     if args.adapter_dir:
         model = PeftModel.from_pretrained(base_model, args.adapter_dir)
         adapter_dir = args.adapter_dir
     else:
+        # TODO: remove fallback to base model; require explicit adapter choice.
         model = base_model
         adapter_dir = None
     LOGGER.info("Model loaded | adapter=%s", adapter_dir or "none")
@@ -155,6 +157,7 @@ def run_stt(args: argparse.Namespace) -> SttReport:
             )[0]
             reference = entry["text"]
         else:
+            # TODO: remove fallback input_key detection; make explicit input key and fail fast.
             input_key = "input_features" if "input_features" in item else "input_values"
             input_values = torch.tensor(item[input_key]).unsqueeze(0)
             attention_mask = torch.tensor(item["attention_mask"]).unsqueeze(0)
@@ -173,6 +176,7 @@ def run_stt(args: argparse.Namespace) -> SttReport:
                     predicted_ids = logits.argmax(dim=-1)
                     prediction = processor.batch_decode(predicted_ids)[0]
                 else:
+                    # TODO: remove fallback decode branch; make explicit decoding strategy and fail fast.
                     predicted_ids = model.generate(
                         **{
                             input_key: batch[input_key].to(device),
