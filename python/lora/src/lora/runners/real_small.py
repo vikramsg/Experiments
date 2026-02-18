@@ -222,7 +222,6 @@ def run_real(config: RealRunConfig) -> RealRunMetrics:
         lora_dropout=config.lora_dropout,
         bias="none",
         target_modules=lora_targets,
-        task_type="SEQ_2_SEQ_LM",
     )
     model = setup_model(config.model_id, device, lora_config)
     configure_generation(model, processor)

@@ -159,12 +159,21 @@ def _build_dataloaders(
         Tuple of train and validation dataloaders.
     """
     dataset = _load_training_dataset(dataset_path, processor, max_seconds, seed)
+    dataset_size = len(dataset)
+    if dataset_size < 2:
+        raise ValueError("Need at least two samples to create train/val splits")
+    test_size = max(1, int(dataset_size * 0.2))
+    test_size = min(test_size, dataset_size - 1)
+    use_speaker_split = False
     if "speaker_id" in dataset.column_names:
+        unique_speakers = {speaker for speaker in dataset["speaker_id"]}
+        use_speaker_split = len(unique_speakers) >= 3 and dataset_size >= 10
+    if use_speaker_split:
         train_dataset, val_dataset, _ = split_by_speaker(
             dataset, test_ratio=0.1, val_ratio=0.1, seed=seed
         )
     else:
-        split = dataset.train_test_split(test_size=0.2, seed=seed)
+        split = dataset.train_test_split(test_size=test_size, seed=seed)
         train_dataset = split["train"]
         val_dataset = split["test"]
     train_loader = create_dataloader(train_dataset, batch_size, shuffle=True)
@@ -273,6 +282,7 @@ def train_loop(
     )
 
     interval_wer: float | None = None
+    stop_training = False
     while step < max_steps:
         for batch in train_loader:
             batch = {k: v.to(device) for k, v in batch.items()}
@@ -304,10 +314,12 @@ def train_loop(
                         interval_wer,
                         baseline_wer,
                     )
-                    step = max_steps
+                    stop_training = True
                     break
             if step >= max_steps:
                 break
+        if stop_training:
+            break
 
     deltas = [
         float((param.detach() - initial).abs().sum().item())
@@ -363,7 +375,6 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
         lora_dropout=config.lora_dropout,
         bias="none",
         target_modules=lora_targets,
-        task_type="SEQ_2_SEQ_LM",
     )
     model = setup_model(config.model_id, device, lora_config)
     configure_generation(model, processor)
@@ -404,7 +415,10 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
         tuned_wer,
     )
 
-    if config.wer_stop_threshold is not None and tuned_wer > baseline_wer * config.wer_stop_threshold:
+    if (
+        config.wer_stop_threshold is not None
+        and tuned_wer > baseline_wer * config.wer_stop_threshold
+    ):
         LOGGER.warning(
             "WER regression threshold exceeded | tuned=%.4f | baseline=%.4f | ratio=%.2f",
             tuned_wer,

@@ -9,7 +9,7 @@ import torch
 from evaluate import load
 
 from lora.logging_utils import get_logger
-from lora.model_utils import is_ctc_config
+from lora.model_utils import is_ctc_config, unwrap_peft
 
 LOGGER = get_logger(__name__)
 
@@ -61,6 +61,7 @@ def decode_prediction(
     Returns:
         Normalized decoded transcript.
     """
+    model = unwrap_peft(model)
     model_dtype = next(model.parameters()).dtype
     # TODO: remove fallback batch key usage; require explicit input_values/attention_mask.
     input_values = batch["input_values"].to(device)
@@ -102,6 +103,7 @@ def eval_loss(model: Any, batch: dict[str, Any], device: torch.device) -> float:
     Returns:
         Loss value for the batch.
     """
+    model = unwrap_peft(model)
     model_dtype = next(model.parameters()).dtype
     payload = {k: v.to(device) for k, v in batch.items()}
     payload["input_values"] = payload["input_values"].to(model_dtype)
@@ -133,6 +135,7 @@ def eval_wer(
         Word error rate (WER).
     """
     metric = load("wer")
+    model = unwrap_peft(model)
     model_dtype = next(model.parameters()).dtype
     model.eval()
     batches = 0

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import torch
 from peft import LoraConfig, get_peft_model
@@ -162,16 +163,21 @@ def configure_generation(model: Any, processor: Any) -> None:
 
 
 def find_lora_targets(model: Any) -> list[str]:
+    module_names = {name.split(".")[-1] for name, _ in model.named_modules()}
+    override = os.environ.get("LORA_TARGETS")
+    if override:
+        requested = [item.strip() for item in override.split(",") if item.strip()]
+        return [name for name in requested if name in module_names]
     candidates = [
         "q_proj",
         "k_proj",
         "v_proj",
+        "o_proj",
         "out_proj",
         "proj",
         "fc1",
         "fc2",
     ]
-    module_names = {name.split(".")[-1] for name, _ in model.named_modules()}
     return [name for name in candidates if name in module_names]
 
 
