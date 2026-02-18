@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, Sequence
 
 import torch
 from peft import LoraConfig, get_peft_model
@@ -42,6 +42,25 @@ def resolve_dtype(device: torch.device) -> torch.dtype:
     if device.type in {"cuda", "mps"}:
         return torch.float16
     return torch.float32
+
+
+def normalize_audio_rms(audio_data: Sequence[float], target_rms: float = 0.075) -> list[float]:
+    """Normalize audio amplitude to a target RMS value.
+
+    Args:
+        audio_data: Audio samples in waveform order.
+        target_rms: Desired RMS value after normalization.
+
+    Returns:
+        RMS-normalized audio samples as a list of floats.
+    """
+    tensor = torch.tensor(audio_data, dtype=torch.float32)
+    rms = torch.sqrt(torch.mean(tensor**2)).item()
+    if rms > 0.001:
+        scale_factor = target_rms / rms
+        normalized = tensor * scale_factor
+        return torch.clamp(normalized, -1.0, 1.0).tolist()
+    return tensor.tolist()
 
 
 def is_ctc_config(config: Any) -> bool:

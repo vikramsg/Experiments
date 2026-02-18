@@ -47,8 +47,17 @@ def decode_prediction(
             predicted_ids = logits.argmax(dim=-1)
             decoded = processor.batch_decode(predicted_ids)
         else:
+            duration = input_values.shape[-1] / processor.feature_extractor.sampling_rate
+            max_new_tokens = max(10, min(int(duration * 5), 150))
             predicted_ids = base_model.generate(
-                input_values=input_values, attention_mask=attention_mask
+                input_values=input_values,
+                attention_mask=attention_mask,
+                max_new_tokens=max_new_tokens,
+                num_beams=5,
+                repetition_penalty=1.3,
+                no_repeat_ngram_size=2,
+                do_sample=False,
+                early_stopping=True,
             )
             decoded = [processor.decode(predicted_ids[0], skip_special_tokens=True)]
     return normalize_text(decoded[0])
@@ -92,9 +101,20 @@ def eval_wer(
                 predicted_ids = logits.argmax(dim=-1)
                 preds = processor.batch_decode(predicted_ids)
             else:
+                duration = (
+                    payload["input_values"].shape[-1]
+                    / processor.feature_extractor.sampling_rate
+                )
+                max_new_tokens = max(10, min(int(duration * 5), 150))
                 predicted_ids = base_model.generate(
                     input_values=payload["input_values"],
                     attention_mask=payload["attention_mask"],
+                    max_new_tokens=max_new_tokens,
+                    num_beams=5,
+                    repetition_penalty=1.3,
+                    no_repeat_ngram_size=2,
+                    do_sample=False,
+                    early_stopping=True,
                 )
                 preds = [processor.decode(seq, skip_special_tokens=True) for seq in predicted_ids]
         preds = [normalize_text(p) for p in preds]

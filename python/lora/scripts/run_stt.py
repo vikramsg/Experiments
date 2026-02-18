@@ -39,7 +39,13 @@ from transformers import (
 
 from lora.data_loader import load_manifest, normalize_audio, prepare_dataset
 from lora.logging_utils import get_logger, setup_logging
-from lora.model_utils import choose_device, configure_generation, is_ctc_config, load_processor
+from lora.model_utils import (
+    choose_device,
+    configure_generation,
+    is_ctc_config,
+    load_processor,
+    normalize_audio_rms,
+)
 
 
 @dataclass
@@ -65,16 +71,6 @@ LOGGER = get_logger(__name__)
 def normalize_text(text: str) -> str:
     text = re.sub(r"[^\w\s]", "", text)
     return text.lower().strip()
-
-
-def normalize_audio_rms(audio_data: list[float], target_rms: float = 0.075) -> list[float]:
-    array = torch.tensor(audio_data, dtype=torch.float32)
-    rms = torch.sqrt(torch.mean(array**2))
-    if rms > 0.001:
-        scale_factor = target_rms / rms
-        normalized = array * scale_factor
-        return torch.clamp(normalized, -1.0, 1.0).tolist()
-    return audio_data
 
 
 def parse_args() -> argparse.Namespace:

@@ -107,6 +107,18 @@ def train_loop(
     base_model = model.get_base_model()
     model_dtype = next(model.parameters()).dtype
     base_model.train()
+    trainable_params = [
+        param
+        for name, param in model.named_parameters()
+        if param.requires_grad and "lora" in name
+    ]
+    if not trainable_params:
+        raise ValueError("No trainable LoRA parameters found")
+    trainable_count = sum(param.numel() for param in trainable_params)
+    LOGGER.info("Trainable LoRA params | count=%s", trainable_count)
+    initial_weights = [param.detach().clone() for param in trainable_params]
+    first_grad_logged = False
+    delta_logged = False
     losses: list[float] = []
     step = 0
     optimizer.zero_grad()
@@ -125,11 +137,32 @@ def train_loop(
             outputs = base_model(**batch)
             loss = outputs.loss / gradient_accumulation_steps
             loss.backward()
+            if not first_grad_logged:
+                grad_values = [
+                    float(param.grad.detach().norm().item()) if param.grad is not None else 0.0
+                    for param in trainable_params
+                ]
+                grad_norm = float(torch.tensor(grad_values).norm().item())
+                if grad_norm == 0.0:
+                    raise ValueError("LoRA gradients are zero on first backward pass")
+                LOGGER.info("LoRA grad norm | value=%.6f", grad_norm)
+                first_grad_logged = True
             losses.append(loss.item() * gradient_accumulation_steps)
             if (step + 1) % gradient_accumulation_steps == 0:
                 optimizer.step()
                 optimizer.zero_grad()
                 update_step = (step + 1) // gradient_accumulation_steps
+                if not delta_logged and update_step >= 3:
+                    deltas = [
+                        float((param.detach() - initial).abs().sum().item())
+                        for param, initial in zip(
+                            trainable_params, initial_weights, strict=True
+                        )
+                    ]
+                    if sum(deltas) == 0.0:
+                        raise ValueError("LoRA weights did not change after updates")
+                    LOGGER.info("LoRA weight delta | value=%.6f", sum(deltas))
+                    delta_logged = True
                 if update_step == 1 or update_step % 5 == 0 or step + 1 == max_steps:
                     LOGGER.info(
                         "Update %s/%s | step=%s | loss=%.4f",

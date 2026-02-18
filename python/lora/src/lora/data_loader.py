@@ -13,6 +13,9 @@ from datasets import Audio, Dataset, load_dataset
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
+from lora.logging_utils import get_logger
+from lora.model_utils import normalize_audio_rms
+
 
 @dataclass
 class DatasetConfig:
@@ -71,12 +74,10 @@ def load_librispeech_stream(split: str, sample_rate: int, max_samples: int | Non
         audio_info = sample["audio"]
         audio_array = audio_info["array"]
         if isinstance(audio_array, np.ndarray) and audio_array.dtype == np.float64:
-             audio_array = audio_array.astype(np.float32)
-        
-        # Audio feature handles resampling if sampling_rate is specified in cast_column
-        # But we double check or just use it.
-        # Actually Audio(sampling_rate=...) does resampling automatically on access.
-        
+            audio_array = audio_array.astype(np.float32)
+
+        # Audio feature handles resampling if sampling_rate is specified in cast_column.
+        # Audio(sampling_rate=...) does resampling automatically on access.
         records["audio"].append(audio_array)
         records["text"].append(sample["text"])
         records["speaker_id"].append(sample.get("speaker_id", -1))
@@ -84,7 +85,7 @@ def load_librispeech_stream(split: str, sample_rate: int, max_samples: int | Non
 
 
 def prepare_features(batch: dict[str, Any], processor: Any, sample_rate: int) -> dict[str, Any]:
-    audio = batch["audio"]
+    audio = normalize_audio_rms(batch["audio"])
     if hasattr(processor, "as_target_processor"):
         inputs = processor(audio, sampling_rate=sample_rate, return_tensors="pt")
         with processor.as_target_processor():
@@ -249,6 +250,6 @@ def prepare_dataset(dataset: Dataset, processor: Any) -> Dataset:
         lambda batch: prepare_features(batch, processor, sample_rate),
         remove_columns=[col for col in dataset.column_names if col != "speaker_id"],
     )
-from lora.logging_utils import get_logger
+
 
 LOGGER = get_logger(__name__)
