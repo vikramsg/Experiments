@@ -9,7 +9,7 @@ import torch
 from evaluate import load
 
 from lora.logging_utils import get_logger
-from lora.model_utils import is_ctc_config, unwrap_peft
+from lora.model_utils import is_ctc_config
 
 LOGGER = get_logger(__name__)
 
@@ -21,16 +21,46 @@ class EvalResult:
 
 
 def normalize_text(text: str) -> str:
+    """Normalize transcripts for WER comparisons.
+
+    Args:
+        text: Raw transcript.
+
+    Returns:
+        Normalized transcript with punctuation removed and lowercased.
+    """
     # Remove punctuation
     text = re.sub(r"[^\w\s]", "", text)
     # Convert to lowercase
     return text.lower().strip()
 
 
+def _generation_kwargs(duration: float) -> dict[str, float | int | bool]:
+    max_new_tokens = max(10, min(int(duration * 5), 150))
+    return {
+        "max_new_tokens": max_new_tokens,
+        "num_beams": 5,
+        "repetition_penalty": 1.3,
+        "no_repeat_ngram_size": 2,
+        "do_sample": False,
+        "early_stopping": True,
+    }
+
+
 def decode_prediction(
     model: Any, processor: Any, batch: dict[str, Any], device: torch.device
 ) -> str:
-    base_model = unwrap_peft(model)
+    """Decode a single batch using adapter-aware generation.
+
+    Args:
+        model: Model or adapter-wrapped model.
+        processor: Model processor/tokenizer.
+        batch: Prepared batch containing input tensors.
+        device: Torch device for inference.
+
+    Returns:
+        Normalized decoded transcript.
+    """
     model_dtype = next(model.parameters()).dtype
     # TODO: remove fallback batch key usage; require explicit input_values/attention_mask.
     input_values = batch["input_values"].to(device)
@@ -43,8 +73,8 @@ def decode_prediction(
         attention_mask = attention_mask.unsqueeze(0)
     input_values = input_values.to(model_dtype)
     with torch.no_grad():
-        if is_ctc_config(base_model.config):
-            logits = base_model(
+        if is_ctc_config(model.config):
+            logits = model(
                 input_values=input_values, attention_mask=attention_mask
             ).logits
             predicted_ids = logits.argmax(dim=-1)
@@ -52,29 +82,32 @@ def decode_prediction(
         else:
             # TODO: remove fallback branch; make decoding strategy explicit and fail fast.
             duration = input_values.shape[-1] / processor.feature_extractor.sampling_rate
-            max_new_tokens = max(10, min(int(duration * 5), 150))
-            predicted_ids = base_model.generate(
+            predicted_ids = model.generate(
                 input_values=input_values,
                 attention_mask=attention_mask,
-                max_new_tokens=max_new_tokens,
-                num_beams=5,
-                repetition_penalty=1.3,
-                no_repeat_ngram_size=2,
-                do_sample=False,
-                early_stopping=True,
+                **_generation_kwargs(duration),
             )
             decoded = [processor.decode(predicted_ids[0], skip_special_tokens=True)]
     return normalize_text(decoded[0])
 
 
 def eval_loss(model: Any, batch: dict[str, Any], device: torch.device) -> float:
-    base_model = unwrap_peft(model)
+    """Evaluate loss on a single batch using adapter-aware forward pass.
+
+    Args:
+        model: Model or adapter-wrapped model.
+        batch: Prepared batch containing input tensors.
+        device: Torch device for evaluation.
+
+    Returns:
+        Loss value for the batch.
+    """
     model_dtype = next(model.parameters()).dtype
     payload = {k: v.to(device) for k, v in batch.items()}
     payload["input_values"] = payload["input_values"].to(model_dtype)
-    base_model.eval()
+    model.eval()
     with torch.no_grad():
-        outputs = base_model(**payload)
+        outputs = model(**payload)
     loss_value = float(outputs.loss.item())
     LOGGER.info("Eval loss computed | loss=%.4f", loss_value)
     return loss_value
@@ -87,18 +120,29 @@ def eval_wer(
     device: torch.device,
     max_batches: int | None = None,
 ) -> float:
+    """Compute WER for a dataloader using adapter-aware generation.
+
+    Args:
+        model: Model or adapter-wrapped model.
+        processor: Model processor/tokenizer.
+        dataloader: Iterable of prepared batches.
+        device: Torch device for evaluation.
+        max_batches: Optional batch limit for quicker evaluation.
+
+    Returns:
+        Word error rate (WER).
+    """
     metric = load("wer")
-    base_model = unwrap_peft(model)
     model_dtype = next(model.parameters()).dtype
-    base_model.eval()
+    model.eval()
     batches = 0
     LOGGER.info("WER evaluation start")
     for batch in dataloader:
         payload = {k: v.to(device) for k, v in batch.items()}
         payload["input_values"] = payload["input_values"].to(model_dtype)
         with torch.no_grad():
-            if is_ctc_config(base_model.config):
-                logits = base_model(
+            if is_ctc_config(model.config):
+                logits = model(
                     input_values=payload["input_values"],
                     attention_mask=payload["attention_mask"],
                 ).logits
@@ -109,16 +153,10 @@ def eval_wer(
                 duration = (
                     payload["input_values"].shape[-1] / processor.feature_extractor.sampling_rate
                 )
-                max_new_tokens = max(10, min(int(duration * 5), 150))
-                predicted_ids = base_model.generate(
+                predicted_ids = model.generate(
                     input_values=payload["input_values"],
                     attention_mask=payload["attention_mask"],
-                    max_new_tokens=max_new_tokens,
-                    num_beams=5,
-                    repetition_penalty=1.3,
-                    no_repeat_ngram_size=2,
-                    do_sample=False,
-                    early_stopping=True,
+                    **_generation_kwargs(duration),
                 )
                 preds = [processor.decode(seq, skip_special_tokens=True) for seq in predicted_ids]
         preds = [normalize_text(p) for p in preds]
@@ -143,5 +181,13 @@ def eval_wer(
 
 
 def summarize_losses(losses: list[float]) -> float:
+    """Summarize a list of losses with their mean.
+
+    Args:
+        losses: Training loss values.
+
+    Returns:
+        Mean loss or 0.0 when empty.
+    """
     # TODO: remove fallback empty-loss handling; require explicit loss values.
     return float(np.mean(losses)) if losses else 0.0

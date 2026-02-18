@@ -86,7 +86,7 @@ def load_librispeech_stream(split: str, sample_rate: int, max_samples: int | Non
 
 
 def prepare_features(batch: dict[str, Any], processor: Any, sample_rate: int) -> dict[str, Any]:
-    audio = normalize_audio_rms(batch["audio"])
+    audio = normalize_audio_rms(batch["audio"], target_rms=0.075)
     if hasattr(processor, "as_target_processor"):
         inputs = processor(audio, sampling_rate=sample_rate, return_tensors="pt")
         with processor.as_target_processor():
