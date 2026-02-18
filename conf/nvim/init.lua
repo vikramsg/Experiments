@@ -1,5 +1,17 @@
 -- Options
 
+------------------------------------------------------------------------------
+-- FUGITIVE CHEAT SHEET (Leader: <leader>gd)
+------------------------------------------------------------------------------
+-- Side-by-Side Diff Maps:
+--   -  : Stage / Unstage hunk
+--   dp : Diff Put (Stage hunk - if in working file)
+--   do : Diff Obtain (Stage hunk - if in index buffer)
+--   gf : Jump to real file & close diff
+--   ]c : Next change
+--   [c : Previous change
+------------------------------------------------------------------------------
+
 -- hacky way to ignore the vim global warnings issue
 local vim = vim
 
@@ -61,7 +73,9 @@ vim.keymap.set({ "n", "v", "i" }, "<Select>", "$", { desc = "Go to end of line" 
 -- Paste over selection without overwriting register
 vim.keymap.set("x", "p", "P", { desc = "Paste without overwriting register" })
 
--- Highlight when yanking (copying) text
+-- Delete without yanking (to the black hole register)
+vim.keymap.set({ "n", "v" }, "x", [["_x]], { desc = "Delete character/selection without yanking" })
+
 --  Try it with `yap` in normal mode
 --  See `:help vim.highlight.on_yank()`
 vim.api.nvim_create_autocmd("TextYankPost", {
@@ -798,6 +812,48 @@ require("lazy").setup({
 			--
 			-- More details: https://github.com/mikavilpas/yazi.nvim/issues/802
 			vim.g.loaded_netrwPlugin = 1
+		end,
+	},
+
+	-- vim-fugitive
+	{
+		"tpope/vim-fugitive",
+		config = function()
+			-- Modern Fugitive uses :Git (or :G) instead of :Gstatus
+			vim.keymap.set("n", "<leader>gs", vim.cmd.Git, { desc = "Git status" })
+			vim.keymap.set("n", "<leader>gd", ":Gdiffsplit<CR>", { desc = "Git diff current file" })
+
+			-- Custom Fugitive mappings
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = "fugitive",
+				callback = function()
+					-- In the status window, make 'Enter' on a hunk jump to the file at that line
+					vim.keymap.set("n", "<CR>", function()
+						local line = vim.fn.getline(".")
+						if line:match("^@@") or line:match("^[+-]") then
+							return "o"
+						end
+						return "<CR>"
+					end, { buffer = true, expr = true, remap = true })
+				end,
+			})
+
+			-- Global mapping: make 'gf' jump to the real file and close the diff
+			vim.keymap.set("n", "gf", function()
+				if vim.wo.diff then
+					-- FugitiveReal() returns the path to the actual file on disk
+					local real_file = vim.fn.FugitiveReal()
+					vim.cmd("edit " .. real_file)
+					vim.cmd("only")
+				else
+					-- Fallback to built-in gf
+					-- We use pcall to catch 'File not found' errors and print them cleanly
+					local ok, _ = pcall(vim.cmd.normal, { "gf", bang = true })
+					if not ok then
+						print("gf: File not found in path")
+					end
+				end
+			end, { desc = "Jump to working tree file and close diff" })
 		end,
 	},
 })
