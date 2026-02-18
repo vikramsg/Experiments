@@ -29,7 +29,8 @@ class AudioRecorder:
             self.stream.stop()
             self.stream.close()
             self.stream = None
-        
+
+        # TODO: remove fallback empty frame handling; require explicit recording state.
         if not self.frames:
             return np.array([], dtype=np.float32)
             

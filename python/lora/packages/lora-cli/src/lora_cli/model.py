@@ -25,6 +25,7 @@ class SpeechRecognizer:
             return "This is a simulated transcription."
 
         if len(audio_data) == 0:
+            # TODO: remove fallback empty audio handling; require explicit input validation.
             return ""
 
         # Normalize audio

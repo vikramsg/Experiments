@@ -19,6 +19,7 @@ class VoiceUI:
         self.console.print(f"[bold red]Error:[/bold red] {message}")
 
     def update_status(self, status: str, recording: bool = False):
+        # TODO: remove fallback styling; make recording state explicit and fail fast.
         style = "bold red" if recording else "bold blue"
         self.console.print(f"[{style}]{status}[/{style}]", end="\r")
 

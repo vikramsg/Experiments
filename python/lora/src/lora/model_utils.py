@@ -42,6 +42,7 @@ def mark_mps_fallback() -> bool:
 def resolve_dtype(device: torch.device) -> torch.dtype:
     if device.type in {"cuda", "mps"}:
         return torch.float16
+    # TODO: remove fallback dtype; make device dtype explicit and fail fast.
     return torch.float32
 
 
@@ -61,6 +62,7 @@ def normalize_audio_rms(audio_data: Sequence[float], target_rms: float = 0.075) 
         scale_factor = target_rms / rms
         normalized = tensor * scale_factor
         return torch.clamp(normalized, -1.0, 1.0).tolist()
+    # TODO: remove fallback audio normalization; require explicit minimum RMS handling.
     return tensor.tolist()
 
 
@@ -75,9 +77,11 @@ def is_ctc_model(model_id: str) -> bool:
 
 def _safe_set_token(tokenizer: Any, token_id: int | None, attr: str) -> None:
     if token_id is None:
+        # TODO: remove fallback token checks; fail fast on missing token IDs.
         return
     token = tokenizer.convert_ids_to_tokens(token_id)
     if token is None:
+        # TODO: remove fallback token checks; fail fast on missing tokens.
         return
     setattr(tokenizer, attr, token)
 
@@ -85,12 +89,15 @@ def _safe_set_token(tokenizer: Any, token_id: int | None, attr: str) -> None:
 def _register_special_tokens(tokenizer: Any) -> None:
     get_added_vocab = getattr(tokenizer, "get_added_vocab", None)
     if not callable(get_added_vocab):
+        # TODO: remove fallback vocab checks; require tokenizer to expose added vocab.
         return
     added_vocab = get_added_vocab()
     if not added_vocab:
+        # TODO: remove fallback vocab checks; require explicit special tokens.
         return
     moonshine_tokens = [token for token in added_vocab if token.startswith("<<ST_")]
     if not moonshine_tokens:
+        # TODO: remove fallback moonshine token filtering; require explicit tokens.
         return
     tokenizer.add_special_tokens({"additional_special_tokens": moonshine_tokens})
     tokenizer.add_tokens(["<|en|>", "<|transcribe|>"])
@@ -138,6 +145,7 @@ def setup_model(model_id: str, device: torch.device, lora_config: LoraConfig) ->
 
 def configure_generation(model: Any, processor: Any) -> None:
     if is_ctc_config(model.config):
+        # TODO: remove fallback early return; require explicit CTC handling.
         return
     pad_token_id = processor.tokenizer.pad_token_id or model.config.pad_token_id
     bos_token_id = processor.tokenizer.bos_token_id or model.config.bos_token_id

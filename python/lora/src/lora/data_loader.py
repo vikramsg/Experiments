@@ -168,6 +168,7 @@ def split_by_speaker(
 ) -> tuple[Dataset, Dataset, Dataset]:
     speaker_ids = sorted({item for item in dataset["speaker_id"]})
     if len(speaker_ids) < 3:
+        # TODO: remove fallback split; require explicit speaker IDs and fail fast.
         split = dataset.train_test_split(test_size=test_ratio, seed=seed)
         val_test = split["test"].train_test_split(test_size=0.5, seed=seed)
         LOGGER.info(
@@ -245,6 +246,7 @@ def normalize_audio(value: Any) -> list[float]:
     if isinstance(value, dict) and "array" in value:
         return value["array"]
     if isinstance(value, dict) and "bytes" in value:
+        # TODO: remove fallback audio format handling; require explicit array inputs.
         raise ValueError("Audio bytes are not supported; provide arrays")
     raise ValueError("Unsupported audio format in manifest")
 

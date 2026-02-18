@@ -32,27 +32,30 @@ def decode_prediction(
 ) -> str:
     base_model = unwrap_peft(model)
     model_dtype = next(model.parameters()).dtype
+    # TODO: remove fallback batch key usage; require explicit input_values/attention_mask.
     input_values = batch["input_values"].to(device)
     attention_mask = batch["attention_mask"].to(device)
     if input_values.dim() == 1:
+        # TODO: remove fallback reshape; require batched input tensors.
         input_values = input_values.unsqueeze(0)
     if attention_mask.dim() == 1:
+        # TODO: remove fallback reshape; require batched attention masks.
         attention_mask = attention_mask.unsqueeze(0)
     input_values = input_values.to(model_dtype)
-        with torch.no_grad():
-            if is_ctc_config(base_model.config):
-                logits = base_model(
-                    input_values=input_values, attention_mask=attention_mask
-                ).logits
-                predicted_ids = logits.argmax(dim=-1)
-                decoded = processor.batch_decode(predicted_ids)
-            else:
-                # TODO: remove fallback branch; make decoding strategy explicit and fail fast.
-                duration = input_values.shape[-1] / processor.feature_extractor.sampling_rate
-                max_new_tokens = max(10, min(int(duration * 5), 150))
-                predicted_ids = base_model.generate(
-                    input_values=input_values,
-                    attention_mask=attention_mask,
+    with torch.no_grad():
+        if is_ctc_config(base_model.config):
+            logits = base_model(
+                input_values=input_values, attention_mask=attention_mask
+            ).logits
+            predicted_ids = logits.argmax(dim=-1)
+            decoded = processor.batch_decode(predicted_ids)
+        else:
+            # TODO: remove fallback branch; make decoding strategy explicit and fail fast.
+            duration = input_values.shape[-1] / processor.feature_extractor.sampling_rate
+            max_new_tokens = max(10, min(int(duration * 5), 150))
+            predicted_ids = base_model.generate(
+                input_values=input_values,
+                attention_mask=attention_mask,
                 max_new_tokens=max_new_tokens,
                 num_beams=5,
                 repetition_penalty=1.3,
@@ -104,8 +107,7 @@ def eval_wer(
             else:
                 # TODO: remove fallback branch; make decoding strategy explicit and fail fast.
                 duration = (
-                    payload["input_values"].shape[-1]
-                    / processor.feature_extractor.sampling_rate
+                    payload["input_values"].shape[-1] / processor.feature_extractor.sampling_rate
                 )
                 max_new_tokens = max(10, min(int(duration * 5), 150))
                 predicted_ids = base_model.generate(

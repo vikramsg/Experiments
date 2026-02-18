@@ -57,6 +57,7 @@ def start(
                     text = recognizer.transcribe(audio_data)
                     ui.print_user_message(text)
                 except Exception as e:
+                    # TODO: remove fallback exception handling; fail fast with explicit error types.
                     ui.print_error(str(e))
                 ui.reset_status()
 
@@ -65,6 +66,7 @@ def start(
         try:
             listener.join()
         except KeyboardInterrupt:
+            # TODO: remove fallback KeyboardInterrupt handling; make shutdown explicit and fail fast.
             ui.print_system("Goodbye!")
 
 if __name__ == "__main__":
