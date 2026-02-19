@@ -10,6 +10,9 @@
 --   gf : Jump to real file & close diff
 --   ]c : Next change
 --   [c : Previous change
+--
+-- Neo-tree Maps (in explorer):
+--   Y  : Copy filename to clipboard
 ------------------------------------------------------------------------------
 
 -- hacky way to ignore the vim global warnings issue
@@ -235,6 +238,16 @@ require("lazy").setup({
 					show_hidden_count = true,
 					hide_dotfiles = false,
 					hide_gitignored = false,
+				},
+			},
+			window = {
+				mappings = {
+					["Y"] = function(state)
+						local node = state.tree:get_node()
+						local path = node:get_id()
+						vim.fn.setreg("+", vim.fn.fnamemodify(path, ":t"))
+						print("Copied filename: " .. vim.fn.fnamemodify(path, ":t"))
+					end,
 				},
 			},
 		},

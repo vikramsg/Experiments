@@ -77,3 +77,6 @@ zinit snippet https://raw.githubusercontent.com/junegunn/fzf/master/shell/key-bi
 
 [[ -f ~/.zshenv ]] && source ~/.zshenv
 
+
+
+. "$HOME/.cargo/env"

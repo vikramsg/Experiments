@@ -20,6 +20,7 @@ class ExperimentConfig:
     seed: int
     dataset_path: str
     manifest_path: str
+    safety_manifest_path: str | None
     max_seconds: float
     device: str | None
     wer_stop_threshold: float | None
