@@ -8,28 +8,34 @@ from pathlib import Path
 from rich.logging import RichHandler
 
 
-def setup_logging(level: int = logging.INFO) -> None:
+def setup_logging(level: int = logging.INFO, log_path: Path | None = None) -> None:
     root = logging.getLogger()
+    # If handlers already exist, we clear them to reconfigure (e.g., to add a specific file handler)
     if root.handlers:
-        root.setLevel(level)
-        return
+        for handler in root.handlers[:]:
+            root.removeHandler(handler)
 
     handlers: list[logging.Handler] = [RichHandler(rich_tracebacks=True, show_path=False)]
 
     try:
-        log_dir = Path("outputs")
-        log_dir.mkdir(parents=True, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_file = log_dir / f"run_{timestamp}.log"
-
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        )
-        handlers.append(file_handler)
+        if log_path:
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            file_handler = logging.FileHandler(log_path)
+            file_handler.setFormatter(
+                logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            )
+            handlers.append(file_handler)
+        else:
+            log_dir = Path("outputs")
+            log_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_file = log_dir / f"run_{timestamp}.log"
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setFormatter(
+                logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+            )
+            handlers.append(file_handler)
     except Exception:
-        # Fallback to console-only if file logging fails (e.g., permissions)
         pass
 
     logging.basicConfig(

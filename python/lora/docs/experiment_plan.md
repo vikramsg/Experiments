@@ -2,78 +2,48 @@
 
 Single source of truth for active LoRA experiments.
 
-Legacy/incorrect workflow results were archived to:
-- `docs/archive_legacy_results.md`
-
 ## Active Goals
-- Improve WER on domain-shifted audio (`data/domain_manifest.jsonl`).
-- Keep heldout performance non-regressing (`data/heldout_manifest.jsonl`).
-- Use reproducible settings that avoid data starvation.
+- **Target Architecture**: **Moonshine v2** (via `UsefulSensors/moonshine-streaming-tiny`).
+- **Domain WER**: Reduce absolute WER by >= 1.0% on `data/domain_manifest.jsonl`.
+- **Guardrail**: Maintain Heldout WER within 0.2% of baseline.
 
-## Active Protocol (Current)
-1. **Training data**: `data/train_manifest_expanded.jsonl`
-2. **Duration filter**: `--max-seconds=20`
-3. **Evaluation manifests**:
-   - primary: `data/domain_manifest.jsonl` (Targeting 500+ samples for stability)
-   - safety: `data/heldout_manifest.jsonl`
-4. **Normalization/decode parity**: Strict RMS normalization (0.075) across all paths.
-5. **Adapter parity**: Evaluate with active adapters (**No unwrap_peft**).
-6. **Checkpointing**: Always use the **Best-WER checkpoint** for final reporting.
-
-## Current Run Matrix (Retained)
-
-| Run ID | Date | Command | Dataset | Steps | LR | Manifest | Baseline WER | Tuned WER | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| h1-expanded-20260218 | 2026-02-18 | `uv run python src/lora/runners/experiment.py --output-dir outputs/experiment_h1_expanded_20260218 --max-steps 200 --learning-rate 1e-5 --eval-interval 50 --dataset-path data/train_manifest_expanded.jsonl --manifest-path data/heldout_manifest.jsonl --max-seconds 20 --seed 42` | `data/train_manifest_expanded.jsonl` | 200 | 1e-5 | `data/heldout_manifest.jsonl` | 0.0449 | 0.0449 | Flat heldout WER. |
-| h2-expanded-20260218 | 2026-02-18 | `uv run python src/lora/runners/experiment.py --output-dir outputs/experiment_h2_expanded_20260218 --max-steps 2000 --learning-rate 1e-4 --eval-interval 200 --dataset-path data/train_manifest_expanded.jsonl --manifest-path data/heldout_manifest.jsonl --max-seconds 20 --seed 42 --wer-stop-threshold 1.1` | `data/train_manifest_expanded.jsonl` | 2000 | 1e-4 | `data/heldout_manifest.jsonl` | 0.0449 | 0.0552 | Regressed; threshold stop hit. |
-| h3-lr1e4-expanded-20260218 | 2026-02-18 | `uv run python src/lora/runners/experiment.py --output-dir outputs/experiment_h3_lr1e4_expanded_20260218 --max-steps 200 --learning-rate 1e-4 --eval-interval 50 --dataset-path data/train_manifest_expanded.jsonl --manifest-path data/heldout_manifest.jsonl --max-seconds 20 --seed 42` | `data/train_manifest_expanded.jsonl` | 200 | 1e-4 | `data/heldout_manifest.jsonl` | 0.0449 | 0.0475 | Slight regression. |
-| h3-lr3e4-expanded-20260218 | 2026-02-18 | `uv run python src/lora/runners/experiment.py --output-dir outputs/experiment_h3_lr3e4_expanded_20260218 --max-steps 200 --learning-rate 3e-4 --eval-interval 50 --dataset-path data/train_manifest_expanded.jsonl --manifest-path data/heldout_manifest.jsonl --max-seconds 20 --seed 42` | `data/train_manifest_expanded.jsonl` | 200 | 3e-4 | `data/heldout_manifest.jsonl` | 0.0449 | 0.0723 | Regressed at higher LR. |
-| h4-domain-expanded-20260218 | 2026-02-18 | `uv run python src/lora/runners/experiment.py --output-dir outputs/experiment_h4_domain_expanded_20260218 --max-steps 200 --learning-rate 1e-4 --eval-interval 50 --dataset-path data/train_manifest_expanded.jsonl --manifest-path data/domain_manifest.jsonl --max-seconds 20 --seed 42` | `data/train_manifest_expanded.jsonl` | 200 | 1e-4 | `data/domain_manifest.jsonl` | 0.1168 | 0.1150 | Small domain improvement. |
-| headroom-heldout-20260218 | 2026-02-18 | `uv run python src/lora/runners/experiment.py --output-dir outputs/experiment_headroom_heldout_20260218 --max-steps 100 --learning-rate 1e-4 --eval-interval 50 --dataset-path data/train_manifest_expanded.jsonl --manifest-path data/heldout_manifest.jsonl --max-seconds 20 --seed 42` | `data/train_manifest_expanded.jsonl` | 100 | 1e-4 | `data/heldout_manifest.jsonl` | 0.0449 | 0.0458 | Heldout remains headroom-limited. |
-| headroom-domain-20260218 | 2026-02-18 | `uv run python src/lora/runners/experiment.py --output-dir outputs/experiment_headroom_domain_20260218 --max-steps 100 --learning-rate 1e-4 --eval-interval 50 --dataset-path data/train_manifest_expanded.jsonl --manifest-path data/domain_manifest.jsonl --max-seconds 20 --seed 42` | `data/train_manifest_expanded.jsonl` | 100 | 1e-4 | `data/domain_manifest.jsonl` | 0.1261 | 0.1253 | Domain headroom confirmed. |
-| exp_1_1_baseline_fixed | 2026-02-19 | `uv run python src/lora/runners/experiment.py --output-dir outputs/exp_1_1_baseline_fixed --max-steps 200 --learning-rate 1e-4 --eval-interval 50 --dataset-path data/train_manifest_expanded.jsonl --manifest-path data/domain_manifest.jsonl --max-seconds 20 --seed 42` | `data/train_manifest_expanded.jsonl` | 200 | 1e-4 | `data/domain_manifest.jsonl` | 0.1168 | 0.1349 | **Regression.** Fixed eval bug reveals LoRA instability at 1e-4. |
-| exp_2_1_dora_base | 2026-02-19 | `uv run python src/lora/runners/experiment.py --output-dir outputs/exp_2_1_dora_base --max-steps 200 --learning-rate 5e-5 --eval-interval 50 --use-dora --dataset-path data/train_manifest_expanded.jsonl --manifest-path data/domain_manifest.jsonl --max-seconds 20 --seed 42` | `data/train_manifest_expanded.jsonl` | 200 | 5e-5 | `data/domain_manifest.jsonl` | 0.1174 | 0.1184 | **Stable.** DoRA prevents regression at 5e-5. |
-| exp_2_1b_dora_high_lr | 2026-02-19 | `uv run python src/lora/runners/experiment.py --output-dir outputs/exp_2_1b_dora_high_lr --max-steps 200 --learning-rate 2e-4 --eval-interval 50 --use-dora --dataset-path data/train_manifest_expanded.jsonl --manifest-path data/domain_manifest.jsonl --max-seconds 20 --seed 42` | `data/train_manifest_expanded.jsonl` | 200 | 2e-4 | `data/domain_manifest.jsonl` | 0.1174 | 0.2241 | **Severe Regression.** 2e-4 is too high even for DoRA. |
-
-## Current Conclusions
-- Expanded manifest + 20s filtering removed the earlier data starvation issue.
-- Heldout remains low-headroom and should be treated as a guardrail metric.
-- Domain manifest has sufficient headroom and is the right optimization target.
-
-## Guardrail Note (Incorrect Setup)
-- The old `--max-seconds=8` workflow collapsed training data to near-empty in this repo and produced unstable/noisy WER behavior.
-- Full evidence and old run logs are documented in `docs/archive_legacy_results.md`.
-
-## 2026-02-19 Optimization Plan (Revised)
-
-### Objective
-Stable reduction of Domain WER (>= 1.0%) with strict Heldout guardrails.
-
-### Phases
-1.  **Phase 1: Infrastructure**: Add LR schedulers and Best-Checkpoint saving to the runner.
-2.  **Phase 2: Data Stability**: Expand domain manifest to 500+ samples to remove "Lucky Average" bias.
-3.  **Phase 3: DoRA Deep-Dive**: Execute "Long-and-Slow" runs (1000 steps) with scheduled LR.
-
-### Acceptance Criteria
-- Domain WER reduction >= 1.0% (validated on stable manifest).
-- Heldout WER regression <= 0.2%.
-- Full documentation of all intermediate failures and sweeps.
-
-### Guidance
-Persistence is mandatory. Continue iterating on hyperparameters and architectures until the acceptance criteria are met. Document all intermediate results in the Run Matrix.
+## Active Protocol
+1. **Model ID**: `UsefulSensors/moonshine-streaming-tiny` (Required for v2 architecture).
+2. **Training data**: `data/train_manifest_expanded.jsonl` (max-seconds=20).
+3. **Evaluation**: Dual-manifest (Domain + Heldout) with Best-WER checkpointing.
+4. **Normalization**: Strict RMS 0.075 across all paths.
 
 ## Research-Derived Strategy: The "Bridge-Focus" Approach
 
-Based on the **Moonshine v2 (Feb 2026)** paper, our current strategy of targeting the entire model or primarily the encoder is likely inefficient. We observed in `exp_2_1_dora_stability` that training loss dropped by 50% while WER actually regressed. 
+Analysis of the Moonshine v2 paper and current log failures (Loss dropping but WER flat) indicates that fine-tuning must move beyond the encoder.
 
 ### Technical Justification
-1.  **Parameter Density**: The **Decoder (22.8M params)** is 3x larger than the Encoder (7.39M). Most of the "linguistic intelligence" resides here.
-2.  **The "Bridge" Bottleneck**: The **Adapter (1.31M params)** is the specific component that translates position-free acoustic features into position-aware tokens. If the domain shift (accents/noise) affects temporal alignment, the Adapter is the highest-leverage target for correction.
-3.  **Cross-Attention**: The disconnect between Loss and WER suggests the model "hears" the audio (Encoder) but fail to "query" the right features during text generation. Targeting the **Decoder's Cross-Attention layers** directly addresses this.
+- **Parameter Density**: The Decoder (22.8M) is 3x larger than the Encoder.
+- **The Adapter Stage**: The 1.31M parameter Adapter is the high-leverage target for correcting temporal alignment in domain-shifted audio.
+- **Cross-Attention**: Adapting the Decoder's cross-attention is necessary to improve how the model maps acoustic features to domain vocabulary.
 
-### Proposed Experiment: exp_2_3_bridge_focus
-| Run ID | Goal | Target Modules | LR | Steps |
-| :--- | :--- | :--- | :--- | :--- |
-| **exp_2_3** | Resolve Loss-WER disconnect | `decoder.*cross_attention`, `adapter` | 1e-5 | 1000 |
+### Current Run Matrix
 
-**Strategy**: By freezing the "acoustic" encoder and only adapting the "bridge" and "linguistic" decoder, we protect the model's base speech recognition while forcing it to re-map its output to our specific domain vocabulary.
+| Run ID | Model | Steps | LR | Target Modules | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| exp_2_3_v2_bridge_focus | streaming-tiny | 1000 | 1e-5 | All Linear | **Running.** Baseline: 12.85% (Domain), 4.75% (Heldout). |
+
+## Current Conclusions (v2)
+- **Baseline Validated**: Moonshine v2 `streaming-tiny` establishes a stable 12.85% Domain WER floor.
+- **Error Profile**: Baseline errors show phonetic confusion on domain terms (e.g., "mester gurr" -> "mr gerk").
+- **Stability**: Low LR (1e-5) is currently showing stable loss reduction without immediate WER spikes.
+
+## 2026-02-19 Optimization Plan (Revised v3)
+
+### Objective
+Stable reduction of Domain WER (>= 1.0%) with strict Heldout guardrails using v2 architecture.
+
+### Phases
+1.  **Phase 1: v2 Infrastructure**: (Complete) Shifted to `streaming-tiny`, filtered out non-Linear targets.
+2.  **Phase 2: Bridge-Focus Execution**: (Active) 1000-step DoRA run at 1e-5 LR targeting all Linear layers.
+3.  **Phase 3: Deep Evaluation**: If Phase 2 succeeds, validate the `lora_adapter_best` and finalize reporting.
+
+### Acceptance Criteria
+- Domain WER reduction >= 1.0% (validated on 500-sample stable manifest).
+- Heldout WER regression <= 0.2%.
+- Zero `Identity()` layer errors.

@@ -39,7 +39,7 @@ from lora.model_utils import (
 )
 from lora.training_config import ExperimentConfig
 
-DEFAULT_MODEL_ID = "UsefulSensors/moonshine-tiny"
+DEFAULT_MODEL_ID = "UsefulSensors/moonshine-streaming-tiny"
 DEFAULT_OUTPUT_DIR = "outputs/experiment"
 DEFAULT_DATASET_PATH = "data/train_manifest_expanded.jsonl"
 DEFAULT_MANIFEST_PATH = "data/heldout_manifest.jsonl"
@@ -404,7 +404,9 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     Returns:
         Experiment metrics summary.
     """
-    setup_logging()
+    output_dir = Path(config.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    setup_logging(log_path=output_dir / "experiment.log")
     set_seed(config.seed)
     device = choose_device(config.device)
     LOGGER.info("Device selected | device=%s", device)
@@ -475,6 +477,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
 
     start = time.time()
     output_dir = Path(config.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     train_loss, interval_wer, best_wer, best_step, safety_tuned_wer = train_loop(
         model,
         train_loader,

@@ -165,7 +165,11 @@ def configure_generation(model: Any, processor: Any) -> None:
 
 
 def find_lora_targets(model: Any) -> list[str]:
-    module_names = {name.split(".")[-1] for name, _ in model.named_modules()}
+    module_names = set()
+    for name, module in model.named_modules():
+        if isinstance(module, torch.nn.Linear):
+            module_names.add(name.split(".")[-1])
+
     override = os.environ.get("LORA_TARGETS")
     if override:
         requested = [item.strip() for item in override.split(",") if item.strip()]
