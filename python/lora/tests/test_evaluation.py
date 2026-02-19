@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import torch
 
-from lora.evaluation import normalize_text, summarize_losses, eval_wer
+from lora.evaluation import eval_wer, normalize_text, summarize_losses
 
 
 def test_summarize_losses_handles_empty() -> None:
