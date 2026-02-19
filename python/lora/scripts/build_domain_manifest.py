@@ -1,3 +1,18 @@
+"""Build a domain manifest JSONL file.
+
+TODO: Address evaluation sample heterogeneity.
+The current manifest generation logic results in a significant difficulty imbalance, 
+specifically where the final ~50 samples (batches 150-200) are objectively easier 
+than the initial samples. This causes the cumulative WER to "dive" at the end of 
+the evaluation cycle rather than stabilizing. 
+
+Future improvements should:
+1. Increase the sample size (e.g., to 500+) to allow the metric to converge.
+2. Implement a more robust shuffling mechanism or length-balancing to ensure 
+   that "easy" and "hard" samples are distributed uniformly across the manifest.
+3. Validate that the WER vs. Batch index plot flattens out before reporting final metrics.
+"""
+
 from __future__ import annotations
 
 import argparse
