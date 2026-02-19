@@ -88,6 +88,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-seconds", type=float, default=DEFAULT_MAX_SECONDS)
     parser.add_argument("--device", choices=["mps", "cuda", "cpu"], default=None)
     parser.add_argument(
+        "--use-dora",
+        action="store_true",
+        help="Use Weight-Decomposed Low-Rank Adaptation (DoRA)",
+    )
+    parser.add_argument(
+        "--init-lora-weights",
+        default="gaussian",
+        help="LoRA weight initialization (e.g., gaussian, pissa)",
+    )
+    parser.add_argument(
         "--wer-stop-threshold",
         type=float,
         default=None,
@@ -383,6 +393,8 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
         lora_dropout=config.lora_dropout,
         bias="none",
         target_modules=lora_targets,
+        use_dora=config.use_dora,
+        init_lora_weights=config.init_lora_weights,
     )
     model = setup_model(config.model_id, device, lora_config)
     configure_generation(model, processor)
@@ -476,6 +488,8 @@ def main() -> None:
         max_seconds=args.max_seconds,
         device=args.device,
         wer_stop_threshold=args.wer_stop_threshold,
+        use_dora=args.use_dora,
+        init_lora_weights=args.init_lora_weights,
     )
     metrics = run_experiment(config)
     save_metrics(metrics, Path(config.output_dir))

@@ -39,3 +39,21 @@ Legacy/incorrect workflow results were archived to:
 ## Guardrail Note (Incorrect Setup)
 - The old `--max-seconds=8` workflow collapsed training data to near-empty in this repo and produced unstable/noisy WER behavior.
 - Full evidence and old run logs are documented in `docs/archive_legacy_results.md`.
+
+## 2026-02-19 Optimization Plan
+
+### Objective
+Significant reduction of Domain WER while maintaining Heldout WER within a tight guardrail.
+
+### Phases
+1.  **Phase 1: Preprocessing Alignment**: Fix RMS normalization discrepancy between training and inference.
+2.  **Phase 2: Architectural Advancement**: Evaluate DoRA and PiSSA.
+3.  **Phase 3: Hyperparameter Optimization**: LR and Step sweeps.
+
+### Acceptance Criteria
+- Domain WER reduction >= 1.0% absolute.
+- Heldout WER regression <= 0.2% absolute.
+- Documented proof of parity and reproducibility.
+
+### Guidance
+Persistence is mandatory. Continue iterating on hyperparameters and architectures until the acceptance criteria are met. Document all intermediate results in the Run Matrix.

@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
+from lora.model_utils import normalize_audio_rms
 
 
 class SpeechRecognizer:
@@ -28,9 +29,11 @@ class SpeechRecognizer:
             # TODO: remove fallback empty audio handling; require explicit input validation.
             return ""
 
-        # Normalize audio
+        # Normalize audio to match training preprocessing
+        normalized_audio = normalize_audio_rms(audio_data.tolist(), target_rms=0.075)
+        
         input_values = self.processor(
-            audio_data, 
+            normalized_audio, 
             sampling_rate=16000, 
             return_tensors="pt"
         ).input_values

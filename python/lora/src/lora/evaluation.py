@@ -63,7 +63,6 @@ def decode_prediction(
     Returns:
         Normalized decoded transcript.
     """
-    model = unwrap_peft(model)
     model_dtype = next(model.parameters()).dtype
     # TODO: remove fallback batch key usage; require explicit input_values/attention_mask.
     input_values = batch["input_values"].to(device)
@@ -105,7 +104,6 @@ def eval_loss(model: Any, batch: dict[str, Any], device: torch.device) -> float:
     Returns:
         Loss value for the batch.
     """
-    model = unwrap_peft(model)
     model_dtype = next(model.parameters()).dtype
     payload = {k: v.to(device) for k, v in batch.items()}
     payload["input_values"] = payload["input_values"].to(model_dtype)
@@ -137,10 +135,11 @@ def eval_wer(
         Word error rate (WER).
     """
     metric = load("wer")
-    model = unwrap_peft(model)
     model_dtype = next(model.parameters()).dtype
     model.eval()
     batches = 0
+    all_preds = []
+    all_refs = []
     LOGGER.info("WER evaluation start")
     for batch in dataloader:
         payload = {k: v.to(device) for k, v in batch.items()}
@@ -172,12 +171,16 @@ def eval_wer(
         references = [normalize_text(r) for r in references]
 
         metric.add_batch(predictions=preds, references=references)
+        all_preds.extend(preds)
+        all_refs.extend(references)
+
         if batches == 0:
             LOGGER.debug("First prediction | pred='%s'", preds[0])
             LOGGER.debug("First reference | ref='%s'", references[0])
         batches += 1
         if batches == 1 or batches % 5 == 0:
-            LOGGER.info("WER progress | batches=%s", batches)
+            current_wer = metric.compute(predictions=all_preds, references=all_refs)
+            LOGGER.info("WER progress | batches=%s | wer=%.4f", batches, current_wer)
         if max_batches and batches >= max_batches:
             break
     wer_value = float(metric.compute())

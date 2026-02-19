@@ -23,6 +23,8 @@ class ExperimentConfig:
     max_seconds: float
     device: str | None
     wer_stop_threshold: float | None
+    use_dora: bool = False
+    init_lora_weights: str = "gaussian"
 
 
 @dataclass
