@@ -170,7 +170,6 @@ def eval_wer(
         references = processor.tokenizer.batch_decode(labels, skip_special_tokens=True)
         references = [normalize_text(r) for r in references]
 
-        metric.add_batch(predictions=preds, references=references)
         all_preds.extend(preds)
         all_refs.extend(references)
 
@@ -179,11 +178,17 @@ def eval_wer(
             LOGGER.debug("First reference | ref='%s'", references[0])
         batches += 1
         if batches == 1 or batches % 5 == 0:
+            # Note: we compute on the accumulated lists to avoid clearing metric state
             current_wer = metric.compute(predictions=all_preds, references=all_refs)
             LOGGER.info("WER progress | batches=%s | wer=%.4f", batches, current_wer)
         if max_batches and batches >= max_batches:
             break
-    wer_value = float(metric.compute())
+    
+    if not all_preds:
+        LOGGER.warning("No samples were evaluated in eval_wer")
+        return 0.0
+        
+    wer_value = float(metric.compute(predictions=all_preds, references=all_refs))
     LOGGER.info("WER evaluation complete | wer=%.4f", wer_value)
     return wer_value
 
