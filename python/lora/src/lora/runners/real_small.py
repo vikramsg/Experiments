@@ -66,7 +66,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train-split", default="train.100")
     parser.add_argument("--manifest-path")
     parser.add_argument("--device", choices=["mps", "cuda", "cpu"], default=None)
-    parser.add_argument("--max-seconds", type=float, default=8.0)
+    parser.add_argument("--max-seconds", type=float, default=20.0)
     parser.add_argument("--wer-batches", type=int, default=12)
     return parser.parse_args()
 

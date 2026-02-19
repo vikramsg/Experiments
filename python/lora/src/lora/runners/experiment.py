@@ -33,12 +33,12 @@ from lora.training_config import ExperimentConfig
 
 DEFAULT_MODEL_ID = "UsefulSensors/moonshine-tiny"
 DEFAULT_OUTPUT_DIR = "outputs/experiment"
-DEFAULT_DATASET_PATH = "data/train_manifest.jsonl"
+DEFAULT_DATASET_PATH = "data/train_manifest_expanded.jsonl"
 DEFAULT_MANIFEST_PATH = "data/heldout_manifest.jsonl"
 DEFAULT_MAX_STEPS = 200
 DEFAULT_EVAL_INTERVAL = 100
 DEFAULT_LEARNING_RATE = 1e-5
-DEFAULT_MAX_SECONDS = 8.0
+DEFAULT_MAX_SECONDS = 20.0
 DEFAULT_SEED = 42
 
 LOGGER = get_logger(__name__)
