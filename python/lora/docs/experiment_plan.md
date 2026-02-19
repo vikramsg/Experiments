@@ -13,40 +13,30 @@ Single source of truth for active LoRA experiments.
 3. **Evaluation**: Dual-manifest (Domain + Heldout) with Best-WER checkpointing.
 4. **Normalization**: Strict RMS 0.075 across all paths.
 
-## Research-Derived Strategy: The "Bridge-Focus" Approach
-
-Analysis of the Moonshine v2 paper and current log failures (Loss dropping but WER flat) indicates that fine-tuning must move beyond the encoder.
-
-### Technical Justification
-- **Parameter Density**: The Decoder (22.8M) is 3x larger than the Encoder.
-- **The Adapter Stage**: The 1.31M parameter Adapter is the high-leverage target for correcting temporal alignment in domain-shifted audio.
-- **Cross-Attention**: Adapting the Decoder's cross-attention is necessary to improve how the model maps acoustic features to domain vocabulary.
-
-### Current Run Matrix
+## Current Run Matrix
 
 | Run ID | Model | Steps | LR | Target Modules | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| exp_2_3_v2_bridge_focus | streaming-tiny | 1000 | 1e-5 | All Linear | **Running / Flawed.** (Failed to explicitly target Adapter/Decoder due to HF module naming). Baseline: 12.85% (Domain), 4.75% (Heldout). |
-| exp_2_4_v2_true_bridge | streaming-tiny | 1000 | 1e-5 | Decoder Attention & MLP | **Planned.** |
+| exp_2_3_v2_bridge_focus | streaming-tiny | 1000 | 1e-5 | All Linear | **Flawed.** (Failed to explicitly target Adapter/Decoder due to HF module naming). |
+| exp_2_4_v2_true_bridge | streaming-tiny | 1000 | 1e-5 | Decoder Attention & MLP (DoRA) | **Failed.** (Regressed on Domain and Heldout). |
+| exp_2_5_v2_universal_lora | streaming-tiny | 1000 | 1e-5 | Global `q,k,v,o_proj` (Standard LoRA) | **Planned.** |
 
-### Architectural Correction (2026-02-19)
-The Hugging Face implementation of `UsefulSensors/moonshine-streaming-tiny` does not expose an explicit `adapter` module containing linear layers. The position-bridging logic is handled implicitly via `pos_emb` and identity projections. Furthermore, targeting generic linear names (`q_proj`, `fc1`, etc.) targets *both* the Encoder and the Decoder.
-To truly execute the "Bridge-Focus" strategy, we must explicitly restrict LoRA targets to the **Decoder's** Cross-Attention (`encoder_attn`) and optionally its self-attention and MLP layers, avoiding the Encoder entirely to force the model to adapt its acoustic-to-vocabulary mapping rather than its fundamental acoustic representations.
+## Research & Optimization History
 
-## Current Conclusions (v2)
-- **Baseline Validated**: Moonshine v2 `streaming-tiny` establishes a stable 12.85% Domain WER floor.
-- **Error Profile**: Baseline errors show phonetic confusion on domain terms (e.g., "mester gurr" -> "mr gerk").
-- **Stability**: Low LR (1e-5) is currently showing stable loss reduction without immediate WER spikes.
+### The "Bridge-Focus" Failure (2026-02-19)
+Analysis of the Moonshine v2 paper originally suggested targeting the Decoder (22.8M) and Adapter (1.31M) while freezing the streaming position-free Encoder. `exp_2_4` attempted to execute this by applying DoRA with `LORA_MODULE_FILTER="decoder"`.
+**Result:** The model steadily regressed. Domain WER increased from a 12.40% baseline to 12.64% by step 600, and Heldout regressed from 4.79% to 4.92%.
+**Conclusion:** Restricting LoRA explicitly to the `decoder` module in the Hugging Face implementation likely misses critical implicit adapter projection layers that bridge the positional gap. Alternatively, DoRA (Weight-Decomposed LoRA) is proving too unstable at `1e-5` LR on this specific 33M parameter architecture.
 
-## 2026-02-19 Optimization Plan (Revised v3)
+## 2026-02-19 Universal Baseline Correction (Revised v4)
 
-### Objective
-Stable reduction of Domain WER (>= 1.0%) with strict Heldout guardrails using v2 architecture.
+### Hypothesis
+To definitively prove that the v2 architecture can be fine-tuned without degrading, we must abandon the strict architectural filtering that induced regressions in `exp_2_4`. Applying standard universal LoRA (targeting `q_proj`, `k_proj`, `v_proj`, `o_proj` across the *entire* model, both encoder and decoder) and disabling DoRA decomposition will successfully adapt the v2 model to the domain. This approach relies on the proven, generic LoRA setup that previously yielded successful adaptations on the v1 model.
 
 ### Phases
-1.  **Phase 1: v2 Infrastructure**: (Complete) Shifted to `streaming-tiny`, filtered out non-Linear targets.
-2.  **Phase 2: Bridge-Focus Execution**: (Active) Halt `exp_2_3` and start `exp_2_4_v2_true_bridge`. 1000-step DoRA run at 1e-5 LR explicitly targeting only decoder attention (`q_proj`, `k_proj`, `v_proj`, `o_proj`) and MLP (`fc1`, `fc2`) layers, omitting the encoder.
-3.  **Phase 3: Deep Evaluation**: If Phase 2 succeeds, validate the `lora_adapter_best` and finalize reporting.
+1.  **Phase 1: v2 Infrastructure**: (Complete) Shifted to `streaming-tiny`.
+2.  **Phase 2: Universal Baseline Execution**: (Active) Halt `exp_2_4`. Start `exp_2_5_v2_universal_lora`. Run a 1000-step standard LoRA training at `1e-5` LR. Remove the `LORA_MODULE_FILTER` environment variable and the `--use-dora` flag, targeting global attention projections (`q_proj, k_proj, v_proj, o_proj`).
+3.  **Phase 3: Deep Evaluation**: If Phase 2 succeeds in preventing regression, validate the `lora_adapter_best` and establish it as the true v2 fine-tuning baseline.
 
 ### Acceptance Criteria
 - Domain WER reduction >= 1.0% (validated on 500-sample stable manifest).
