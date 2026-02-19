@@ -14,10 +14,11 @@ Legacy/incorrect workflow results were archived to:
 1. **Training data**: `data/train_manifest_expanded.jsonl`
 2. **Duration filter**: `--max-seconds=20`
 3. **Evaluation manifests**:
-   - primary: `data/domain_manifest.jsonl`
+   - primary: `data/domain_manifest.jsonl` (Targeting 500+ samples for stability)
    - safety: `data/heldout_manifest.jsonl`
-4. **Normalization/decode parity**: keep training/eval/inference aligned.
-5. **Adapter parity**: evaluate with active LoRA adapters.
+4. **Normalization/decode parity**: Strict RMS normalization (0.075) across all paths.
+5. **Adapter parity**: Evaluate with active adapters (**No unwrap_peft**).
+6. **Checkpointing**: Always use the **Best-WER checkpoint** for final reporting.
 
 ## Current Run Matrix (Retained)
 
@@ -43,20 +44,20 @@ Legacy/incorrect workflow results were archived to:
 - The old `--max-seconds=8` workflow collapsed training data to near-empty in this repo and produced unstable/noisy WER behavior.
 - Full evidence and old run logs are documented in `docs/archive_legacy_results.md`.
 
-## 2026-02-19 Optimization Plan
+## 2026-02-19 Optimization Plan (Revised)
 
 ### Objective
-Significant reduction of Domain WER while maintaining Heldout WER within a tight guardrail.
+Stable reduction of Domain WER (>= 1.0%) with strict Heldout guardrails.
 
 ### Phases
-1.  **Phase 1: Preprocessing Alignment**: Fix RMS normalization discrepancy between training and inference.
-2.  **Phase 2: Architectural Advancement**: Evaluate DoRA and PiSSA.
-3.  **Phase 3: Hyperparameter Optimization**: LR and Step sweeps.
+1.  **Phase 1: Infrastructure**: Add LR schedulers and Best-Checkpoint saving to the runner.
+2.  **Phase 2: Data Stability**: Expand domain manifest to 500+ samples to remove "Lucky Average" bias.
+3.  **Phase 3: DoRA Deep-Dive**: Execute "Long-and-Slow" runs (1000 steps) with scheduled LR.
 
 ### Acceptance Criteria
-- Domain WER reduction >= 1.0% absolute.
-- Heldout WER regression <= 0.2% absolute.
-- Documented proof of parity and reproducibility.
+- Domain WER reduction >= 1.0% (validated on stable manifest).
+- Heldout WER regression <= 0.2%.
+- Full documentation of all intermediate failures and sweeps.
 
 ### Guidance
 Persistence is mandatory. Continue iterating on hyperparameters and architectures until the acceptance criteria are met. Document all intermediate results in the Run Matrix.

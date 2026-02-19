@@ -1,39 +1,39 @@
-# LoRA Optimization Plan
+# LoRA Optimization Plan (Updated 2026-02-19)
 
 ## Objective
-Significant reduction of Domain WER (`data/domain_manifest.jsonl`) while maintaining Heldout WER (`data/heldout_manifest.jsonl`) within a tight guardrail.
+Achieve a stable, reproducible reduction of Domain WER (`data/domain_manifest.jsonl`) by >= 1.0% absolute, while ensuring Heldout WER (`data/heldout_manifest.jsonl`) remains within a 0.2% guardrail.
 
-## Phase 1: Preprocessing & Baseline Alignment
-- **Task**: Align audio preprocessing between training and inference.
-    - Audit `src/lora/data_loader.py` and `packages/lora-cli/src/lora_cli/audio.py`.
-    - Ensure RMS normalization is identical in both paths.
-- **Experiment 1.1**: Re-run Domain Baseline (Standard LoRA, LR 1e-4, 200 steps) with aligned preprocessing.
-- **Verification**: Confirm that the baseline WER matches expectations and the "tuned" improvement is not masked by preprocessing drift.
+## Phase 1: Infrastructure & Data Stability (Immediate)
+- **Task 1.1: Runner Enhancements**
+    - Implement **Best-Checkpoint Saving**: Track WER at every interval and save the best performing adapter to `lora_adapter_best`.
+    - Implement **LR Scheduler**: Add a Linear Warmup (10% of steps) and Linear Decay scheduler to prevent early divergence and facilitate convergence.
+- **Task 1.2: Manifest Expansion**
+    - Generate an expanded domain evaluation manifest (500+ samples) to mitigate the "Lucky Average" bias where the final 50 samples of the current 200-sample set are disproportionately easy.
+- **Task 1.3: Normalization Parity**
+    - Ensure all inference, training, and evaluation paths strictly apply RMS normalization (target 0.075).
 
-## Phase 2: Architectural Advancement
-- **Experiment 2.1: DoRA (Weight-Decomposed LoRA)**
-    - Enable `use_dora=True` in `LoraConfig`.
-    - Goal: Test if decoupling magnitude and direction improves convergence on domain data.
-- **Experiment 2.2: PiSSA Initialization**
-    - Enable `init_lora_weights="pissa"`.
-    - Goal: Test if principal singular value initialization provides a better starting point for the adapter.
+## Phase 2: The "Long-and-Slow" DoRA Strategy
+- **Experiment 2.1: DoRA Stability Run**
+    - Config: 1000 steps, LR 1e-4, use DoRA, Linear Decay.
+    - Goal: Complete ~3 full epochs over the expanded training data to allow the adapter to actually learn the domain distribution.
+- **Experiment 2.2: Architecture Refinement**
+    - If 2.1 is stable but slow, evaluate limiting `target_modules` to `["q_proj", "v_proj"]` vs. full attention/MLP to reduce parameter noise.
 
-## Phase 3: Hyperparameter Optimization (The "Sweep")
-- **Experiment 3.1: Learning Rate Sweep**
-    - Test LR values: [1e-5, 5e-5, 1e-4, 3e-4] using the best architecture from Phase 2.
-- **Experiment 3.2: Step/Duration Sweep**
-    - Increase max steps to [500, 1000] with a linear decay scheduler.
-    - Goal: Utilize the full expanded dataset (`data/train_manifest_expanded.jsonl`) without hitting the regressions seen in earlier long runs.
+## Phase 3: Hyperparameter Search
+- **Experiment 3.1: Learning Rate Sweep (Refined)**
+    - Test LR [5e-5, 1e-4, 1.5e-4] with the new scheduler.
+    - **Note**: Avoid LRs >= 2e-4 as they have demonstrated catastrophic forgetting in previous runs.
 
 ## Verification Criteria
-1. **Parity Check**: Baseline WER on `domain_manifest` must be reproducible within +/- 0.1% before proceeding to tuning.
-2. **Reproducibility**: Every run must have a corresponding entry in `docs/experiment_plan.md` with the exact `uv run` command used.
+1. **Convergence**: Evaluation loss must show a downward trend before WER is considered valid.
+2. **Stability**: The WER across the last 3 intervals of a 1000-step run should not fluctuate by more than 0.5% absolute.
+3. **Artifact Integrity**: `lora_adapter_best` must be used for all final "Tuned WER" reporting.
 
 ## Acceptance Criteria
-- **Primary**: Absolute reduction in Domain WER of at least **1.0%** (e.g., 12.5% -> 11.5%).
-- **Guardrail**: Absolute regression in Heldout WER must be less than **0.2%** (e.g., 4.49% -> 4.69% max).
-- **Consistency**: The model must not show signs of "catastrophic forgetting" on general audio.
+- **Domain WER**: Absolute reduction >= 1.0%.
+- **Heldout WER**: Absolute regression <= 0.2%.
+- **Parity**: The same performance must be reproducible in the `lora-cli` using identical normalization.
 
 ## Execution Guidance
-**Do not stop until all acceptance criteria are met.**
-The task is not complete upon running the scripts; it is complete when a hyperparameter set is found that breaks the current performance plateau. Every failure is a data point—document why a specific LR or architecture regressed before moving to the next.
+**Do not stop until the acceptance criteria are met.**
+Previous failures (exp_1.1, exp_2.1b) have proven that short runs and high learning rates are unstable. Persistence through longer, scheduled runs is the only path to the target. Every result must be documented in the Run Matrix.
