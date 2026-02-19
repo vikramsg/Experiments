@@ -1,0 +1,56 @@
+set shell := ["bash", "-c"]
+
+# List available tasks
+default:
+	@just --list
+
+# Create virtual environment with uv
+venv:
+	uv venv
+
+# Install dependencies from uv.lock
+sync:
+	uv sync
+
+# Run the main entrypoint
+run:
+	uv run python main.py
+
+# Run pytest
+test:
+	uv run pytest
+
+# Run Ruff lint checks
+lint:
+	uv run ruff check .
+
+# Auto-fix Ruff lint issues
+fix:
+	uv run ruff check . --fix
+
+# Run an experiment in the background using nohup
+# Usage: just run-experiment <name> "<extra_args>"
+# Example: just run-experiment exp_01 "--max-steps 1000 --learning-rate 1e-5"
+run-experiment name args="":
+	@echo "Creating output directory outputs/{{name}}..."
+	@mkdir -p "outputs/{{name}}"
+	@echo "Starting experiment {{name}} in the background..."
+	nohup uv run python main.py --output-dir "outputs/{{name}}" {{args}} > "outputs/{{name}}/nohup.out" 2>&1 &
+	@echo "Experiment started! Logs will be written to outputs/{{name}}/experiment.log"
+	@echo "To tail the formatted logs, run: just logs {{name}}"
+	@echo "To tail the raw terminal output, run: just logs-raw {{name}}"
+
+# Tail the formatted experiment.log for a running experiment
+# Usage: just logs <name>
+logs name:
+	tail -f "outputs/{{name}}/experiment.log"
+
+# Tail the raw stdout/stderr (nohup.out) for an experiment
+# Usage: just logs-raw <name>
+logs-raw name:
+	tail -f "outputs/{{name}}/nohup.out"
+
+# Check if an experiment process is still running
+# Usage: just status <name>
+status name:
+	@ps aux | grep "outputs/{{name}}" | grep -v "grep" || echo "No running process found for {{name}}."

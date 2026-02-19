@@ -15,16 +15,23 @@ As the codebase grows, prefer adding feature modules in a dedicated package dire
 - `docs/training.md`: data requirements, evaluation plan, artifacts, and report template.
 
 ## Build, Test, and Development Commands
-- Prefer using `make` targets over direct `uv` commands when available.
-- `uv run python main.py`: run the current entrypoint locally.
-- `make help`: list available Make targets.
-- `make venv`: create the local virtual environment with `uv`.
-- `make sync`: install project dependencies with `uv`.
-- `make run`: run the current entrypoint.
-- `make test`: run tests with `pytest`.
-- `make lint`: run Ruff lint checks.
+- Prefer using `just` tasks over direct `uv` commands when available.
+- `just` (or `just --list`): list available tasks.
+- `just venv`: create the local virtual environment with `uv`.
+- `just sync`: install project dependencies with `uv`.
+- `just run`: run the current entrypoint locally.
+- `just test`: run tests with `pytest`.
+- `just lint`: run Ruff lint checks.
+- `just fix`: auto-fix Ruff lint issues.
 
-Use `uv` strictly for environment management, dependency installation, and command execution. Do not use `pip` in this repository.
+### Experiment Management
+**CRITICAL**: You MUST exclusively use the `justfile` for running and polling background experiments. Do not execute `uv run python main.py` directly for any background jobs.
+- `just run-experiment <name> "<extra_args>"`: Run an experiment in the background (e.g., `just run-experiment exp_01 "--max-steps 1000"`).
+- `just logs <name>`: Tail the formatted `experiment.log` for a running experiment.
+- `just logs-raw <name>`: Tail the raw `nohup.out` terminal output.
+- `just status <name>`: Check if an experiment is actively running.
+
+Use `uv` strictly for environment management, dependency installation, and command execution within `just` commands. Do not use `pip` in this repository.
 
 ## GitHub Repository Research
 - When researching a GitHub repository's code or structure, clone it to `/tmp` and inspect files locally.
