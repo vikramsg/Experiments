@@ -10,9 +10,10 @@ Achieve a stable, reproducible reduction of Domain WER by >= 1.0% using the **Mo
 ## Phase 2: The "Bridge-Focus" Strategy
 - **Experiment 2.2: Stability Floor**
     - Run 1000 steps at **1e-5 LR** with DoRA to establish a non-regressing baseline for v2.
-- **Experiment 2.3: Bridge Fine-Tuning**
-    - Target the **Decoder** and **Adapter** stages specifically. 
-    - Goal: Use the 24M+ parameters in these stages to map acoustic features to domain vocabulary.
+- **Experiment 2.3/2.4: True Bridge Fine-Tuning**
+    - *Correction*: The HF model lacks an explicit `adapter` linear module. Generic targets (`q_proj`, etc.) mistakenly fine-tune the Encoder as well.
+    - Target the **Decoder's** Cross-Attention (`encoder_attn`), Self-Attention, and MLP blocks explicitly by filtering target module paths.
+    - Goal: Use the decoder's parameters to map acoustic features to domain vocabulary without disrupting the stable position-free encoder.
 
 ## Phase 3: Validation
 - **Checkpointing**: Use `lora_adapter_best` for all final metrics.
