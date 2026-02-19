@@ -27,8 +27,8 @@ As the codebase grows, prefer adding feature modules in a dedicated package dire
 ### Experiment Management
 **CRITICAL**: You MUST exclusively use the `justfile` for running and polling background experiments. Do not execute `uv run python main.py` directly for any background jobs.
 - `just run-experiment <name> "<extra_args>"`: Run an experiment in the background (e.g., `just run-experiment exp_01 "--max-steps 1000"`).
-- `just logs <name>`: Tail the formatted `experiment.log` for a running experiment.
-- `just logs-raw <name>`: Tail the raw `nohup.out` terminal output.
+- `just poll <name> [timeout=60]`: Poll the formatted `experiment.log` for a running experiment for a given number of seconds.
+- `just poll-raw <name> [timeout=60]`: Poll the raw `nohup.out` terminal output.
 - `just status <name>`: Check if an experiment is actively running.
 
 Use `uv` strictly for environment management, dependency installation, and command execution within `just` commands. Do not use `pip` in this repository.
