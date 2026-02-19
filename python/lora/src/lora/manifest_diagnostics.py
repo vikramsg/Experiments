@@ -57,9 +57,7 @@ def load_manifest_entries(path: Path) -> list[ManifestEntry]:
     return entries
 
 
-def profile_manifest(
-    path: Path, thresholds: Sequence[float], sample_rate: int
-) -> ManifestProfile:
+def profile_manifest(path: Path, thresholds: Sequence[float], sample_rate: int) -> ManifestProfile:
     """Profile audio duration distribution for a manifest.
 
     Args:
@@ -74,8 +72,7 @@ def profile_manifest(
     durations = [len(entry["audio"]) / sample_rate for entry in entries]
     mean_seconds = statistics.fmean(durations)
     threshold_counts = {
-        threshold: sum(duration <= threshold for duration in durations)
-        for threshold in thresholds
+        threshold: sum(duration <= threshold for duration in durations) for threshold in thresholds
     }
     return ManifestProfile(
         path=path,
@@ -85,9 +82,7 @@ def profile_manifest(
     )
 
 
-def split_manifest(
-    path: Path, max_seconds: float, sample_rate: int, seed: int
-) -> SplitProfile:
+def split_manifest(path: Path, max_seconds: float, sample_rate: int, seed: int) -> SplitProfile:
     """Compute train/val split sizes after duration filtering.
 
     Args:

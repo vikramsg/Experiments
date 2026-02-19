@@ -137,9 +137,7 @@ def setup_model(model_id: str, device: torch.device, lora_config: LoraConfig) ->
         model = AutoModelForCTC.from_pretrained(model_id, torch_dtype=dtype, token=token)
     else:
         # TODO: remove fallback model type selection; make explicit model class choice.
-        model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id, torch_dtype=dtype, token=token
-        )
+        model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id, torch_dtype=dtype, token=token)
     model = get_peft_model(model, lora_config)
     model.to(device)
     model.config.use_cache = False
@@ -164,15 +162,25 @@ def configure_generation(model: Any, processor: Any) -> None:
     model.generation_config.eos_token_id = eos_token_id
 
 
-def find_lora_targets(model: Any) -> list[str]:
+def find_lora_targets(
+    model: Any,
+    module_filter: str | None = None,
+    target_modules: str | None = None,
+) -> list[str]:
+    if module_filter:
+        targets = []
+        for name, module in model.named_modules():
+            if isinstance(module, torch.nn.Linear) and module_filter in name:
+                targets.append(name)
+        return targets
+
     module_names = set()
     for name, module in model.named_modules():
         if isinstance(module, torch.nn.Linear):
             module_names.add(name.split(".")[-1])
 
-    override = os.environ.get("LORA_TARGETS")
-    if override:
-        requested = [item.strip() for item in override.split(",") if item.strip()]
+    if target_modules:
+        requested = [item.strip() for item in target_modules.split(",") if item.strip()]
         return [name for name in requested if name in module_names]
     candidates = [
         "q_proj",

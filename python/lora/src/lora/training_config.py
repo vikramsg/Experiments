@@ -26,6 +26,8 @@ class ExperimentConfig:
     wer_stop_threshold: float | None
     use_dora: bool = False
     init_lora_weights: str = "gaussian"
+    lora_module_filter: str | None = None
+    lora_targets: str | None = None
 
 
 @dataclass
@@ -46,3 +48,5 @@ class RealRunConfig:
     max_seconds: float
     wer_batches: int
     manifest_path: str | None
+    lora_module_filter: str | None = None
+    lora_targets: str | None = None

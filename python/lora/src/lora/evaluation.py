@@ -77,9 +77,7 @@ def decode_prediction(
     input_values = input_values.to(model_dtype)
     with torch.no_grad():
         if is_ctc_config(model.config):
-            logits = model(
-                input_values=input_values, attention_mask=attention_mask
-            ).logits
+            logits = model(input_values=input_values, attention_mask=attention_mask).logits
             predicted_ids = logits.argmax(dim=-1)
             decoded = processor.batch_decode(predicted_ids)
         else:
@@ -184,11 +182,11 @@ def eval_wer(
             LOGGER.info("WER progress | batches=%s | wer=%.4f", batches, current_wer)
         if max_batches and batches >= max_batches:
             break
-    
+
     if not all_preds:
         LOGGER.warning("No samples were evaluated in eval_wer")
         return 0.0
-        
+
     wer_value = float(metric.compute(predictions=all_preds, references=all_refs))
     LOGGER.info("WER evaluation complete | wer=%.4f", wer_value)
 
@@ -196,10 +194,7 @@ def eval_wer(
     num_log_samples = min(3, len(all_preds))
     indices = np.linspace(0, len(all_preds) - 1, num_log_samples, dtype=int)
     for idx in indices:
-        LOGGER.info(
-            "Sample %d | pred='%s' | ref='%s'", 
-            idx, all_preds[idx], all_refs[idx]
-        )
+        LOGGER.info("Sample %d | pred='%s' | ref='%s'", idx, all_preds[idx], all_refs[idx])
 
     return wer_value
 

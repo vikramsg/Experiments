@@ -17,7 +17,7 @@ from typing import Any
 
 import torch
 from peft import LoraConfig
-from transformers import AutoModelForSpeechSeq2Seq, set_seed, get_linear_schedule_with_warmup
+from transformers import AutoModelForSpeechSeq2Seq, get_linear_schedule_with_warmup, set_seed
 
 from lora.data_loader import (
     DatasetConfig,
@@ -89,7 +89,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--dataset-path", default=DEFAULT_DATASET_PATH)
     parser.add_argument("--manifest-path", default=DEFAULT_MANIFEST_PATH)
-    parser.add_argument("--safety-manifest-path", default=None, help="Optional manifest for regression guardrails.")
+    parser.add_argument(
+        "--safety-manifest-path",
+        default=None,
+        help="Optional manifest for regression guardrails.",
+    )
     parser.add_argument("--max-seconds", type=float, default=DEFAULT_MAX_SECONDS)
     parser.add_argument("--device", choices=["mps", "cuda", "cpu"], default=None)
     parser.add_argument(
@@ -108,12 +112,20 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Stop early if tuned WER exceeds baseline by this ratio.",
     )
+    parser.add_argument(
+        "--lora-module-filter",
+        default=None,
+        help="Substring filter for LoRA target modules (e.g., 'decoder').",
+    )
+    parser.add_argument(
+        "--lora-targets",
+        default=None,
+        help="Comma-separated list of linear layer types to target (e.g., 'q_proj,v_proj').",
+    )
     return parser.parse_args()
 
 
-def _filter_manifest_by_duration(
-    dataset: Any, sample_rate: int, max_seconds: float
-) -> Any:
+def _filter_manifest_by_duration(dataset: Any, sample_rate: int, max_seconds: float) -> Any:
     """Filter manifest items by duration.
 
     Args:
@@ -232,17 +244,21 @@ def _load_eval_loader(
     return create_dataloader(prepared, batch_size, shuffle=False)
 
 
-def _resolve_lora_targets(model_id: str) -> list[str]:
+def _resolve_lora_targets(config: ExperimentConfig) -> list[str]:
     """Resolve LoRA target modules for a model.
 
     Args:
-        model_id: Hugging Face model id.
+        config: Experiment configuration.
 
     Returns:
         List of module names to target with LoRA.
     """
-    base_probe = AutoModelForSpeechSeq2Seq.from_pretrained(model_id)
-    lora_targets = find_lora_targets(model=base_probe)
+    base_probe = AutoModelForSpeechSeq2Seq.from_pretrained(config.model_id)
+    lora_targets = find_lora_targets(
+        model=base_probe,
+        module_filter=config.lora_module_filter,
+        target_modules=config.lora_targets,
+    )
     del base_probe
     if not lora_targets:
         lora_targets = ["q_proj", "v_proj"]
@@ -290,9 +306,7 @@ def train_loop(
     model_dtype = next(model.parameters()).dtype
     model.train()
     trainable_params = [
-        param
-        for name, param in model.named_parameters()
-        if param.requires_grad and "lora" in name
+        param for name, param in model.named_parameters() if param.requires_grad and "lora" in name
     ]
     if not trainable_params:
         raise ValueError("No trainable LoRA parameters found")
@@ -407,6 +421,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     setup_logging(log_path=output_dir / "experiment.log")
+    LOGGER.info("Starting experiment | config=%s", asdict(config))
     set_seed(config.seed)
     device = choose_device(config.device)
     LOGGER.info("Device selected | device=%s", device)
@@ -435,7 +450,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
             max_seconds=config.max_seconds,
         )
 
-    lora_targets = _resolve_lora_targets(config.model_id)
+    lora_targets = _resolve_lora_targets(config)
     lora_config = LoraConfig(
         r=config.lora_r,
         lora_alpha=config.lora_alpha,
@@ -460,10 +475,10 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     )
 
     baseline_eval_loss = eval_loss(model, next(iter(val_loader)), device)
-    
+
     LOGGER.info("Evaluating DOMAIN manifest (Baseline)")
     baseline_wer = eval_wer(model, processor, eval_loader, device)
-    
+
     LOGGER.info(
         "Baseline metrics | eval_loss=%.4f | wer=%.4f",
         baseline_eval_loss,
@@ -573,6 +588,8 @@ def main() -> None:
         wer_stop_threshold=args.wer_stop_threshold,
         use_dora=args.use_dora,
         init_lora_weights=args.init_lora_weights,
+        lora_module_filter=args.lora_module_filter,
+        lora_targets=args.lora_targets,
     )
     metrics = run_experiment(config)
     save_metrics(metrics, Path(config.output_dir))

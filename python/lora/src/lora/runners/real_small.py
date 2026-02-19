@@ -75,6 +75,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", choices=["mps", "cuda", "cpu"], default=None)
     parser.add_argument("--max-seconds", type=float, default=20.0)
     parser.add_argument("--wer-batches", type=int, default=12)
+    parser.add_argument("--lora-module-filter", default=None)
+    parser.add_argument("--lora-targets", default=None)
     return parser.parse_args()
 
 
@@ -90,9 +92,7 @@ def train_loop(
     model_dtype = next(model.parameters()).dtype
     base_model.train()
     trainable_params = [
-        param
-        for name, param in model.named_parameters()
-        if param.requires_grad and "lora" in name
+        param for name, param in model.named_parameters() if param.requires_grad and "lora" in name
     ]
     if not trainable_params:
         raise ValueError("No trainable LoRA parameters found")
@@ -138,9 +138,7 @@ def train_loop(
                 if not delta_logged and update_step >= 3:
                     deltas = [
                         float((param.detach() - initial).abs().sum().item())
-                        for param, initial in zip(
-                            trainable_params, initial_weights, strict=True
-                        )
+                        for param, initial in zip(trainable_params, initial_weights, strict=True)
                     ]
                     if sum(deltas) == 0.0:
                         raise ValueError("LoRA weights did not change after updates")
@@ -170,6 +168,7 @@ def save_metrics(metrics: RealRunMetrics, output_dir: Path) -> None:
 
 def run_real(config: RealRunConfig) -> RealRunMetrics:
     setup_logging()
+    LOGGER.info("Starting real run | config=%s", asdict(config))
     set_seed(config.seed)
     device = choose_device(config.device)
     LOGGER.info("Device selected | device=%s", device)
@@ -216,7 +215,11 @@ def run_real(config: RealRunConfig) -> RealRunMetrics:
     # Prefer broad auto-detected LoRA targets (attention + projection/MLP modules)
     # when available. This captures more adaptation capacity while still letting
     # model-specific module names drive the final set.
-    lora_targets = find_lora_targets(model=base_probe)
+    lora_targets = find_lora_targets(
+        model=base_probe,
+        module_filter=config.lora_module_filter,
+        target_modules=config.lora_targets,
+    )
     del base_probe
     # Fallback to q/v attention projections only when detection finds nothing.
     # This is the conservative baseline: lower memory/compute on MPS and lower
@@ -307,6 +310,8 @@ def main() -> None:
         max_seconds=args.max_seconds,
         wer_batches=args.wer_batches,
         manifest_path=args.manifest_path,
+        lora_module_filter=args.lora_module_filter,
+        lora_targets=args.lora_targets,
     )
     metrics = run_real(config)
     save_metrics(metrics, Path(config.output_dir))
