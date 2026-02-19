@@ -190,6 +190,16 @@ def eval_wer(
         
     wer_value = float(metric.compute(predictions=all_preds, references=all_refs))
     LOGGER.info("WER evaluation complete | wer=%.4f", wer_value)
+
+    # Log a few samples to visualize changes
+    num_log_samples = min(3, len(all_preds))
+    indices = np.linspace(0, len(all_preds) - 1, num_log_samples, dtype=int)
+    for idx in indices:
+        LOGGER.info(
+            "Sample %d | pred='%s' | ref='%s'", 
+            idx, all_preds[idx], all_refs[idx]
+        )
+
     return wer_value
 
 
