@@ -39,6 +39,9 @@ def setup_logging(level: int = logging.INFO) -> None:
         handlers=handlers,
     )
 
+    # Suppress noisy library logs
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
     # Log the command used to start the application
     logging.info("COMMAND: %s", " ".join(sys.argv))
 
