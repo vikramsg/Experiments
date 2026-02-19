@@ -38,7 +38,8 @@ def normalize_text(text: str) -> str:
 
 
 def _generation_kwargs(duration: float) -> dict[str, float | int | bool]:
-    max_new_tokens = max(10, min(int(duration * 5), 150))
+    # Increase tokens per second and cap for domain-shifted samples
+    max_new_tokens = max(20, min(int(duration * 10), 300))
     return {
         "max_new_tokens": max_new_tokens,
         "num_beams": 5,

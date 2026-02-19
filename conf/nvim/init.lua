@@ -1,18 +1,47 @@
 -- Options
 
 ------------------------------------------------------------------------------
--- FUGITIVE CHEAT SHEET (Leader: <leader>gd)
+-- MASTER KEYMAP CHEAT SHEET
 ------------------------------------------------------------------------------
--- Side-by-Side Diff Maps:
---   -  : Stage / Unstage hunk
---   dp : Diff Put (Stage hunk - if in working file)
---   do : Diff Obtain (Stage hunk - if in index buffer)
---   gf : Jump to real file & close diff
---   ]c : Next change
---   [c : Previous change
+-- General & Navigation:
+--   Space (Leader) : The prefix for most custom commands
+--   <C-h,j,k,l>    : Navigate between splits
+--   x              : Delete without yanking to clipboard
+--   <leader>a      : Toggle Autocomplete (nvim-cmp)
+--   <leader>f      : Format current buffer (Conform)
 --
--- Neo-tree Maps (in explorer):
---   Y  : Copy filename to clipboard
+-- Git (Fugitive & LazyGit):
+--   <leader>gs : Git Status (Fugitive)
+--   <leader>gd : Side-by-side Diff (against index)
+--   <leader>lg : LazyGit (Floating terminal)
+--   In Status/Diff:
+--     -     : Stage / Unstage
+--     =     : Toggle inline diff
+--     gf    : Jump to real file & close diff
+--     dp/do : Diff Put / Obtain (Stage hunk)
+--     cc    : Commit
+--
+-- Search (Telescope):
+--   <leader>sf : Search Files
+--   <leader>sg : Search by Grep (Live)
+--   <leader><leader> : Search Open Buffers
+--   <leader>sw : Search current Word
+--   <leader>sd : Search Diagnostics
+--   <leader>sh : Search Help tags
+--
+-- File Explorers:
+--   <leader>e  : Toggle Neo-tree
+--   <leader>yz : Open Yazi (File manager)
+--   In Neo-tree:
+--     Y        : Copy filename to clipboard
+--
+-- LSP (Code Intelligence):
+--   gd : Go to Definition
+--   gr : Go to References
+--   gI : Go to Implementation
+--   rn : Rename variable
+--   ca : Code Action
+--   K  : Hover documentation
 ------------------------------------------------------------------------------
 
 -- hacky way to ignore the vim global warnings issue
@@ -794,7 +823,7 @@ require("lazy").setup({
 		keys = {
 			-- 👇 in this section, choose your own keymappings!
 			{
-				"<leader>-",
+				"<leader>yz",
 				mode = { "n", "v" },
 				"<cmd>Yazi<cr>",
 				desc = "Open yazi at the current file",
