@@ -1,3 +1,5 @@
+"""Evaluation utilities for loss/WER and generation-time decoding."""
+
 from __future__ import annotations
 
 import re

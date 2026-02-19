@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import statistics
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NotRequired, Sequence, TypedDict, cast
+from typing import NotRequired, TypedDict, cast
 
 from lora.data_loader import load_manifest_dataset, split_by_speaker
 

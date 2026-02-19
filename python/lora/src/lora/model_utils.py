@@ -1,3 +1,5 @@
+"""Model and processor setup helpers shared by training and inference flows."""
+
 from __future__ import annotations
 
 import os

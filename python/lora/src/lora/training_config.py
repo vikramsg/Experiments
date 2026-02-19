@@ -1,3 +1,5 @@
+"""Typed runtime configuration models used by training runners."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -21,26 +23,6 @@ class ExperimentConfig:
     max_seconds: float
     device: str | None
     wer_stop_threshold: float | None
-
-
-@dataclass
-class TrainingConfig:
-    model_id: str
-    output_dir: str
-    max_steps: int
-    eval_steps: int
-    learning_rate: float
-    lora_r: int
-    lora_alpha: int
-    lora_dropout: float
-    batch_size: int
-    gradient_accumulation_steps: int
-    seed: int
-    dataset: str
-    dataset_split: str
-    dataset_samples: int
-    max_seconds: float
-    device: str | None
 
 
 @dataclass

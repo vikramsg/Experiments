@@ -1,3 +1,11 @@
+"""Unified experiment runner for baseline/tuned LoRA comparisons.
+
+Output contract (under ``--output-dir``):
+- ``experiment_metrics.json``: run-level metrics including baseline/tuned WER and loss.
+- ``lora_adapter/``: adapter weights saved with ``save_pretrained``.
+- ``processor/``: processor snapshot used for training/evaluation parity.
+"""
+
 from __future__ import annotations
 
 import argparse

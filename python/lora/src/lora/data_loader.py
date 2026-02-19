@@ -1,3 +1,5 @@
+"""Dataset and manifest loading/preprocessing helpers for LoRA ASR training."""
+
 from __future__ import annotations
 
 import json

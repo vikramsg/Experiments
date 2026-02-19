@@ -1,3 +1,10 @@
+"""Small real-world LoRA runner for quick end-to-end validation.
+
+Output contract (under ``--output-dir``):
+- ``real_metrics.json``: run-level baseline/tuned metrics.
+- ``lora_adapter/`` and ``processor/``: adapter and processor artifacts.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -15,8 +22,8 @@ from transformers import AutoModelForSpeechSeq2Seq, set_seed
 from lora.data_loader import (
     DatasetConfig,
     create_dataloader,
-    load_manifest_dataset,
     load_dataset_split,
+    load_manifest_dataset,
     prepare_dataset,
     split_by_speaker,
 )

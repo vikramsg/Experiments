@@ -16,6 +16,13 @@ Flags:
     --audio-list     JSONL manifest with audio arrays and text
     --output         Output JSON report path
     --device         Device override (mps, cuda, cpu)
+
+Manifest schema (JSONL):
+    Required keys per line:
+    - audio: list[float] waveform samples (16 kHz expected by default processor path)
+    - text: reference transcript string
+    Optional keys:
+    - speaker_id: int or string identifier (ignored by this script)
 """
 
 from __future__ import annotations
@@ -168,7 +175,7 @@ def run_stt(args: argparse.Namespace) -> SttReport:
                     predicted_ids = logits.argmax(dim=-1)
                     prediction = processor.batch_decode(predicted_ids)[0]
                 else:
-                    # TODO: remove fallback decode branch; make explicit decoding strategy and fail fast.
+                    # TODO: remove fallback decode branch and make decoding strategy explicit.
                     predicted_ids = model.generate(
                         **{
                             input_key: batch[input_key].to(device),

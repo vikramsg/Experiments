@@ -5,6 +5,17 @@
 - Fine-tune Moonshine ASR models with LoRA adapters for domain adaptation.
 - Optimize for domain WER/CER improvements while staying within Apple Silicon memory limits.
 
+## Glossary
+
+- Domain manifest: The primary evaluation dataset that represents domain-shifted production-like audio (for this repo: `data/domain_manifest.jsonl`).
+- Heldout manifest: The safety/guardrail evaluation dataset used to detect regressions on non-target data (for this repo: `data/heldout_manifest.jsonl`).
+- Baseline: Metrics from the base model before applying LoRA training.
+- Tuned model: The same base model with LoRA adapter weights applied after training.
+- Guardrail metric: A metric tracked to prevent regressions while optimizing another target metric.
+- Headroom: The remaining achievable improvement on a dataset; low headroom usually means little expected WER gain.
+- Normalization/decode parity: Using the same audio normalization and decode settings across training, evaluation, and inference to keep comparisons valid.
+- Manifest: A JSONL file describing evaluation/training samples, typically with audio path and transcript metadata.
+
 ## Data Requirements
 
 - Labeled ASR dataset: audio files + transcripts.
