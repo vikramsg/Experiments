@@ -58,7 +58,12 @@ def main() -> None:
     input_paths = [Path(value) for value in args.inputs]
     output_path = Path(args.output)
     total_entries = merge_manifests(input_paths, output_path)
-    LOGGER.info("Merged manifests | inputs=%s | output=%s | entries=%s", input_paths, output_path, total_entries)
+    LOGGER.info(
+        "Merged manifests | inputs=%s | output=%s | entries=%s",
+        input_paths,
+        output_path,
+        total_entries,
+    )
 
 
 if __name__ == "__main__":

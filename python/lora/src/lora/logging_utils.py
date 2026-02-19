@@ -19,12 +19,14 @@ def setup_logging(level: int = logging.INFO) -> None:
     try:
         log_dir = Path("outputs")
         log_dir.mkdir(parents=True, exist_ok=True)
-        
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_file = log_dir / f"run_{timestamp}.log"
-        
+
         file_handler = logging.FileHandler(log_file)
-        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        file_handler.setFormatter(
+            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        )
         handlers.append(file_handler)
     except Exception:
         # Fallback to console-only if file logging fails (e.g., permissions)

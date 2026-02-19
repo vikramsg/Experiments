@@ -1,18 +1,24 @@
 """Build a JSONL manifest of audio arrays + transcripts for STT checks.
 
-This script creates small, portable datasets for testing Speech-to-Text (STT) models by:
-1.  **Downloading Audio:** Fetches audio samples from the LibriSpeech dataset (a standard benchmark for ASR).
-2.  **Processing Audio:** Reads raw audio bytes, ensures 16kHz sampling, and converts them to floating-point arrays.
-3.  **Formatting Data:** Packages the audio data along with its corresponding transcript and speaker ID.
+This script creates small, portable datasets for testing Speech-to-Text (STT)
+models by:
+1.  **Downloading Audio:** Fetches audio samples from the LibriSpeech dataset
+    (a standard benchmark for ASR).
+2.  **Processing Audio:** Reads raw audio bytes, ensures 16kHz sampling, and
+    converts them to floating-point arrays.
+3.  **Formatting Data:** Packages the audio data along with its transcript and
+    speaker ID.
 4.  **Saving to JSONL:** Writes these packaged entries into a JSON Lines (JSONL) file.
 
 Benefits:
 *   **Offline/Fast Testing:** Enables quick sanity checks without re-downloading massive datasets.
 *   **Reproducibility:** Ensures consistent evaluation on the exact same audio clips.
-*   **CI/CD:** Provides a tiny, reliable dataset for Continuous Integration pipelines without network overhead.
+*   **CI/CD:** Provides a tiny, reliable dataset for CI pipelines without
+    network overhead.
 
 Usage:
-    uv run python scripts/build_manifest.py --split test --samples 3 --output data/heldout_manifest.jsonl
+    uv run python scripts/build_manifest.py --split test --samples 3 \
+        --output data/heldout_manifest.jsonl
 
 Flags:
     --split     LibriSpeech split name (e.g. test, validation, train.100)
@@ -64,7 +70,7 @@ def main() -> None:
         try:
             sample = next(sample_iter)
         except StopIteration:
-            # TODO: remove fallback StopIteration handling; fail fast with explicit sample-count checks.
+            # TODO: remove fallback StopIteration handling and fail fast.
             break
         try:
             audio_info = sample["audio"]

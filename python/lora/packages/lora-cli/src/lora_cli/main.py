@@ -14,21 +14,27 @@ console = Console()
 
 @app.command()
 def start(
-    model_id: str = typer.Option("UsefulSensors/moonshine-tiny", help="Hugging Face model ID"),
-    non_interactive: bool = typer.Option(False, "--non-interactive", help="Run in simulation mode for testing"),
+    model_id: str = typer.Option(
+        "UsefulSensors/moonshine-tiny", help="Hugging Face model ID"
+    ),
+    non_interactive: bool = typer.Option(
+        False, "--non-interactive", help="Run in simulation mode for testing"
+    ),
 ):
     """Start the Moonshine Voice CLI."""
     ui = VoiceUI(console)
     recognizer = SpeechRecognizer(model_id=model_id, mock=non_interactive)
-    
+
     if non_interactive:
         ui.print_system("Starting in NON-INTERACTIVE mode...")
         # Simulation Loop
         ui.update_status("Simulating: HOLDING SPACE")
         # Simulate recording (dummy audio)
-        fake_audio = np.random.uniform(-0.5, 0.5, 16000 * 2).astype(np.float32) # 2 seconds of noise
+        fake_audio = np.random.uniform(-0.5, 0.5, 16000 * 2).astype(
+            np.float32
+        )  # 2 seconds of noise
         time.sleep(1)
-        
+
         ui.update_status("Simulating: RELEASED SPACE")
         ui.show_spinner("Transcribing...")
         text = recognizer.transcribe(fake_audio)
@@ -66,7 +72,7 @@ def start(
         try:
             listener.join()
         except KeyboardInterrupt:
-            # TODO: remove fallback KeyboardInterrupt handling; make shutdown explicit and fail fast.
+            # TODO: remove fallback KeyboardInterrupt handling and make shutdown explicit.
             ui.print_system("Goodbye!")
 
 if __name__ == "__main__":
