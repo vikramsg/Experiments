@@ -59,5 +59,28 @@ Moonshine v2 is divided into four distinct stages. The parameter distribution is
 
 ## 4. LoRA Strategy Implications
 
-- **Targeting:** Since the decoder (22.8M) is ~3x larger than the encoder (7.39M) and contains the cross-attention logic, LoRA adapters should prioritize **decoder projection layers**.
-- **Adapter Fine-tuning:** The 1.31M parameter **Adapter** stage is a high-leverage target for domain-shifting, as it handles the transition from position-free acoustic features to token-aware embeddings.
+### 4.1 Targeting the Decoder for "Inference Intelligence"
+The parameter distribution (Table 1) dictates that LoRA should prioritize the **Decoder (22.8M parameters)** over the Encoder (7.39M parameters). 
+- **The Rationale:** In domain adaptation, the model often "hears" the audio correctly via the encoder but fails to map those sounds to the correct domain-specific vocabulary. 
+- **The Fix:** Focus LoRA adapters on the **Cross-Attention layers** of the decoder. These are the specific "bridges" where the model queries the encoder's acoustic features to generate text tokens. This is the most likely area to solve the "Loss ↓ but WER ↔" disconnect.
+
+### 4.2 The Adapter Stage: The High-Leverage Target
+The **1.31M parameter Adapter** is a specialized bridge that converts position-free features into position-aware ones.
+- **The Rationale:** Domain-shifted audio (different accents, background noise) often disrupts the temporal alignment of speech. 
+- **The Fix:** By including the Adapter stage in `target_modules`, we allow the model to specifically re-calibrate how it aligns sliding-window acoustic features with the decoder's token generation loop.
+
+### 4.3 Preprocessing Parity (asinh & CMVN)
+Moonshine v2 uses a specific sequence of **CMVN** and **asinh** nonlinearity in its preprocessor.
+- **The Rationale:** Standard linear or Gaussian normalization used in many training scripts creates a "feature mismatch." The model then spends its limited LoRA capacity trying to "un-distort" the input rather than learning the domain language.
+- **The Fix:** Ensure training data is fed through a preprocessor that matches the `asinh` scaling. Do not apply generic Min-Max normalization that could saturate the logarithmic range Moonshine expects.
+
+### 4.4 Sliding-Window Stability (Long-and-Slow)
+The use of local (sliding-window) attention means the model is less "globally aware" than Whisper.
+- **The Rationale:** Gradients in sliding-window architectures can be noisier than full-attention models. Short training runs (e.g., 200 steps) are often insufficient for the weights to stabilize across these windows.
+- **The Fix:** Increase training steps to **1000+** (at least 3-5 full epochs) with a **linear learning rate decay**. This gives the local attention windows enough "exposure" to the domain data to settle into a new global transcription logic.
+
+## 5. Resources & Direct Links
+
+- **Research Paper (Feb 2026):** [Moonshine v2: Ergodic Streaming Encoder ASR for Latency-Critical Speech Applications](https://arxiv.org/abs/2602.12241)
+- **Official GitHub:** [usefulsensors/moonshine](https://github.com/usefulsensors/moonshine)
+- **Hugging Face Models:** [UsefulSensors Moonshine v2 Collection](https://huggingface.co/UsefulSensors)

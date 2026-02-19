@@ -61,3 +61,19 @@ Stable reduction of Domain WER (>= 1.0%) with strict Heldout guardrails.
 
 ### Guidance
 Persistence is mandatory. Continue iterating on hyperparameters and architectures until the acceptance criteria are met. Document all intermediate results in the Run Matrix.
+
+## Research-Derived Strategy: The "Bridge-Focus" Approach
+
+Based on the **Moonshine v2 (Feb 2026)** paper, our current strategy of targeting the entire model or primarily the encoder is likely inefficient. We observed in `exp_2_1_dora_stability` that training loss dropped by 50% while WER actually regressed. 
+
+### Technical Justification
+1.  **Parameter Density**: The **Decoder (22.8M params)** is 3x larger than the Encoder (7.39M). Most of the "linguistic intelligence" resides here.
+2.  **The "Bridge" Bottleneck**: The **Adapter (1.31M params)** is the specific component that translates position-free acoustic features into position-aware tokens. If the domain shift (accents/noise) affects temporal alignment, the Adapter is the highest-leverage target for correction.
+3.  **Cross-Attention**: The disconnect between Loss and WER suggests the model "hears" the audio (Encoder) but fail to "query" the right features during text generation. Targeting the **Decoder's Cross-Attention layers** directly addresses this.
+
+### Proposed Experiment: exp_2_3_bridge_focus
+| Run ID | Goal | Target Modules | LR | Steps |
+| :--- | :--- | :--- | :--- | :--- |
+| **exp_2_3** | Resolve Loss-WER disconnect | `decoder.*cross_attention`, `adapter` | 1e-5 | 1000 |
+
+**Strategy**: By freezing the "acoustic" encoder and only adapting the "bridge" and "linguistic" decoder, we protect the model's base speech recognition while forcing it to re-map its output to our specific domain vocabulary.

@@ -341,10 +341,12 @@ def train_loop(
                     )
             step += 1
             if eval_interval and step % eval_interval == 0:
+                LOGGER.info("Evaluating DOMAIN manifest (Interval step=%s)", step)
                 interval_wer = eval_wer(model, processor, eval_loader, device)
                 LOGGER.info("Interval WER | step=%s | wer=%.4f", step, interval_wer)
 
                 if safety_loader:
+                    LOGGER.info("Evaluating HELDOUT manifest (Safety Interval step=%s)", step)
                     safety_wer = eval_wer(model, processor, safety_loader, device)
                     LOGGER.info("Interval Safety WER | step=%s | wer=%.4f", step, safety_wer)
 
@@ -456,7 +458,10 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     )
 
     baseline_eval_loss = eval_loss(model, next(iter(val_loader)), device)
+    
+    LOGGER.info("Evaluating DOMAIN manifest (Baseline)")
     baseline_wer = eval_wer(model, processor, eval_loader, device)
+    
     LOGGER.info(
         "Baseline metrics | eval_loss=%.4f | wer=%.4f",
         baseline_eval_loss,
@@ -464,6 +469,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     )
     safety_baseline_wer = None
     if safety_loader:
+        LOGGER.info("Evaluating HELDOUT manifest (Safety Baseline)")
         safety_baseline_wer = eval_wer(model, processor, safety_loader, device)
         LOGGER.info("Safety baseline WER | wer=%.4f", safety_baseline_wer)
 
@@ -489,6 +495,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     LOGGER.info("Training finished | elapsed=%.2fs", elapsed)
 
     tuned_eval_loss = eval_loss(model, next(iter(val_loader)), device)
+    LOGGER.info("Evaluating DOMAIN manifest (Final Tuned)")
     tuned_wer = eval_wer(model, processor, eval_loader, device)
     LOGGER.info(
         "Final tuned metrics | eval_loss=%.4f | wer=%.4f",
@@ -497,6 +504,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     )
 
     if safety_loader:
+        LOGGER.info("Evaluating HELDOUT manifest (Final Safety Tuned)")
         safety_tuned_wer = eval_wer(model, processor, safety_loader, device)
         LOGGER.info("Safety final tuned WER | wer=%.4f", safety_tuned_wer)
 
