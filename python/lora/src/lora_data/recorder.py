@@ -4,6 +4,7 @@ import json
 import logging
 import random
 import sys
+import termios
 import time
 import uuid
 import wave
@@ -94,14 +95,17 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
     recorder = AudioRecorder()
     
     console.print(Panel(
-        "[bold cyan]Instructions:[/bold cyan]\n"
-        "1. A prompt will appear on screen.\n"
-        "2. Press and [bold yellow]HOLD[/bold yellow] the "
-        "[bold green]SPACEBAR[/bold green] to record.\n"
-        "3. Read the prompt out loud.\n"
-        "4. Release the [bold green]SPACEBAR[/bold green] to stop recording.\n"
-        "5. The file is automatically saved.\n\n"
-        "[dim]Press 'q' at any time to quit.[/dim]",
+        f"[bold cyan]Instructions:[/bold cyan]\n"
+        f"1. A prompt will appear on screen.\n"
+        f"2. Press and [bold yellow]HOLD[/bold yellow] the "
+        f"[bold green]SPACEBAR[/bold green] to record.\n"
+        f"3. Read the prompt out loud.\n"
+        f"4. Release the [bold green]SPACEBAR[/bold green] to stop recording.\n"
+        f"5. The file is automatically saved.\n\n"
+        f"[bold cyan]Storage:[/bold cyan]\n"
+        f"• Audio Dir: [green]{out_path}[/green]\n"
+        f"• Manifest:  [green]{manifest_file}[/green]\n\n"
+        f"[dim]Press 'q' at any time to quit.[/dim]",
         title="🎙️  [bold magenta]PERSONALIZED VOICE RECORDER STARTED[/bold magenta]",
         border_style="cyan",
         expand=False
@@ -111,10 +115,20 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
     current_prompt = ""
     shutdown_requested = False
     
+    random.shuffle(prompts)
+    prompt_iter = iter(prompts)
+    
     def pick_prompt():
-        return random.choice(prompts)
+        try:
+            return next(prompt_iter)
+        except StopIteration:
+            console.print("[bold yellow]No more prompts left in the file![/bold yellow]")
+            return None
         
     current_prompt = pick_prompt()
+    if not current_prompt:
+        return
+    
     console.print(
         f"\n[bold green]\\[PROMPT]:[/bold green] "
         f"[bold white]{current_prompt}[/bold white]"
@@ -155,16 +169,29 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
             
             # Show next
             current_prompt = pick_prompt()
+            if not current_prompt:
+                shutdown_requested = True
+                return False
+                
             console.print(
                 f"\n[bold green]\\[PROMPT]:[/bold green] "
                 f"[bold white]{current_prompt}[/bold white]"
             )
 
-    with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
-        while not shutdown_requested:
-            time.sleep(0.1)
-            if not listener.running:
-                break
+    fd = sys.stdin.fileno()
+    old_attr = termios.tcgetattr(fd)
+    new_attr = termios.tcgetattr(fd)
+    new_attr[3] = new_attr[3] & ~termios.ECHO  # Disable ECHO
+    
+    try:
+        termios.tcsetattr(fd, termios.TCSANOW, new_attr)
+        with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
+            while not shutdown_requested:
+                time.sleep(0.1)
+                if not listener.running:
+                    break
+    finally:
+        termios.tcsetattr(fd, termios.TCSANOW, old_attr)
 
     console.print("\n[bold magenta]Session ended.[/bold magenta]")
 
