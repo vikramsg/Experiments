@@ -147,7 +147,7 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
             recorder.start()
 
     def on_release(key):
-        nonlocal is_recording, current_prompt
+        nonlocal is_recording, current_prompt, shutdown_requested
         
         if key == keyboard.Key.space and is_recording:
             is_recording = False
