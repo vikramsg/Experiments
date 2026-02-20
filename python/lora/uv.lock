@@ -597,13 +597,7 @@ name = "lora"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "accelerate" },
-    { name = "datasets", extra = ["audio"] },
-    { name = "evaluate" },
-    { name = "jiwer" },
-    { name = "librosa" },
     { name = "moonshine-voice" },
-    { name = "peft" },
     { name = "rich" },
     { name = "soundfile" },
     { name = "torch" },
@@ -611,20 +605,27 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+data = [
+    { name = "librosa" },
+    { name = "numpy" },
+    { name = "pynput" },
+    { name = "sounddevice" },
+]
 dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+training = [
+    { name = "accelerate" },
+    { name = "datasets", extra = ["audio"] },
+    { name = "evaluate" },
+    { name = "jiwer" },
+    { name = "peft" },
+]
 
 [package.metadata]
 requires-dist = [
-    { name = "accelerate", specifier = ">=0.29" },
-    { name = "datasets", extras = ["audio"], specifier = ">=2.19" },
-    { name = "evaluate", specifier = ">=0.4" },
-    { name = "jiwer", specifier = ">=3.0" },
-    { name = "librosa", specifier = ">=0.10" },
     { name = "moonshine-voice", git = "https://github.com/moonshine-ai/moonshine?subdirectory=python" },
-    { name = "peft", specifier = ">=0.11" },
     { name = "rich", specifier = ">=13.7" },
     { name = "soundfile", specifier = ">=0.12" },
     { name = "torch", specifier = ">=2.2" },
@@ -632,9 +633,22 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+data = [
+    { name = "librosa", specifier = ">=0.10" },
+    { name = "numpy", specifier = ">=1.26.0" },
+    { name = "pynput", specifier = ">=1.7.6" },
+    { name = "sounddevice", specifier = ">=0.4.6" },
+]
 dev = [
     { name = "pytest", specifier = ">=8.0" },
     { name = "ruff", specifier = ">=0.9.6" },
+]
+training = [
+    { name = "accelerate", specifier = ">=0.29" },
+    { name = "datasets", extras = ["audio"], specifier = ">=2.19" },
+    { name = "evaluate", specifier = ">=0.4" },
+    { name = "jiwer", specifier = ">=3.0" },
+    { name = "peft", specifier = ">=0.11" },
 ]
 
 [[package]]

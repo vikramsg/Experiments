@@ -15,8 +15,8 @@ from datasets import Audio, Dataset, load_dataset
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
-from lora.logging_utils import get_logger
-from lora.model_utils import normalize_audio_rms
+from lora_training.logging_utils import get_logger
+from lora_training.model_utils import normalize_audio_rms
 
 
 @dataclass

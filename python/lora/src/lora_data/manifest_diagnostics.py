@@ -4,7 +4,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from lora.manifest_diagnostics import (
+from lora_data.manifest_diagnostics import (
     DEFAULT_SAMPLE_RATE,
     DEFAULT_THRESHOLDS,
     ManifestProfile,

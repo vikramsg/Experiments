@@ -10,11 +10,23 @@ venv:
 
 # Install dependencies from uv.lock
 sync:
-	uv sync
+	uv sync --all-groups
 
 # Run the main entrypoint
 run:
 	uv run python main.py
+
+# Record dataset interactively
+record-dataset:
+	uv run python src/lora_data/recorder.py
+
+# Verify the headless recorder
+verify-recorder:
+	uv run python src/lora_data/recorder.py --non-interactive
+
+# Split the dataset into train and eval
+split-dataset:
+	uv run python src/lora_data/manifest_utils.py
 
 # Run pytest
 test:

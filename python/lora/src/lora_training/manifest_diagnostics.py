@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NotRequired, TypedDict, cast
 
-from lora.data_loader import load_manifest_dataset, split_by_speaker
+from lora_data.data_loader import load_manifest_dataset, split_by_speaker
 
 DEFAULT_THRESHOLDS: tuple[float, ...] = (5.0, 8.0, 10.0, 15.0, 20.0)
 DEFAULT_SAMPLE_RATE = 16000

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import torch
 
-from lora.evaluation import eval_wer, normalize_text, summarize_losses
+from lora_training.evaluation import eval_wer, normalize_text, summarize_losses
 
 
 def test_summarize_losses_handles_empty() -> None:
@@ -22,7 +22,7 @@ def test_normalize_text() -> None:
     assert normalize_text("Hyphen-ated word.") == "hyphenated word"
 
 
-@patch("lora.evaluation.load")
+@patch("lora_training.evaluation.load")
 def test_eval_wer_respects_max_batches(mock_load) -> None:
     # Setup mock metric
     mock_metric = MagicMock()

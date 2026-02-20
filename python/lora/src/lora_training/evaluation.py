@@ -10,8 +10,8 @@ import numpy as np
 import torch
 from evaluate import load
 
-from lora.logging_utils import get_logger
-from lora.model_utils import is_ctc_config
+from lora_training.logging_utils import get_logger
+from lora_training.model_utils import is_ctc_config
 
 LOGGER = get_logger(__name__)
 

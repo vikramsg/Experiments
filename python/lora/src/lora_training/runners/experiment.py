@@ -19,7 +19,7 @@ import torch
 from peft import LoraConfig
 from transformers import AutoModelForSpeechSeq2Seq, get_linear_schedule_with_warmup, set_seed
 
-from lora.data_loader import (
+from lora_data.data_loader import (
     DatasetConfig,
     create_dataloader,
     load_dataset_split,
@@ -27,9 +27,9 @@ from lora.data_loader import (
     prepare_dataset,
     split_by_speaker,
 )
-from lora.evaluation import eval_loss, eval_wer, summarize_losses
-from lora.logging_utils import get_logger, setup_logging
-from lora.model_utils import (
+from lora_training.evaluation import eval_loss, eval_wer, summarize_losses
+from lora_training.logging_utils import get_logger, setup_logging
+from lora_training.model_utils import (
     choose_device,
     configure_generation,
     find_lora_targets,
@@ -37,7 +37,7 @@ from lora.model_utils import (
     mark_mps_fallback,
     setup_model,
 )
-from lora.training_config import ExperimentConfig
+from lora_training.training_config import ExperimentConfig
 
 DEFAULT_MODEL_ID = "UsefulSensors/moonshine-streaming-tiny"
 DEFAULT_OUTPUT_DIR = "outputs/experiment"

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from datasets import Dataset
 
-from lora.data_loader import prepare_dataset, split_by_speaker
+from lora_data.data_loader import prepare_dataset, split_by_speaker
 
 
 def test_split_by_speaker_returns_splits() -> None:
