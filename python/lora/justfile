@@ -16,18 +16,6 @@ sync:
 run:
 	uv run python main.py
 
-# Record dataset interactively
-record-dataset:
-	uv run python src/lora_data/recorder.py
-
-# Verify the headless recorder
-verify-recorder:
-	uv run python src/lora_data/recorder.py --non-interactive
-
-# Split the dataset into train and eval
-split-dataset:
-	uv run python src/lora_data/manifest_utils.py
-
 # Run pytest
 test:
 	uv run pytest
@@ -39,6 +27,15 @@ lint:
 # Auto-fix Ruff lint issues
 fix:
 	uv run ruff check . --fix
+
+
+# Record dataset interactively
+record-dataset:
+	uv run python src/lora_data/recorder.py
+
+# Split the dataset into train and eval
+split-dataset:
+	uv run python src/lora_data/manifest_utils.py
 
 # Run an experiment in the background using nohup
 # Usage: just run-experiment <name> "<extra_args>"

@@ -1,8 +1,7 @@
 import numpy as np
 import torch
-from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
-
 from lora.model_utils import normalize_audio_rms
+from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 
 
 class SpeechRecognizer:
@@ -27,8 +26,7 @@ class SpeechRecognizer:
             return "This is a simulated transcription."
 
         if len(audio_data) == 0:
-            # TODO: remove fallback empty audio handling; require explicit input validation.
-            return ""
+            raise ValueError("Cannot transcribe empty audio data. Audio recording may have failed.")
 
         # Normalize audio to match training preprocessing
         normalized_audio = normalize_audio_rms(audio_data.tolist(), target_rms=0.075)

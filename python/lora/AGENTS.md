@@ -75,7 +75,7 @@ Ruff is the standard linter for this repository. Configure linting rules only in
 - Avoid `Any`; use precise types, `Protocol`, `TypedDict`, `TypeVar`, unions, or generics as appropriate.
 - Prefix internal (non-public) functions with `_`.
 - Keep functions small and single-purpose; avoid hidden side effects.
-- Fail fast with specific exceptions; never use bare `except`.
+- Fail fast with specific exceptions; never use bare `except`. Do not write defensive fallback logic (e.g., silently returning empty values, inferring default behaviors on missing arguments, or ignoring missing state). Require explicit inputs, states, and configurations, and raise errors immediately if expectations are unmet.
 - Use structured `logging` instead of `print` in reusable modules and training workflows.
 - Prefer immutable data models (`frozen=True` dataclasses or immutable pydantic models) unless mutation is required.
 - Require explicit return type annotations for public and internal functions.

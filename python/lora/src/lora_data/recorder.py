@@ -10,19 +10,17 @@ import wave
 from pathlib import Path
 
 import numpy as np
+import sounddevice as sd
+from pynput import keyboard
+from rich.console import Console
+from rich.panel import Panel
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
-# Attempt to import audio libs, handle graceful failure for CI/testing
-try:
-    import sounddevice as sd
-    from pynput import keyboard
-    AUDIO_AVAILABLE = True
-except ImportError:
-    AUDIO_AVAILABLE = False
-    logger.warning("sounddevice or pynput not installed. Interactive recording disabled.")
+# Initialize rich console
+console = Console()
 
 class AudioRecorder:
     def __init__(self, sample_rate: int = 16000, channels: int = 1):
@@ -34,8 +32,6 @@ class AudioRecorder:
     def start(self):
         """Start capturing audio."""
         self.frames = []
-        if not AUDIO_AVAILABLE:
-            return
             
         def callback(indata, frames, time, status):
             if status:
@@ -87,10 +83,6 @@ def append_to_manifest(manifest_path: str | Path, audio_path: str | Path, text: 
 
 def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str):
     """Run the main interactive recording loop."""
-    if not AUDIO_AVAILABLE:
-        logger.error("Cannot run interactive session without sounddevice/pynput.")
-        sys.exit(1)
-        
     with open(prompts_file) as f:
         prompts = [line.strip() for line in f if line.strip()]
         
@@ -101,17 +93,19 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
     out_path = Path(out_dir)
     recorder = AudioRecorder()
     
-    logger.info("=" * 50)
-    logger.info("🎙️  PERSONALIZED VOICE RECORDER STARTED")
-    logger.info("=" * 50)
-    logger.info("Instructions:")
-    logger.info("1. A prompt will appear on screen.")
-    logger.info("2. Press and HOLD the SPACEBAR to record.")
-    logger.info("3. Read the prompt out loud.")
-    logger.info("4. Release the SPACEBAR to stop recording.")
-    logger.info("5. The file is automatically saved.")
-    logger.info("Press 'q' at any time to quit.")
-    logger.info("-" * 50)
+    console.print(Panel(
+        "[bold cyan]Instructions:[/bold cyan]\n"
+        "1. A prompt will appear on screen.\n"
+        "2. Press and [bold yellow]HOLD[/bold yellow] the "
+        "[bold green]SPACEBAR[/bold green] to record.\n"
+        "3. Read the prompt out loud.\n"
+        "4. Release the [bold green]SPACEBAR[/bold green] to stop recording.\n"
+        "5. The file is automatically saved.\n\n"
+        "[dim]Press 'q' at any time to quit.[/dim]",
+        title="🎙️  [bold magenta]PERSONALIZED VOICE RECORDER STARTED[/bold magenta]",
+        border_style="cyan",
+        expand=False
+    ))
 
     is_recording = False
     current_prompt = ""
@@ -121,21 +115,21 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
         return random.choice(prompts)
         
     current_prompt = pick_prompt()
-    logger.info(f"\n[PROMPT]: {current_prompt}")
+    console.print(
+        f"\n[bold green]\\[PROMPT]:[/bold green] "
+        f"[bold white]{current_prompt}[/bold white]"
+    )
 
     def on_press(key):
         nonlocal is_recording, shutdown_requested
         
-        try:
-            if key.char == 'q':
-                shutdown_requested = True
-                return False
-        except AttributeError:
-            pass
+        if hasattr(key, 'char') and key.char == 'q':
+            shutdown_requested = True
+            return False
 
         if key == keyboard.Key.space and not is_recording:
             is_recording = True
-            logger.info("🔴 RECORDING...")
+            console.print("[bold red]🔴 RECORDING...[/bold red]")
             recorder.start()
 
     def on_release(key):
@@ -144,7 +138,7 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
         if key == keyboard.Key.space and is_recording:
             is_recording = False
             audio_data = recorder.stop()
-            logger.info("⏹️  STOPPED")
+            console.print("[bold bright_black]⏹️  STOPPED[/bold bright_black]")
             
             if len(audio_data) > 0:
                 clip_id = str(uuid.uuid4())[:8]
@@ -152,13 +146,19 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
                 
                 save_wav(filename, audio_data)
                 append_to_manifest(manifest_file, filename, current_prompt)
-                logger.info(f"✅ Saved to {filename}")
+                console.print(f"[bold green]✅ Saved to[/bold green] [cyan]{filename}[/cyan]")
             else:
-                logger.warning("⚠️  No audio captured. Try holding spacebar longer.")
+                console.print(
+                    "[bold yellow]⚠️  No audio captured. "
+                    "Try holding spacebar longer.[/bold yellow]"
+                )
             
             # Show next
             current_prompt = pick_prompt()
-            logger.info(f"\n[PROMPT]: {current_prompt}")
+            console.print(
+                f"\n[bold green]\\[PROMPT]:[/bold green] "
+                f"[bold white]{current_prompt}[/bold white]"
+            )
 
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
         while not shutdown_requested:
@@ -166,7 +166,7 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
             if not listener.running:
                 break
 
-    logger.info("\nSession ended.")
+    console.print("\n[bold magenta]Session ended.[/bold magenta]")
 
 def run_headless_verification(out_dir: str, manifest_file: str):
     """Run an automated verification pass without human input."""

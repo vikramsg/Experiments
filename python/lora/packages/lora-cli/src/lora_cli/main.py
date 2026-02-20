@@ -59,21 +59,13 @@ def start(
                 audio_data = recorder.stop()
                 ui.update_status("TRANSCRIBING", recording=False)
                 ui.show_spinner("Thinking...")
-                try:
-                    text = recognizer.transcribe(audio_data)
-                    ui.print_user_message(text)
-                except Exception as e:
-                    # TODO: remove fallback exception handling; fail fast with explicit error types.
-                    ui.print_error(str(e))
+                text = recognizer.transcribe(audio_data)
+                ui.print_user_message(text)
                 ui.reset_status()
 
     # Start Keyboard Listener
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
-        try:
-            listener.join()
-        except KeyboardInterrupt:
-            # TODO: remove fallback KeyboardInterrupt handling and make shutdown explicit.
-            ui.print_system("Goodbye!")
+        listener.join()
 
 if __name__ == "__main__":
     app()

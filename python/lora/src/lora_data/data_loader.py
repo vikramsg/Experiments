@@ -8,7 +8,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import librosa
 import numpy as np
 import torch
 from datasets import Audio, Dataset, load_dataset
@@ -54,11 +53,12 @@ def build_synthetic_dataset(sample_rate: int, max_seconds: float) -> Dataset:
 
 
 def resample_audio(audio: list[float], original_rate: int, target_rate: int) -> list[float]:
-    if original_rate == target_rate:
-        return audio
-    # TODO: remove fallback resampling; make caller explicitly handle mismatched rates.
-    resampled = librosa.resample(np.asarray(audio), orig_sr=original_rate, target_sr=target_rate)
-    return resampled.astype(np.float32).tolist()
+    if original_rate != target_rate:
+        raise ValueError(
+            f"Mismatched sample rates: {original_rate} != {target_rate}. "
+            "Resampling must be done explicitly by caller."
+        )
+    return audio
 
 
 def load_librispeech_stream(split: str, sample_rate: int, max_samples: int | None) -> Dataset:
@@ -89,26 +89,23 @@ def load_librispeech_stream(split: str, sample_rate: int, max_samples: int | Non
 
 def prepare_features(batch: dict[str, Any], processor: Any, sample_rate: int) -> dict[str, Any]:
     audio = normalize_audio_rms(batch["audio"], target_rms=0.075)
-    if hasattr(processor, "as_target_processor"):
-        inputs = processor(audio, sampling_rate=sample_rate, return_tensors="pt")
-        with processor.as_target_processor():
-            labels = processor(batch["text"], return_tensors="pt").input_ids
-    else:
-        # TODO: remove fallback for missing target processor; require explicit processor behavior.
-        inputs = processor(audio, sampling_rate=sample_rate, return_tensors="pt")
-        labels = processor.tokenizer(batch["text"], return_tensors="pt").input_ids
+    inputs = processor(audio, sampling_rate=sample_rate, return_tensors="pt")
+    labels = processor.tokenizer(batch["text"], return_tensors="pt").input_ids
+
     if hasattr(inputs, "input_features"):
         input_key = "input_features"
         input_tensor = inputs.input_features[0]
-    else:
-        # TODO: remove fallback for missing input_features; require explicit input key.
+    elif hasattr(inputs, "input_values"):
         input_key = "input_values"
         input_tensor = inputs.input_values[0]
-    if hasattr(inputs, "attention_mask") and inputs.attention_mask is not None:
-        attention_mask = inputs.attention_mask[0]
     else:
-        # TODO: remove fallback attention mask; require explicit mask generation.
-        attention_mask = torch.ones(input_tensor.shape[-1], dtype=torch.long)
+        raise ValueError("Processor returned neither 'input_features' nor 'input_values'.")
+
+    if not hasattr(inputs, "attention_mask") or inputs.attention_mask is None:
+        raise ValueError("Processor did not return 'attention_mask'.")
+    
+    attention_mask = inputs.attention_mask[0]
+
     return {
         input_key: input_tensor,
         "attention_mask": attention_mask,
@@ -123,8 +120,13 @@ def to_tensor(values: Any) -> torch.Tensor:
 
 
 def collate_features(features: list[dict[str, Any]]) -> dict[str, torch.Tensor]:
-    # TODO: remove fallback input_key detection; make explicit in dataset mapping.
-    input_key = "input_features" if "input_features" in features[0] else "input_values"
+    if "input_features" in features[0]:
+        input_key = "input_features"
+    elif "input_values" in features[0]:
+        input_key = "input_values"
+    else:
+        raise KeyError("Features must contain 'input_features' or 'input_values'")
+
     input_values_list = [to_tensor(item[input_key]).squeeze() for item in features]
     attention_list = [to_tensor(item["attention_mask"]).squeeze() for item in features]
     labels_list = [to_tensor(item["labels"]) for item in features]
@@ -170,16 +172,9 @@ def split_by_speaker(
 ) -> tuple[Dataset, Dataset, Dataset]:
     speaker_ids = sorted({item for item in dataset["speaker_id"]})
     if len(speaker_ids) < 3:
-        # TODO: remove fallback split; require explicit speaker IDs and fail fast.
-        split = dataset.train_test_split(test_size=test_ratio, seed=seed)
-        val_test = split["test"].train_test_split(test_size=0.5, seed=seed)
-        LOGGER.info(
-            "Speaker split (fallback) | train=%s | val=%s | test=%s",
-            len(split["train"]),
-            len(val_test["train"]),
-            len(val_test["test"]),
+        raise ValueError(
+            f"Not enough speakers to split by speaker id. Found {len(speaker_ids)}, required >= 3."
         )
-        return split["train"], val_test["train"], val_test["test"]
 
     rng = np.random.default_rng(seed)
     rng.shuffle(speaker_ids)
@@ -247,10 +242,7 @@ def normalize_audio(value: Any) -> list[float]:
         return value
     if isinstance(value, dict) and "array" in value:
         return value["array"]
-    if isinstance(value, dict) and "bytes" in value:
-        # TODO: remove fallback audio format handling; require explicit array inputs.
-        raise ValueError("Audio bytes are not supported; provide arrays")
-    raise ValueError("Unsupported audio format in manifest")
+    raise ValueError("Unsupported audio format in manifest. Expected array or list.")
 
 
 def build_manifest_dataset(entries: list[dict[str, Any]]) -> Dataset:

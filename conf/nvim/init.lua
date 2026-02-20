@@ -6,7 +6,7 @@
 -- General & Navigation:
 --   Space (Leader) : The prefix for most custom commands
 --   <C-h,j,k,l>    : Navigate between splits
---   x              : Delete without yanking to clipboard
+--   <leader>d      : Delete without yanking
 --   <leader>a      : Toggle Autocomplete (nvim-cmp)
 --   <leader>f      : Format current buffer (Conform)
 --
@@ -106,7 +106,7 @@ vim.keymap.set({ "n", "v", "i" }, "<Select>", "$", { desc = "Go to end of line" 
 vim.keymap.set("x", "p", "P", { desc = "Paste without overwriting register" })
 
 -- Delete without yanking (to the black hole register)
-vim.keymap.set({ "n", "v" }, "x", [["_x]], { desc = "Delete character/selection without yanking" })
+vim.keymap.set({ "n", "v" }, "<leader>d", [["_x]], { desc = "Delete character/selection without yanking" })
 
 --  Try it with `yap` in normal mode
 --  See `:help vim.highlight.on_yank()`

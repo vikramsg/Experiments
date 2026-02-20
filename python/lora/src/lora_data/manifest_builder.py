@@ -67,24 +67,18 @@ def main() -> None:
     entries = []
     sample_iter = iter(dataset)
     while len(entries) < args.samples:
-        try:
-            sample = next(sample_iter)
-        except StopIteration:
-            # TODO: remove fallback StopIteration handling and fail fast.
-            break
-        try:
-            audio_info = sample["audio"]
-            with SoundFile(io.BytesIO(audio_info["bytes"])) as sound:
-                audio_array = sound.read(dtype="float32")
-            entry = ManifestEntry(
-                audio=audio_array.tolist(),
-                text=sample["text"],
-                speaker_id=sample.get("speaker_id", -1),
-            )
-            entries.append(json.dumps(asdict(entry)))
-        except Exception:
-            # TODO: remove fallback exception swallowing; fail fast with explicit error handling.
-            continue
+        sample = next(sample_iter)
+        
+        audio_info = sample["audio"]
+        with SoundFile(io.BytesIO(audio_info["bytes"])) as sound:
+            audio_array = sound.read(dtype="float32")
+        
+        entry = ManifestEntry(
+            audio=audio_array.tolist(),
+            text=sample["text"],
+            speaker_id=sample.get("speaker_id", -1),
+        )
+        entries.append(json.dumps(asdict(entry)))
     output_path.write_text("\n".join(entries))
 
 

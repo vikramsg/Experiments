@@ -120,9 +120,14 @@ def train_loop(
             loss = outputs.loss / gradient_accumulation_steps
             loss.backward()
             if not first_grad_logged:
-                # TODO: remove inline grad fallback; make explicit and fail fast.
+                for param in trainable_params:
+                    if param.grad is None:
+                        raise RuntimeError(
+                            f"Gradient missing for trainable parameter {param.shape}. "
+                            "Ensure loss.backward() computed gradients."
+                        )
                 grad_values = [
-                    float(param.grad.detach().norm().item()) if param.grad is not None else 0.0
+                    float(param.grad.detach().norm().item())
                     for param in trainable_params
                 ]
                 grad_norm = float(torch.tensor(grad_values).norm().item())
@@ -221,16 +226,10 @@ def run_real(config: RealRunConfig) -> RealRunMetrics:
         target_modules=config.lora_targets,
     )
     del base_probe
-    # Fallback to q/v attention projections only when detection finds nothing.
-    # This is the conservative baseline: lower memory/compute on MPS and lower
-    # overfitting risk on small datasets, at the cost of reduced adaptation scope.
-    # TODO: Make target_modules explicit in RealRunConfig/CLI and stop relying on
-    # implicit fallback behavior from model probing.
-    # TODO: remove fallback to q/v projections; require explicit targets and fail fast.
     if not lora_targets:
-        lora_targets = ["q_proj", "v_proj"]
-    if not lora_targets:
-        lora_targets = ["q_proj", "v_proj"]
+        raise ValueError(
+            "No LoRA targets found. They must be explicitly provided or detectable by the model."
+        )
     LOGGER.info("LoRA targets | modules=%s", lora_targets)
 
     lora_config = LoraConfig(

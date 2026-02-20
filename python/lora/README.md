@@ -48,6 +48,13 @@ We include a standalone CLI tool for live voice interaction with the models.
 
 See [packages/lora-cli/README.md](packages/lora-cli/README.md) for full details.
 
+## Development Philosophy
+
+This project strictly adheres to a **fail-fast, no-fallback** engineering philosophy:
+- Do not write defensive `try...except` blocks that swallow errors.
+- Do not implement silent fallbacks for missing configurations, unexpected data shapes, or missing dependencies.
+- If a contract is violated, raise an explicit exception (`ValueError`, `KeyError`, `RuntimeError`, etc.) immediately. We prefer the application to crash loudly rather than proceed in an ambiguous state.
+
 ## Documentation
 
 ### Training Guide

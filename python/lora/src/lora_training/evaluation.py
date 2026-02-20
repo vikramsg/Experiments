@@ -65,30 +65,34 @@ def decode_prediction(
         Normalized decoded transcript.
     """
     model_dtype = next(model.parameters()).dtype
-    # TODO: remove fallback batch key usage; require explicit input_values/attention_mask.
-    input_values = batch["input_values"].to(device)
+    
+    if "input_features" in batch:
+        input_key = "input_features"
+    elif "input_values" in batch:
+        input_key = "input_values"
+    else:
+        raise KeyError("Batch must contain 'input_features' or 'input_values'")
+
+    input_values = batch[input_key].to(device)
     attention_mask = batch["attention_mask"].to(device)
-    if input_values.dim() == 1:
-        # TODO: remove fallback reshape; require batched input tensors.
-        input_values = input_values.unsqueeze(0)
-    if attention_mask.dim() == 1:
-        # TODO: remove fallback reshape; require batched attention masks.
-        attention_mask = attention_mask.unsqueeze(0)
+    
+    if input_values.dim() != 2 and input_values.dim() != 3:
+         raise ValueError(f"Expected 2D or 3D batched input_values, got {input_values.dim()}D")
+    if attention_mask.dim() != 2:
+         raise ValueError(f"Expected 2D batched attention_mask, got {attention_mask.dim()}D")
+
     input_values = input_values.to(model_dtype)
     with torch.no_grad():
         if is_ctc_config(model.config):
-            logits = model(input_values=input_values, attention_mask=attention_mask).logits
-            predicted_ids = logits.argmax(dim=-1)
-            decoded = processor.batch_decode(predicted_ids)
-        else:
-            # TODO: remove fallback branch; make decoding strategy explicit and fail fast.
-            duration = input_values.shape[-1] / processor.feature_extractor.sampling_rate
-            predicted_ids = model.generate(
-                input_values=input_values,
-                attention_mask=attention_mask,
-                **_generation_kwargs(duration),
-            )
-            decoded = [processor.decode(predicted_ids[0], skip_special_tokens=True)]
+            raise NotImplementedError("CTC decoding is explicitly unsupported.")
+        
+        duration = input_values.shape[-1] / processor.feature_extractor.sampling_rate
+        predicted_ids = model.generate(
+            input_values=input_values,
+            attention_mask=attention_mask,
+            **_generation_kwargs(duration),
+        )
+        decoded = [processor.decode(predicted_ids[0], skip_special_tokens=True)]
     return normalize_text(decoded[0])
 
 
@@ -145,23 +149,17 @@ def eval_wer(
         payload["input_values"] = payload["input_values"].to(model_dtype)
         with torch.no_grad():
             if is_ctc_config(model.config):
-                logits = model(
-                    input_values=payload["input_values"],
-                    attention_mask=payload["attention_mask"],
-                ).logits
-                predicted_ids = logits.argmax(dim=-1)
-                preds = processor.batch_decode(predicted_ids)
-            else:
-                # TODO: remove fallback branch; make decoding strategy explicit and fail fast.
-                duration = (
-                    payload["input_values"].shape[-1] / processor.feature_extractor.sampling_rate
-                )
-                predicted_ids = model.generate(
-                    input_values=payload["input_values"],
-                    attention_mask=payload["attention_mask"],
-                    **_generation_kwargs(duration),
-                )
-                preds = [processor.decode(seq, skip_special_tokens=True) for seq in predicted_ids]
+                raise NotImplementedError("CTC decoding is explicitly unsupported.")
+            
+            duration = (
+                payload["input_values"].shape[-1] / processor.feature_extractor.sampling_rate
+            )
+            predicted_ids = model.generate(
+                input_values=payload["input_values"],
+                attention_mask=payload["attention_mask"],
+                **_generation_kwargs(duration),
+            )
+            preds = [processor.decode(seq, skip_special_tokens=True) for seq in predicted_ids]
         preds = [normalize_text(p) for p in preds]
 
         labels = batch["labels"].clone()
@@ -206,7 +204,8 @@ def summarize_losses(losses: list[float]) -> float:
         losses: Training loss values.
 
     Returns:
-        Mean loss or 0.0 when empty.
+        Mean loss.
     """
-    # TODO: remove fallback empty-loss handling; require explicit loss values.
-    return float(np.mean(losses)) if losses else 0.0
+    if not losses:
+        raise ValueError("Cannot summarize empty list of losses")
+    return float(np.mean(losses))

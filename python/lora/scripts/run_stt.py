@@ -35,14 +35,6 @@ from pathlib import Path
 
 import torch
 from evaluate import load
-from peft import PeftModel
-from transformers import (
-    AutoConfig,
-    AutoModelForCTC,
-    AutoModelForSpeechSeq2Seq,
-    MoonshineForConditionalGeneration,
-)
-
 from lora.data_loader import build_manifest_dataset, load_manifest, prepare_dataset
 from lora.logging_utils import get_logger, setup_logging
 from lora.model_utils import (
@@ -51,6 +43,13 @@ from lora.model_utils import (
     is_ctc_config,
     load_processor,
     normalize_audio_rms,
+)
+from peft import PeftModel
+from transformers import (
+    AutoConfig,
+    AutoModelForCTC,
+    AutoModelForSpeechSeq2Seq,
+    MoonshineForConditionalGeneration,
 )
 
 
@@ -108,16 +107,14 @@ def run_stt(args: argparse.Namespace) -> SttReport:
         base_model = AutoModelForCTC.from_pretrained(args.model_id)
     elif config.model_type == "moonshine":
         base_model = MoonshineForConditionalGeneration.from_pretrained(args.model_id)
-    else:
-        # TODO: remove fallback model selection; make explicit model class choice and fail fast.
+    elif config.model_type in {"whisper", "speech-encoder-decoder"}:
         base_model = AutoModelForSpeechSeq2Seq.from_pretrained(args.model_id)
-    if args.adapter_dir:
-        model = PeftModel.from_pretrained(base_model, args.adapter_dir)
-        adapter_dir = args.adapter_dir
     else:
-        # TODO: remove fallback to base model; require explicit adapter choice.
-        model = base_model
-        adapter_dir = None
+        raise ValueError(f"Unsupported model_type: {config.model_type}")
+    if not args.adapter_dir:
+        raise ValueError("LoRA adapter directory (--adapter-dir) must be explicitly provided.")
+    model = PeftModel.from_pretrained(base_model, args.adapter_dir)
+    adapter_dir = args.adapter_dir
     LOGGER.info("Model loaded | adapter=%s", adapter_dir or "none")
     model.to(device)
     configure_generation(model, processor)
@@ -156,8 +153,12 @@ def run_stt(args: argparse.Namespace) -> SttReport:
             )[0]
             reference = entry["text"]
         else:
-            # TODO: remove fallback input_key detection; make explicit input key and fail fast.
-            input_key = "input_features" if "input_features" in item else "input_values"
+            if "input_features" in item:
+                input_key = "input_features"
+            elif "input_values" in item:
+                input_key = "input_values"
+            else:
+                raise KeyError("Item does not contain 'input_features' or 'input_values'")
             input_values = torch.tensor(item[input_key]).unsqueeze(0)
             attention_mask = torch.tensor(item["attention_mask"]).unsqueeze(0)
             batch = {
@@ -166,23 +167,17 @@ def run_stt(args: argparse.Namespace) -> SttReport:
             }
             with torch.no_grad():
                 if is_ctc_config(config):
-                    logits = model(
-                        **{
-                            input_key: batch[input_key].to(device),
-                            "attention_mask": batch["attention_mask"].to(device),
-                        }
-                    ).logits
-                    predicted_ids = logits.argmax(dim=-1)
-                    prediction = processor.batch_decode(predicted_ids)[0]
-                else:
-                    # TODO: remove fallback decode branch and make decoding strategy explicit.
-                    predicted_ids = model.generate(
-                        **{
-                            input_key: batch[input_key].to(device),
-                            "attention_mask": batch["attention_mask"].to(device),
-                        },
+                    raise NotImplementedError(
+                        "CTC models are not supported for this inference script. "
+                        "Requires sequence-to-sequence model."
                     )
-                    prediction = processor.decode(predicted_ids[0], skip_special_tokens=True)
+                predicted_ids = model.generate(
+                    **{
+                        input_key: batch[input_key].to(device),
+                        "attention_mask": batch["attention_mask"].to(device),
+                    },
+                )
+                prediction = processor.decode(predicted_ids[0], skip_special_tokens=True)
             label_ids = item["labels"]
             if hasattr(label_ids, "tolist"):
                 label_ids = label_ids.tolist()

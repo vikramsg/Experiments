@@ -40,3 +40,8 @@ Follow these rules for every implementation task.
 - What changed.
 - What commands were run.
 - What remains (only if genuinely blocked).
+
+## 5. Implementation Standards
+
+- **No Fallbacks (Fail Fast):** Never write defensive fallback logic (e.g., catching generic exceptions, guessing default values, or silently handling missing dependencies/configurations). 
+- **Explicit Contracts:** If an expected state, key, or configuration is missing, fail immediately and explicitly with a descriptive error (e.g., `ValueError`, `KeyError`). Code must loudly reject invalid or ambiguous conditions instead of guessing.
