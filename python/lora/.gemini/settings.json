@@ -9,5 +9,8 @@
   },
   "model": {
     "name": "gemini-3.1-pro-preview"
+  },
+  "experimental": {
+    "plan": true
   }
 }

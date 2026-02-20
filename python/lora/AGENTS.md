@@ -33,6 +33,13 @@ As the codebase grows, prefer adding feature modules in a dedicated package dire
 
 Use `uv` strictly for environment management, dependency installation, and command execution within `just` commands. Do not use `pip` in this repository.
 
+## Persistence
+
+- When asked a question, do not just read 1 file or nothing and come back and give an answer.
+- The answer must be backed by thorough research and citations. 
+- Aim to have atleast 3 unique citations, research and then come back and answer.
+- The objective is not to quickly start building. The objective is build the right thing.
+
 ## GitHub Repository Research
 - When researching a GitHub repository's code or structure, clone it to `/tmp` and inspect files locally.
 - Do not rely on web search or web browsing to walk repository contents.
