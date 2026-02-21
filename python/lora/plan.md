@@ -33,4 +33,5 @@ Execute the STT transcribe script against the evaluation split using the newly t
 ## Reference
 
 - docs/personalized/ - For all documentation related to personalized training.
+- [docs/personalized/exp_04_vocabulary_generalization.md](docs/personalized/exp_04_vocabulary_generalization.md) - Revised strategy for High-Capacity and Vocabulary Generalization to solve vocabulary plateaus.
 - docs/training_report.md - Template for training report
