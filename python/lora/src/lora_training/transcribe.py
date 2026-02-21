@@ -73,7 +73,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run STT transcription.")
     parser.add_argument("--model-id", required=True, help="Base model ID")
     parser.add_argument("--adapter-dir", default=None, help="Path to LoRA adapter directory")
-    parser.add_argument("--processor-dir", default=None, help="Path to processor directory (optional)")
+    parser.add_argument(
+        "--processor-dir", default=None, help="Path to processor directory (optional)"
+    )
     
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument("--audio", help="Single audio file to transcribe")
