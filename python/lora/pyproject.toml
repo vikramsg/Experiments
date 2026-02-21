@@ -1,0 +1,55 @@
+[project]
+name = "lora"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "moonshine-voice",
+    "rich>=13.7",
+    "soundfile>=0.12",
+    "torch>=2.2",
+    "transformers>=4.40",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9.6",
+    "pytest>=8.0",
+]
+training = [
+    "accelerate>=0.29",
+    "datasets[audio]>=2.19",
+    "evaluate>=0.4",
+    "jiwer>=3.0",
+    "peft>=0.11",
+]
+data = [
+    "librosa>=0.10",
+    "sounddevice>=0.4.6",
+    "pynput>=1.7.6",
+    "numpy>=1.26.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+moonshine-voice = { git = "https://github.com/moonshine-ai/moonshine", subdirectory = "python" }

@@ -1,0 +1,77 @@
+set shell := ["bash", "-c"]
+
+# List available tasks
+default:
+	@just --list
+
+# Create virtual environment with uv
+venv:
+	uv venv
+
+# Install dependencies from uv.lock
+sync:
+	uv sync --all-groups
+
+# Run the main entrypoint
+run:
+	uv run python main.py
+
+# Run pytest
+test:
+	uv run pytest
+
+# Run Ruff lint checks
+lint:
+	uv run ruff check .
+
+# Auto-fix Ruff lint issues
+fix:
+	uv run ruff check . --fix
+
+
+# Record dataset interactively
+record-dataset:
+	uv run python src/lora_data/recorder.py
+
+# Split the dataset into train and eval
+split-dataset:
+	uv run python src/lora_data/manifest_utils.py
+
+# Transcribe a single audio file or a batch manifest
+# Usage: just transcribe "--model-id <id> --audio <path>"
+transcribe args:
+	uv run python src/lora_training/transcribe.py {{args}}
+
+# Run interactive STT recorder to capture corrections for hard-negative mining
+# Usage: just correction-recorder "--model-id UsefulSensors/moonshine-tiny"
+correction-recorder args="":
+	uv run python src/lora_data/correction_recorder.py {{args}}
+
+# Run an experiment in the background using nohup
+# Usage: just run-experiment <name> "<extra_args>"
+# Example: just run-experiment exp_01 "--max-steps 1000 --learning-rate 1e-5"
+run-experiment name args="":
+	@echo "Creating output directory outputs/{{name}}..."
+	@mkdir -p "outputs/{{name}}"
+	@echo "Starting experiment {{name}} in the background..."
+	nohup uv run python main.py --output-dir "outputs/{{name}}" {{args}} > "outputs/{{name}}/nohup.out" 2>&1 &
+	@echo "Experiment started! Logs will be written to outputs/{{name}}/experiment.log"
+	@echo "To poll the formatted logs, run: just poll {{name}} <timeout>"
+	@echo "To poll the raw terminal output, run: just poll-raw {{name}} <timeout>"
+
+# Poll the formatted experiment.log for a running experiment for a given timeout (seconds)
+# Usage: just poll <name> [timeout=60]
+poll name timeout="60":
+	@echo "Polling logs for {{timeout}} seconds..."
+	@python3 -c 'import subprocess, time; p = subprocess.Popen(["tail", "-f", "outputs/{{name}}/experiment.log"]); time.sleep({{timeout}}); p.terminate()'
+
+# Poll the raw stdout/stderr (nohup.out) for an experiment for a given timeout (seconds)
+# Usage: just poll-raw <name> [timeout=60]
+poll-raw name timeout="60":
+	@echo "Polling raw logs for {{timeout}} seconds..."
+	@python3 -c 'import subprocess, time; p = subprocess.Popen(["tail", "-f", "outputs/{{name}}/nohup.out"]); time.sleep({{timeout}}); p.terminate()'
+
+# Check if an experiment process is still running
+# Usage: just status <name>
+status name:
+	@ps aux | grep "outputs/{{name}}" | grep -v "grep" || echo "No running process found for {{name}}."
