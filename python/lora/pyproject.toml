@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 dependencies = [
+    "f5-tts-mlx>=0.2.6",
     "moonshine-voice",
     "rich>=13.7",
     "soundfile>=0.12",

@@ -33,6 +33,11 @@ fix:
 record-dataset:
 	uv run python src/lora_data/recorder.py
 
+# Review audio interactively
+# Usage: just review-audio [dir="data/synthetic_audio"]
+review-audio dir="data/synthetic_audio":
+	uv run python src/lora_data/player.py --dir {{dir}}
+
 # Split the dataset into train and eval
 split-dataset:
 	uv run python src/lora_data/manifest_utils.py
