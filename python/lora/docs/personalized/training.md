@@ -38,7 +38,7 @@ To teach the model your specific terminology, you must provide it with examples 
 Run the exact configuration proven to be stable on v2. Ensure you use the newly exposed `--lora-targets` argument.
 
 ```bash
-uv run python src/lora/runners/experiment.py 
+uv run python src/lora_training/runners/experiment.py 
     --output-dir outputs/my_voice_v2_lora 
     --model-id UsefulSensors/moonshine-streaming-tiny 
     --max-steps 1000 
