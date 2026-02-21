@@ -14,7 +14,9 @@ from lora_training.transcribe import transcribe
 def mock_dependencies():
     with patch("lora_training.transcribe.load_processor") as mock_lp, \
          patch("lora_training.transcribe.AutoConfig.from_pretrained") as mock_ac, \
-         patch("lora_training.transcribe.MoonshineForConditionalGeneration.from_pretrained") as mock_mf, \
+         patch(
+             "lora_training.transcribe.MoonshineForConditionalGeneration.from_pretrained"
+         ) as mock_mf, \
          patch("lora_training.transcribe.PeftModel.from_pretrained") as mock_pm, \
          patch("lora_data.data_loader.normalize_audio", return_value=[0.1]*16000), \
          patch("lora_data.data_loader.normalize_audio_rms", return_value=[0.1]*16000), \

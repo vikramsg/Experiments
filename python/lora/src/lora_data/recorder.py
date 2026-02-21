@@ -171,7 +171,10 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
     session = _init_session(all_prompts, completed_set)
 
     if not session.pending_prompts:
-        console.print(f"[bold green]🎉 All {session.total_prompts} prompts have already been recorded![/bold green]")
+        console.print(
+            f"[bold green]🎉 All {session.total_prompts} prompts "
+            "have already been recorded![/bold green]"
+        )
         return
 
     out_path = Path(out_dir)
@@ -188,7 +191,8 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
         f"[bold cyan]Storage:[/bold cyan]\n"
         f"• Audio Dir: [green]{out_path}[/green]\n"
         f"• Manifest:  [green]{manifest_file}[/green]\n"
-        f"• Progress:  [green]{session.completed_count} / {session.total_prompts} completed[/green]\n\n"
+        f"• Progress:  [green]{session.completed_count} / {session.total_prompts} "
+        f"completed[/green]\n\n"
         f"[dim]Press 'q' at any time to quit.[/dim]",
         title="🎙️  [bold magenta]PERSONALIZED VOICE RECORDER STARTED[/bold magenta]",
         border_style="cyan",
@@ -218,7 +222,9 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
             elif key.char == 'u' and not is_recording:
                 # Undo last
                 if not session.history:
-                    console.print("[bold yellow]⚠️ No history to undo in this session.[/bold yellow]")
+                    console.print(
+                        "[bold yellow]⚠️ No history to undo in this session.[/bold yellow]"
+                    )
                 else:
                     last_record = session.history.pop()
                     if last_record.audio_path.exists():
@@ -231,7 +237,10 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
                         
                     current_prompt = last_record.prompt
                     session.completed_count -= 1
-                    console.print(f"[bold yellow]⏪ Undid last record. Retrying: {current_prompt}[/bold yellow]")
+                    console.print(
+                        f"[bold yellow]⏪ Undid last record. Retrying: "
+                        f"{current_prompt}[/bold yellow]"
+                    )
                     print_prompt()
 
         if key == keyboard.Key.space and not is_recording:
@@ -248,7 +257,10 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
             console.print("[bold bright_black]⏹️  STOPPED[/bold bright_black]")
             
             if _is_silent(audio_data, threshold=500):
-                console.print("[bold yellow]⚠️  No sound detected (or too quiet). Please try again.[/bold yellow]")
+                console.print(
+                    "[bold yellow]⚠️  No sound detected (or too quiet). "
+                    "Please try again.[/bold yellow]"
+                )
                 # We do not advance, prompt stays the same.
             else:
                 clip_id = str(uuid.uuid4())[:8]
@@ -265,7 +277,10 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
                 
                 # Advance to next prompt
                 if not session.pending_prompts:
-                    console.print(f"[bold green]🎉 All {session.total_prompts} prompts have been recorded![/bold green]")
+                    console.print(
+                        f"[bold green]🎉 All {session.total_prompts} prompts "
+                        "have been recorded![/bold green]"
+                    )
                     shutdown_requested = True
                     return False
                 
