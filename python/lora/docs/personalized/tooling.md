@@ -9,13 +9,19 @@ Generate a robust JSONL manifest (`data/my_voice_train.jsonl` and `data/my_voice
 
 ## The Tooling Stack
 
-You will need a unified Python script (e.g., `scripts/record_dataset.py`) that handles prompting, recording, and manifest generation in a rapid-fire loop.
+You will need a unified Python script (e.g., `src/lora_data/recorder.py`) that handles prompting, recording, and manifest generation in a rapid-fire loop.
 
 ### 1. The Prompt Generator
 The script needs a list of target phrases to train the model on. It should randomly select phrases from a predefined list and present them to you on the screen to read aloud.
 
 **Features:**
-- Load prompts from a raw text file (`data/coding_prompts.txt`).
+- Load prompts from a TOML file (`data/coding_prompts.toml`). The format should be a list of strings under a `prompts` key:
+  ```toml
+  prompts = [
+    "revert that last commit",
+    "open slash src slash main dot py"
+  ]
+  ```
 - Prompts should include technical jargon, punctuation commands, and standard agent workflows:
   - `"revert that last commit"`
   - `"open slash src slash main dot py"`
@@ -54,4 +60,4 @@ As each recording is saved, the script must immediately append the metadata to a
 
 ### 5. Utilities
 - **Audio Normalization:** Integrate `librosa` or `pydub` to automatically trim silence from the beginning and end of the recorded clips before saving.
-- **Train/Eval Splitter:** A final utility script (`scripts/split_manifest.py`) to take your master `my_voice_all.jsonl` and randomly partition it into an 80% `my_voice_train.jsonl` and a 20% `my_voice_eval.jsonl`. Ensure the test split has adequate representation of complex symbols or commands.
+- **Train/Eval Splitter:** A final utility script (`src/lora_data/split_manifest.py`) to take your master `my_voice_all.jsonl` and randomly partition it into an 80% `my_voice_train.jsonl` and a 20% `my_voice_eval.jsonl`. Ensure the test split has adequate representation of complex symbols or commands.

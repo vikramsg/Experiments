@@ -6,6 +6,7 @@ import random
 import sys
 import termios
 import time
+import tomllib
 import uuid
 import wave
 from pathlib import Path
@@ -82,10 +83,18 @@ def append_to_manifest(manifest_path: str | Path, audio_path: str | Path, text: 
         f.write(json.dumps(entry))
         f.write("\n")
 
+def parse_prompts(content: str) -> list[str]:
+    """Parse TOML content into a list of prompts."""
+    data = tomllib.loads(content)
+    prompts = data.get("prompts", [])
+    if not isinstance(prompts, list):
+        raise ValueError("The 'prompts' key must be a list of strings")
+    return [str(p).strip() for p in prompts if str(p).strip()]
+
 def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str):
     """Run the main interactive recording loop."""
     with open(prompts_file) as f:
-        prompts = [line.strip() for line in f if line.strip()]
+        prompts = parse_prompts(f.read())
         
     if not prompts:
         logger.error(f"No prompts found in {prompts_file}")
@@ -222,7 +231,7 @@ def run_headless_verification(out_dir: str, manifest_file: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Voice Recorder Tooling")
     parser.add_argument(
-        "--prompts", default="data/coding_prompts.txt", help="Path to prompts text file"
+        "--prompts", default="data/coding_prompts.toml", help="Path to prompts TOML file"
     )
     parser.add_argument(
         "--out-dir", default="data/raw_audio/my_voice", help="Directory to save WAV files"

@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 import torch
 
 from lora_training.evaluation import eval_wer, normalize_text, summarize_losses
 
 
 def test_summarize_losses_handles_empty() -> None:
-    assert summarize_losses([]) == 0.0
+    with pytest.raises(ValueError, match="Cannot summarize empty list of losses"):
+        summarize_losses([])
 
 
 def test_summarize_losses_returns_mean() -> None:
@@ -31,12 +33,14 @@ def test_eval_wer_respects_max_batches(mock_load) -> None:
 
     # Setup mock model
     model = MagicMock()
-    model.config.model_type = "wav2vec2"
+    model.config.model_type = "moonshine"
     model.parameters.return_value = iter([torch.randn(1, dtype=torch.float32)])
+    model.generate.return_value = [[1, 2, 3]]
 
     # Setup mock processor
     processor = MagicMock()
-    processor.batch_decode.return_value = ["pred"]
+    processor.feature_extractor.sampling_rate = 16000
+    processor.decode.return_value = "pred"
     processor.tokenizer.pad_token_id = 0
     processor.tokenizer.batch_decode.return_value = ["ref"]
 
@@ -55,4 +59,4 @@ def test_eval_wer_respects_max_batches(mock_load) -> None:
     
     assert wer == 0.5
     # verify that it only processed 2 batches
-    assert processor.batch_decode.call_count == 2
+    assert processor.decode.call_count == 2

@@ -43,7 +43,7 @@ def test_prepare_dataset_returns_features() -> None:
             )()
 
     processor = DummyProcessor()
-    records = {"audio": [[0.0] * 10], "text": ["hello"], "speaker_id": [1]}
+    records = {"audio": [[0.1] * 10], "text": ["hello"], "speaker_id": [1]}
     dataset = Dataset.from_dict(records)
     processed = prepare_dataset(dataset, processor)
     sample = processed[0]

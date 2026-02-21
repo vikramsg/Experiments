@@ -32,7 +32,7 @@ To teach the model your specific terminology, you must provide it with examples 
     *   Use the repository's tooling to generate standard JSONL manifests.
     *   **Training Manifest (`data/my_voice_train.jsonl`):** ~80% of your recordings (aim for at least 100-200 samples to start).
     *   **Domain Evaluation Manifest (`data/my_voice_eval.jsonl`):** ~20% of your recordings (used to verify the model is actually learning your terminology).
-    *   *Tooling:* You can adapt `scripts/build_manifest.py` to compile your audio directory and transcripts into the required `{"audio": "path/to.wav", "text": "YOUR TRANSCRIPT"}` JSONL format.
+    *   *Tooling:* Use `src/lora_data/recorder.py` to simultaneously record and compile your audio and transcripts into the required `{"audio": "path/to.wav", "text": "YOUR TRANSCRIPT"}` JSONL format, using `data/coding_prompts.toml` for the text.
 
 ### Phase 2: Execution Recipe
 Run the exact configuration proven to be stable on v2. Ensure you use the newly exposed `--lora-targets` argument.
