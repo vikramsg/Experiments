@@ -42,6 +42,11 @@ split-dataset:
 transcribe args:
 	uv run python src/lora_training/transcribe.py {{args}}
 
+# Run interactive STT recorder to capture corrections for hard-negative mining
+# Usage: just correction-recorder "--model-id UsefulSensors/moonshine-tiny"
+correction-recorder args="":
+	uv run python src/lora_data/correction_recorder.py {{args}}
+
 # Run an experiment in the background using nohup
 # Usage: just run-experiment <name> "<extra_args>"
 # Example: just run-experiment exp_01 "--max-steps 1000 --learning-rate 1e-5"

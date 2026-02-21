@@ -24,7 +24,7 @@ class VoiceUI:
 
     def show_spinner(self, message: str):
         with self.console.status(f"[bold yellow]{message}[/bold yellow]", spinner="dots"):
-            time.sleep(0.5) # UX pause
+            time.sleep(0.5)  # UX pause
 
     def reset_status(self):
         self.console.print("[dim]Hold SPACE to speak[/dim]", end="\r")

@@ -48,15 +48,15 @@ def test_eval_wer_respects_max_batches(mock_load) -> None:
     batch = {
         "input_values": torch.randn(1, 10),
         "attention_mask": torch.ones(1, 10),
-        "labels": torch.zeros(1, 1, dtype=torch.long)
+        "labels": torch.zeros(1, 1, dtype=torch.long),
     }
     dataloader = [batch] * 5
 
     device = torch.device("cpu")
-    
+
     # Test max_batches=2
     wer = eval_wer(model, processor, dataloader, device, max_batches=2)
-    
+
     assert wer == 0.5
     # verify that it only processed 2 batches
     assert processor.decode.call_count == 2

@@ -71,9 +71,7 @@ def main() -> None:
     args = parse_args()
     thresholds = args.thresholds or list(DEFAULT_THRESHOLDS)
     manifest_paths = [Path(value) for value in args.manifests]
-    profiles = [
-        profile_manifest(path, thresholds, args.sample_rate) for path in manifest_paths
-    ]
+    profiles = [profile_manifest(path, thresholds, args.sample_rate) for path in manifest_paths]
     splits = [
         split_manifest(path, args.max_seconds, args.sample_rate, args.seed)
         for path in manifest_paths

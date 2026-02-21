@@ -65,7 +65,7 @@ def decode_prediction(
         Normalized decoded transcript.
     """
     model_dtype = next(model.parameters()).dtype
-    
+
     if "input_features" in batch:
         input_key = "input_features"
     elif "input_values" in batch:
@@ -75,17 +75,17 @@ def decode_prediction(
 
     input_values = batch[input_key].to(device)
     attention_mask = batch["attention_mask"].to(device)
-    
+
     if input_values.dim() != 2 and input_values.dim() != 3:
-         raise ValueError(f"Expected 2D or 3D batched input_values, got {input_values.dim()}D")
+        raise ValueError(f"Expected 2D or 3D batched input_values, got {input_values.dim()}D")
     if attention_mask.dim() != 2:
-         raise ValueError(f"Expected 2D batched attention_mask, got {attention_mask.dim()}D")
+        raise ValueError(f"Expected 2D batched attention_mask, got {attention_mask.dim()}D")
 
     input_values = input_values.to(model_dtype)
     with torch.no_grad():
         if is_ctc_config(model.config):
             raise NotImplementedError("CTC decoding is explicitly unsupported.")
-        
+
         duration = input_values.shape[-1] / processor.feature_extractor.sampling_rate
         predicted_ids = model.generate(
             input_values=input_values,
@@ -152,10 +152,8 @@ def eval_wer(
         with torch.no_grad():
             if is_ctc_config(model.config):
                 raise NotImplementedError("CTC decoding is explicitly unsupported.")
-            
-            duration = (
-                payload["input_values"].shape[-1] / processor.feature_extractor.sampling_rate
-            )
+
+            duration = payload["input_values"].shape[-1] / processor.feature_extractor.sampling_rate
             predicted_ids = model.generate(
                 input_values=payload["input_values"],
                 attention_mask=payload["attention_mask"],

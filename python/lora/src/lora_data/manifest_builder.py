@@ -68,11 +68,11 @@ def main() -> None:
     sample_iter = iter(dataset)
     while len(entries) < args.samples:
         sample = next(sample_iter)
-        
+
         audio_info = sample["audio"]
         with SoundFile(io.BytesIO(audio_info["bytes"])) as sound:
             audio_array = sound.read(dtype="float32")
-        
+
         entry = ManifestEntry(
             audio=audio_array.tolist(),
             text=sample["text"],

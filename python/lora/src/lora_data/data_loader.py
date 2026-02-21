@@ -103,7 +103,7 @@ def prepare_features(batch: dict[str, Any], processor: Any, sample_rate: int) ->
 
     if not hasattr(inputs, "attention_mask") or inputs.attention_mask is None:
         raise ValueError("Processor did not return 'attention_mask'.")
-    
+
     attention_mask = inputs.attention_mask[0]
 
     return {
@@ -239,6 +239,7 @@ def load_manifest(path: Path) -> list[dict[str, Any]]:
 
 def normalize_audio(value: Any) -> list[float]:
     import librosa
+
     if isinstance(value, list):
         return value
     if isinstance(value, dict) and "array" in value:

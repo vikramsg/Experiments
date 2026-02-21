@@ -17,9 +17,7 @@ class AudioRecorder:
         self.is_recording = True
         self.frames = []
         self.stream = sd.InputStream(
-            samplerate=self.sample_rate,
-            channels=1,
-            callback=self._callback
+            samplerate=self.sample_rate, channels=1, callback=self._callback
         )
         self.stream.start()
 

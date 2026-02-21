@@ -33,7 +33,7 @@ def choose_device(preferred: str | None = None) -> torch.device:
         return torch.device("cpu")
     if preferred is not None:
         raise ValueError(f"Unsupported device preference: {preferred}")
-        
+
     if torch.backends.mps.is_available():
         return torch.device("mps")
     if torch.cuda.is_available():
@@ -117,14 +117,14 @@ def load_processor(model_id: str, processor_dir: str | None = None) -> Any:
         _safe_set_token(processor.tokenizer, config.bos_token_id, "bos_token")
     if processor.tokenizer.eos_token_id is None:
         _safe_set_token(processor.tokenizer, config.eos_token_id, "eos_token")
-    
+
     if processor.tokenizer.pad_token_id is None:
         raise ValueError("Processor tokenizer is missing pad_token")
     if processor.tokenizer.bos_token_id is None:
         raise ValueError("Processor tokenizer is missing bos_token")
     if processor.tokenizer.eos_token_id is None:
         raise ValueError("Processor tokenizer is missing eos_token")
-        
+
     _register_special_tokens(processor.tokenizer)
     return processor
 
@@ -146,11 +146,11 @@ def configure_generation(model: Any, processor: Any) -> None:
         raise NotImplementedError(
             "CTC models are explicitly not supported for generation configuration."
         )
-        
+
     pad_token_id = processor.tokenizer.pad_token_id or model.config.pad_token_id
     bos_token_id = processor.tokenizer.bos_token_id or model.config.bos_token_id
     eos_token_id = processor.tokenizer.eos_token_id or model.config.eos_token_id
-    
+
     if pad_token_id is None or bos_token_id is None or eos_token_id is None:
         raise ValueError(
             f"Missing required token IDs for generation: "

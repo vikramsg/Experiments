@@ -10,7 +10,7 @@ class SpeechRecognizer:
         self.model_id = model_id
         self.processor = None
         self.model = None
-        
+
         if not self.mock:
             self._load_model()
 
@@ -30,19 +30,14 @@ class SpeechRecognizer:
 
         # Normalize audio to match training preprocessing
         normalized_audio = normalize_audio_rms(audio_data.tolist(), target_rms=0.075)
-        
+
         input_values = self.processor(
-            normalized_audio, 
-            sampling_rate=16000, 
-            return_tensors="pt"
+            normalized_audio, sampling_rate=16000, return_tensors="pt"
         ).input_values
 
         with torch.no_grad():
             generated_ids = self.model.generate(input_values)
 
-        transcription = self.processor.batch_decode(
-            generated_ids, 
-            skip_special_tokens=True
-        )[0]
-        
+        transcription = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+
         return transcription

@@ -53,9 +53,9 @@
 - Capture the exact manifest used for baseline/tuned STT to ensure reproducibility.
 
 ## Debugging WER Regression
-
 - Re-run baseline and tuned STT on the same manifest to confirm the regression persists.
 - Compare per-sample WER deltas to see if the tuned adapter drifts on in-domain data.
+- **Hard-Negative Mining**: Use `just correction-recorder "--adapter-dir <path>"` to interactively speak to your model, find where it makes mistakes, and rapidly build a dataset of failure cases for further fine-tuning.
 - Check for preprocessing mismatch: training data loader currently uses raw audio, while inference applies RMS normalization.
 - Validate that the evaluation path uses the same Moonshine decode settings used in `src/lora_training/transcribe.py`.
 - Increase training steps/samples before concluding a regression is model-related.

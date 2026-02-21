@@ -1,10 +1,12 @@
 """Utility functions for dataset manifests."""
+
 import json
 import logging
 import random
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
 
 def split_manifest(input_manifest: str | Path, train_ratio: float = 0.8, seed: int = 42):
     """Split a master JSONL manifest into train and eval sets."""
@@ -48,13 +50,15 @@ def split_manifest(input_manifest: str | Path, train_ratio: float = 0.8, seed: i
     logger.info(f"  Train: {len(train_entries)} -> {train_path}")
     logger.info(f"  Eval:  {len(eval_entries)} -> {eval_path}")
 
+
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", default="data/my_voice_all.jsonl")
     parser.add_argument("--train-ratio", type=float, default=0.8)
     args = parser.parse_args()
-    
+
     # Configure basic logger for CLI usage
     logging.basicConfig(level=logging.INFO, format="%(message)s")
     split_manifest(args.manifest, args.train_ratio)

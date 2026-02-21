@@ -34,7 +34,6 @@ Artifact STT check:
 Artifacts are written to `outputs` by default.
 
 ## Voice CLI (Interactive)
-
 We include a standalone CLI tool for live voice interaction with the models.
 
 - **Location:** `packages/lora-cli`
@@ -47,6 +46,12 @@ We include a standalone CLI tool for live voice interaction with the models.
   ```
 
 See [packages/lora-cli/README.md](packages/lora-cli/README.md) for full details.
+
+## Hard-Negative Mining
+
+Use the `correction-recorder` to interactively speak to a base or fine-tuned model and easily save the audio and corrected transcriptions for instances where it makes a mistake.
+
+- `just correction-recorder "--model-id UsefulSensors/moonshine-tiny --adapter-dir <path/to/adapter>"`
 
 ## Development Philosophy
 

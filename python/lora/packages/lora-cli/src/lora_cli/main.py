@@ -12,11 +12,10 @@ from lora_cli.ui import VoiceUI
 app = typer.Typer()
 console = Console()
 
+
 @app.command()
 def start(
-    model_id: str = typer.Option(
-        "UsefulSensors/moonshine-tiny", help="Hugging Face model ID"
-    ),
+    model_id: str = typer.Option("UsefulSensors/moonshine-tiny", help="Hugging Face model ID"),
     non_interactive: bool = typer.Option(
         False, "--non-interactive", help="Run in simulation mode for testing"
     ),
@@ -66,6 +65,7 @@ def start(
     # Start Keyboard Listener
     with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
         listener.join()
+
 
 if __name__ == "__main__":
     app()

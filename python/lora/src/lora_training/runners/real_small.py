@@ -127,8 +127,7 @@ def train_loop(
                             "Ensure loss.backward() computed gradients."
                         )
                 grad_values = [
-                    float(param.grad.detach().norm().item())
-                    for param in trainable_params
+                    float(param.grad.detach().norm().item()) for param in trainable_params
                 ]
                 grad_norm = float(torch.tensor(grad_values).norm().item())
                 if grad_norm == 0.0:
