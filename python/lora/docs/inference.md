@@ -16,7 +16,7 @@ The current pipeline uses the `peft` library to dynamically load LoRA adapters o
 ### Usage
 Run the standard inference script:
 ```bash
-uv run python scripts/run_stt.py 
+uv run python src/lora_training/transcribe.py 
     --model-id UsefulSensors/moonshine-tiny 
     --adapter-dir outputs/real_small/lora_adapter 
     --processor-dir outputs/real_small/processor 

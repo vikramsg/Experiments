@@ -20,6 +20,7 @@ import argparse
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Any
 
 import torch
 from evaluate import load
@@ -29,6 +30,7 @@ from transformers import (
     AutoModelForCTC,
     AutoModelForSpeechSeq2Seq,
     MoonshineForConditionalGeneration,
+    PreTrainedModel,
 )
 
 from lora_data.data_loader import (
@@ -82,40 +84,131 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def transcribe(args: argparse.Namespace) -> SttReport:
-    setup_logging()
-    device = choose_device(args.device)
-    LOGGER.info("Device selected | device=%s", device)
+def load_inference_model(
+    model_id: str, adapter_dir: str | None, device: torch.device
+) -> tuple[PreTrainedModel, Any]:
+    """Load the base model and optionally apply a LoRA adapter.
     
-    # Load processor
-    processor_path = args.processor_dir if args.processor_dir else args.model_id
-    processor = load_processor(args.model_id, processor_path)
-    LOGGER.info("Processor loaded | path=%s", processor_path)
-    
-    # Load base model
-    config = AutoConfig.from_pretrained(args.model_id)
+    Args:
+        model_id: The base model identifier.
+        adapter_dir: Path to the LoRA adapter directory, or None for baseline.
+        device: The target execution device.
+        
+    Returns:
+        A tuple of (model, config).
+    """
+    config = AutoConfig.from_pretrained(model_id)
     if is_ctc_config(config):
-        base_model = AutoModelForCTC.from_pretrained(args.model_id)
+        base_model = AutoModelForCTC.from_pretrained(model_id)
     elif config.model_type == "moonshine":
-        base_model = MoonshineForConditionalGeneration.from_pretrained(args.model_id)
+        base_model = MoonshineForConditionalGeneration.from_pretrained(model_id)
     elif config.model_type in {"whisper", "speech-encoder-decoder"}:
-        base_model = AutoModelForSpeechSeq2Seq.from_pretrained(args.model_id)
+        base_model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id)
     else:
         raise ValueError(f"Unsupported model_type: {config.model_type}")
         
-    # Apply adapter if provided
-    if args.adapter_dir:
-        model = PeftModel.from_pretrained(base_model, args.adapter_dir)
-        LOGGER.info("LoRA adapter applied | adapter_dir=%s", args.adapter_dir)
+    if adapter_dir:
+        model = PeftModel.from_pretrained(base_model, adapter_dir)
+        LOGGER.info("LoRA adapter applied | adapter_dir=%s", adapter_dir)
     else:
         model = base_model
         LOGGER.info("No adapter provided. Running baseline inference.")
         
     model.to(device)
     model.eval()
+    return model, config
+
+
+def run_moonshine_inference(
+    model: PreTrainedModel, processor: Any, audio: list[float], device: torch.device
+) -> str:
+    """Run inference using the Moonshine-specific processing path.
+    
+    Args:
+        model: The trained/loaded model.
+        processor: The model processor.
+        audio: Raw audio waveform.
+        device: Target execution device.
+        
+    Returns:
+        The decoded transcription string.
+    """
+    audio_norm = normalize_audio_rms(audio)
+    inputs = processor(
+        audio_norm,
+        sampling_rate=processor.feature_extractor.sampling_rate,
+        return_tensors="pt",
+        return_attention_mask=True,
+    )
+    input_values = inputs.input_values.to(device)
+    attention_mask = inputs.attention_mask.to(device)
+    
+    duration = len(audio_norm) / processor.feature_extractor.sampling_rate
+    max_new_tokens = max(10, min(int(duration * 5), 150))
+    
+    with torch.no_grad():
+        predicted_ids = model.generate(
+            input_values=input_values,
+            attention_mask=attention_mask,
+            max_new_tokens=max_new_tokens,
+            num_beams=5,
+            repetition_penalty=1.3,
+            no_repeat_ngram_size=2,
+            do_sample=False,
+            early_stopping=True,
+        )
+    return processor.tokenizer.batch_decode(predicted_ids, skip_special_tokens=True)[0]
+
+
+def run_generic_inference(
+    model: PreTrainedModel, processor: Any, config: Any, item: dict[str, Any], device: torch.device
+) -> str:
+    """Run inference using the generic HF Seq2Seq processing path.
+    
+    Args:
+        model: The trained/loaded model.
+        processor: The model processor.
+        config: The model configuration.
+        item: Processed dataset item.
+        device: Target execution device.
+        
+    Returns:
+        The decoded transcription string.
+    """
+    if "input_features" in item:
+        input_key = "input_features"
+    elif "input_values" in item:
+        input_key = "input_values"
+    else:
+        raise KeyError("Item does not contain 'input_features' or 'input_values'")
+        
+    input_values = torch.tensor(item[input_key]).unsqueeze(0).to(device)
+    attention_mask = torch.tensor(item["attention_mask"]).unsqueeze(0).to(device)
+    
+    with torch.no_grad():
+        if is_ctc_config(config):
+            raise NotImplementedError("CTC decoding is explicitly unsupported.")
+        predicted_ids = model.generate(
+            **{
+                input_key: input_values,
+                "attention_mask": attention_mask,
+            },
+        )
+    return processor.decode(predicted_ids[0], skip_special_tokens=True)
+
+
+def transcribe(args: argparse.Namespace) -> SttReport:
+    setup_logging()
+    device = choose_device(args.device)
+    LOGGER.info("Device selected | device=%s", device)
+    
+    processor_path = args.processor_dir if args.processor_dir else args.model_id
+    processor = load_processor(args.model_id, processor_path)
+    LOGGER.info("Processor loaded | path=%s", processor_path)
+    
+    model, config = load_inference_model(args.model_id, args.adapter_dir, device)
     configure_generation(model, processor)
 
-    # Load data
     entries = []
     if args.audio:
         entries = [{"audio": args.audio}]
@@ -125,8 +218,7 @@ def transcribe(args: argparse.Namespace) -> SttReport:
         entries = load_manifest(manifest_path)
         LOGGER.info("Loaded manifest | path=%s | samples=%s", manifest_path, len(entries))
 
-    # To use existing prepare_dataset, we create a dataset
-    # We might need to ensure text is present (even if empty) for prepare_dataset not to crash if it expects it
+    # Ensure "text" exists so HF datasets prepare_dataset doesn't complain about missing keys
     for entry in entries:
         if "text" not in entry:
             entry["text"] = ""
@@ -146,57 +238,9 @@ def transcribe(args: argparse.Namespace) -> SttReport:
         reference_text = entry.get("text", "")
         
         if config.model_type == "moonshine":
-            audio = normalize_audio_rms(entry["audio"])
-            inputs = processor(
-                audio,
-                sampling_rate=processor.feature_extractor.sampling_rate,
-                return_tensors="pt",
-                return_attention_mask=True,
-            )
-            input_values = inputs.input_values.to(device)
-            attention_mask = inputs.attention_mask.to(device)
-            
-            # Safe attention mask passing depending on the model config
-            duration = len(audio) / processor.feature_extractor.sampling_rate
-            max_new_tokens = max(10, min(int(duration * 5), 150))
-            
-            kwargs = {
-                "input_values": input_values,
-                "attention_mask": attention_mask,
-                "max_new_tokens": max_new_tokens,
-                "num_beams": 5,
-                "repetition_penalty": 1.3,
-                "no_repeat_ngram_size": 2,
-                "do_sample": False,
-                "early_stopping": True,
-            }
-            
-            with torch.no_grad():
-                predicted_ids = model.generate(**kwargs)
-            prediction = processor.tokenizer.batch_decode(
-                predicted_ids, skip_special_tokens=True
-            )[0]
+            prediction = run_moonshine_inference(model, processor, entry["audio"], device)
         else:
-            if "input_features" in item:
-                input_key = "input_features"
-            elif "input_values" in item:
-                input_key = "input_values"
-            else:
-                raise KeyError("Item does not contain 'input_features' or 'input_values'")
-                
-            input_values = torch.tensor(item[input_key]).unsqueeze(0).to(device)
-            attention_mask = torch.tensor(item["attention_mask"]).unsqueeze(0).to(device)
-            
-            with torch.no_grad():
-                if is_ctc_config(config):
-                    raise NotImplementedError("CTC decoding is explicitly unsupported.")
-                predicted_ids = model.generate(
-                    **{
-                        input_key: input_values,
-                        "attention_mask": attention_mask,
-                    },
-                )
-                prediction = processor.decode(predicted_ids[0], skip_special_tokens=True)
+            prediction = run_generic_inference(model, processor, config, item, device)
                 
         prediction_norm = normalize_text(prediction)
         reference_norm = normalize_text(reference_text) if reference_text else None
@@ -235,7 +279,6 @@ def transcribe(args: argparse.Namespace) -> SttReport:
         if wer_value is not None:
             LOGGER.info("Computed WER | wer=%.4f", wer_value)
     else:
-        # If no output specified, just dump to stdout cleanly
         print(json.dumps(asdict(report), indent=2))
         
     return report

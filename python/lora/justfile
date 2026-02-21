@@ -37,6 +37,11 @@ record-dataset:
 split-dataset:
 	uv run python src/lora_data/manifest_utils.py
 
+# Transcribe a single audio file or a batch manifest
+# Usage: just transcribe "--model-id <id> --audio <path>"
+transcribe args:
+	uv run python src/lora_training/transcribe.py {{args}}
+
 # Run an experiment in the background using nohup
 # Usage: just run-experiment <name> "<extra_args>"
 # Example: just run-experiment exp_01 "--max-steps 1000 --learning-rate 1e-5"

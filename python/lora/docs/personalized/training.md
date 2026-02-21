@@ -63,7 +63,7 @@ Once training completes and the metrics look good, the best adapter will be save
 
 You can test it directly:
 ```bash
-uv run python scripts/run_stt.py 
+uv run python src/lora_training/transcribe.py 
     --model-id UsefulSensors/moonshine-streaming-tiny 
     --adapter-dir outputs/my_voice_v2_lora/lora_adapter_best 
     --processor-dir outputs/my_voice_v2_lora/processor 

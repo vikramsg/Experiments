@@ -16,13 +16,20 @@ def mock_dependencies():
          patch("lora_training.transcribe.AutoConfig.from_pretrained") as mock_ac, \
          patch("lora_training.transcribe.MoonshineForConditionalGeneration.from_pretrained") as mock_mf, \
          patch("lora_training.transcribe.PeftModel.from_pretrained") as mock_pm, \
-         patch("lora_training.transcribe.normalize_audio_rms") as mock_rms, \
+         patch("lora_data.data_loader.normalize_audio", return_value=[0.1]*16000), \
+         patch("lora_data.data_loader.normalize_audio_rms", return_value=[0.1]*16000), \
+         patch("lora_training.transcribe.normalize_audio_rms", return_value=[0.1]*16000), \
+         patch("lora_training.transcribe.prepare_dataset") as mock_prepare, \
          patch("lora_training.transcribe.choose_device", return_value="cpu"):
+        
+        # We patch prepare_dataset to avoid pyarrow serializing mocked models
+        mock_prepare.return_value = [{"input_values": [[0.1, 0.2]], "attention_mask": [[1, 1]]}]
         
         # Setup mocks
         mock_processor = MagicMock()
         mock_processor.feature_extractor.sampling_rate = 16000
         mock_processor.tokenizer.batch_decode.return_value = ["mocked prediction"]
+        mock_processor.decode.return_value = "mocked prediction"
         
         mock_inputs = MagicMock()
         mock_inputs.input_values = MagicMock()
@@ -45,7 +52,7 @@ def mock_dependencies():
 def test_transcribe_audio_baseline(mock_dependencies, tmp_path: Path):
     mock_pm, mock_mf = mock_dependencies
     
-    # Create fake audio file (won't actually be read fully since we mock)
+    # Create fake audio file
     audio_path = tmp_path / "test.wav"
     audio_path.touch()
     
@@ -74,7 +81,7 @@ def test_transcribe_manifest_with_adapter_and_wer(mock_dependencies, tmp_path: P
     mock_pm, mock_mf = mock_dependencies
     
     manifest_path = tmp_path / "test.jsonl"
-    manifest_path.write_text(json.dumps({"audio": [0.0], "text": "mocked prediction"}) + "\n")
+    manifest_path.write_text(json.dumps({"audio": [0.1]*100, "text": "mocked prediction"}) + "\n")
     output_path = tmp_path / "out.json"
     
     args = argparse.Namespace(

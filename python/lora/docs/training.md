@@ -57,7 +57,7 @@
 - Re-run baseline and tuned STT on the same manifest to confirm the regression persists.
 - Compare per-sample WER deltas to see if the tuned adapter drifts on in-domain data.
 - Check for preprocessing mismatch: training data loader currently uses raw audio, while inference applies RMS normalization.
-- Validate that the evaluation path uses the same Moonshine decode settings used in `scripts/run_stt.py`.
+- Validate that the evaluation path uses the same Moonshine decode settings used in `src/lora_training/transcribe.py`.
 - Increase training steps/samples before concluding a regression is model-related.
 - If regressions persist, try DoRA or PiSSA initialization to improve convergence stability.
 
