@@ -238,11 +238,16 @@ def load_manifest(path: Path) -> list[dict[str, Any]]:
 
 
 def normalize_audio(value: Any) -> list[float]:
+    import librosa
     if isinstance(value, list):
         return value
     if isinstance(value, dict) and "array" in value:
         return value["array"]
-    raise ValueError("Unsupported audio format in manifest. Expected array or list.")
+    if isinstance(value, str):
+        # Treat as file path
+        speech, _ = librosa.load(value, sr=16000)
+        return speech.tolist()
+    raise ValueError("Unsupported audio format in manifest. Expected array, list, or file path string.")
 
 
 def build_manifest_dataset(entries: list[dict[str, Any]]) -> Dataset:

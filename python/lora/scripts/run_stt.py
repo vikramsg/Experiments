@@ -35,9 +35,9 @@ from pathlib import Path
 
 import torch
 from evaluate import load
-from lora.data_loader import build_manifest_dataset, load_manifest, prepare_dataset
-from lora.logging_utils import get_logger, setup_logging
-from lora.model_utils import (
+from lora_data.data_loader import build_manifest_dataset, load_manifest, prepare_dataset
+from lora_training.logging_utils import get_logger, setup_logging
+from lora_training.model_utils import (
     choose_device,
     configure_generation,
     is_ctc_config,
