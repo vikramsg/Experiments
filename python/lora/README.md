@@ -78,6 +78,7 @@ template to capture results for each run.
     - `outputs/<run_id>/processor`
 - Guardrail metric: Metric used to block regressions while optimizing the primary target (in this repo, heldout WER).
   - Generated from evaluation output on `data/heldout_manifest.jsonl` (same experiment metrics pipeline).
+- WER Normalization: The evaluation pipeline strips punctuation and lowercases text strictly for mathematical Word Error Rate (WER) calculation to prevent heavy penalties for slight stylistic differences. However, the model still trains on and generates full punctuation.
 - Headroom: Remaining achievable improvement on a dataset (often estimated by baseline vs tuned deltas across runs).
   - Derived from experiment results tables and metrics; this is an analysis concept, not a standalone generated file.
 - Normalization/decode parity: Using matching normalization and decode settings across training/eval/inference.

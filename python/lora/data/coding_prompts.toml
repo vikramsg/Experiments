@@ -206,4 +206,5 @@ prompts = [
   "Content from @refactor.md:",
   "No, I even want the UX code itself to be a separate package. Tell me what that separate package will look like?",
   "What if I'm already inside the CLI?",
+  "Does opencode have a YOLO mode? Does it have a shortcut?"  
 ]

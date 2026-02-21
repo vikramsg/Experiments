@@ -143,6 +143,8 @@ def eval_wer(
     batches = 0
     all_preds = []
     all_refs = []
+    all_raw_preds = []
+    all_raw_refs = []
     LOGGER.info("WER evaluation start")
     for batch in dataloader:
         payload = {k: v.to(device) for k, v in batch.items()}
@@ -159,20 +161,22 @@ def eval_wer(
                 attention_mask=payload["attention_mask"],
                 **_generation_kwargs(duration),
             )
-            preds = [processor.decode(seq, skip_special_tokens=True) for seq in predicted_ids]
-        preds = [normalize_text(p) for p in preds]
+            raw_preds = [processor.decode(seq, skip_special_tokens=True) for seq in predicted_ids]
+        preds = [normalize_text(p) for p in raw_preds]
 
         labels = batch["labels"].clone()
         labels[labels == -100] = processor.tokenizer.pad_token_id
-        references = processor.tokenizer.batch_decode(labels, skip_special_tokens=True)
-        references = [normalize_text(r) for r in references]
+        raw_references = processor.tokenizer.batch_decode(labels, skip_special_tokens=True)
+        references = [normalize_text(r) for r in raw_references]
 
+        all_raw_preds.extend(raw_preds)
+        all_raw_refs.extend(raw_references)
         all_preds.extend(preds)
         all_refs.extend(references)
 
         if batches == 0:
-            LOGGER.debug("First prediction | pred='%s'", preds[0])
-            LOGGER.debug("First reference | ref='%s'", references[0])
+            LOGGER.debug("First prediction | pred='%s'", raw_preds[0])
+            LOGGER.debug("First reference | ref='%s'", raw_references[0])
         batches += 1
         if batches == 1 or batches % 5 == 0:
             # Note: we compute on the accumulated lists to avoid clearing metric state
@@ -189,10 +193,10 @@ def eval_wer(
     LOGGER.info("WER evaluation complete | wer=%.4f", wer_value)
 
     # Log a few samples to visualize changes
-    num_log_samples = min(3, len(all_preds))
-    indices = np.linspace(0, len(all_preds) - 1, num_log_samples, dtype=int)
+    num_log_samples = min(3, len(all_raw_preds))
+    indices = np.linspace(0, len(all_raw_preds) - 1, num_log_samples, dtype=int)
     for idx in indices:
-        LOGGER.info("Sample %d | pred='%s' | ref='%s'", idx, all_preds[idx], all_refs[idx])
+        LOGGER.info("Sample %d | pred='%s' | ref='%s'", idx, all_raw_preds[idx], all_raw_refs[idx])
 
     return wer_value
 
