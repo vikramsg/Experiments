@@ -86,7 +86,7 @@ def _load_completed_prompts(manifest_path: Path) -> set[str]:
     if not manifest_path.exists():
         return completed
     
-    with open(manifest_path, "r") as f:
+    with open(manifest_path) as f:
         for line in f:
             if not line.strip():
                 continue
@@ -120,7 +120,7 @@ def _remove_last_from_manifest(manifest_path: Path) -> None:
     """Remove the last line from the JSONL manifest (for undo)."""
     if not manifest_path.exists():
         return
-    with open(manifest_path, "r") as f:
+    with open(manifest_path) as f:
         lines = f.readlines()
     if not lines:
         return

@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import numpy as np
+import pytest
 from datasets import Dataset
 
-from lora_data.data_loader import prepare_dataset, split_by_speaker
+from lora_data.data_loader import load_manifest, normalize_audio, prepare_dataset, split_by_speaker
 
 
 def test_split_by_speaker_returns_splits() -> None:
@@ -50,14 +54,6 @@ def test_prepare_dataset_returns_features() -> None:
     assert "input_values" in sample
     assert "attention_mask" in sample
     assert "labels" in sample
-from __future__ import annotations
-
-import json
-from pathlib import Path
-
-import pytest
-
-from lora_data.data_loader import load_manifest, normalize_audio
 
 
 def test_normalize_audio_accepts_array() -> None:
