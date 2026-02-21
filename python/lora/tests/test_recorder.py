@@ -46,19 +46,19 @@ def test_parse_prompts_empty_or_invalid():
 
 def test_is_silent():
     # True zeros
-    assert _is_silent(np.zeros(1000, dtype=np.int16)) is True
+    assert bool(_is_silent(np.zeros(1000, dtype=np.int16))) is True
     
     # Low noise
     noise = np.random.randint(-100, 100, 1000).astype(np.int16)
-    assert _is_silent(noise, threshold=500) is True
+    assert bool(_is_silent(noise, threshold=500)) is True
     
     # Human voice (spikes)
     voice = np.zeros(1000, dtype=np.int16)
     voice[500] = 5000
-    assert _is_silent(voice, threshold=500) is False
+    assert bool(_is_silent(voice, threshold=500)) is False
     
     # Empty
-    assert _is_silent(np.array([], dtype=np.int16)) is True
+    assert bool(_is_silent(np.array([], dtype=np.int16))) is True
 
 def test_load_completed_prompts(tmp_path):
     manifest = tmp_path / "manifest.jsonl"
