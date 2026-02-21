@@ -19,6 +19,7 @@ def mock_dependencies():
          ) as mock_mf, \
          patch("lora_training.transcribe.PeftModel.from_pretrained") as mock_pm, \
          patch("lora_data.data_loader.normalize_audio", return_value=[0.1]*16000), \
+         patch("lora_training.transcribe.normalize_audio", return_value=[0.1]*16000), \
          patch("lora_data.data_loader.normalize_audio_rms", return_value=[0.1]*16000), \
          patch("lora_training.transcribe.normalize_audio_rms", return_value=[0.1]*16000), \
          patch("lora_training.transcribe.prepare_dataset") as mock_prepare, \
@@ -83,7 +84,9 @@ def test_transcribe_manifest_with_adapter_and_wer(mock_dependencies, tmp_path: P
     mock_pm, mock_mf = mock_dependencies
     
     manifest_path = tmp_path / "test.jsonl"
-    manifest_path.write_text(json.dumps({"audio": [0.1]*100, "text": "mocked prediction"}) + "\n")
+    manifest_path.write_text(
+        json.dumps({"audio": "dummy/path.wav", "text": "mocked prediction"}) + "\n"
+    )
     output_path = tmp_path / "out.json"
     
     args = argparse.Namespace(

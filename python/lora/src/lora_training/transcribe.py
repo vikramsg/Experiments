@@ -27,8 +27,6 @@ from evaluate import load
 from peft import PeftModel
 from transformers import (
     AutoConfig,
-    AutoModelForCTC,
-    AutoModelForSpeechSeq2Seq,
     MoonshineForConditionalGeneration,
     PreTrainedModel,
 )
@@ -36,6 +34,7 @@ from transformers import (
 from lora_data.data_loader import (
     build_manifest_dataset,
     load_manifest,
+    normalize_audio,
     prepare_dataset,
 )
 from lora_training.evaluation import normalize_text
@@ -43,7 +42,6 @@ from lora_training.logging_utils import get_logger, setup_logging
 from lora_training.model_utils import (
     choose_device,
     configure_generation,
-    is_ctc_config,
     load_processor,
     normalize_audio_rms,
 )
@@ -100,14 +98,7 @@ def load_inference_model(
         A tuple of (model, config).
     """
     config = AutoConfig.from_pretrained(model_id)
-    if is_ctc_config(config):
-        base_model = AutoModelForCTC.from_pretrained(model_id)
-    elif config.model_type == "moonshine":
-        base_model = MoonshineForConditionalGeneration.from_pretrained(model_id)
-    elif config.model_type in {"whisper", "speech-encoder-decoder"}:
-        base_model = AutoModelForSpeechSeq2Seq.from_pretrained(model_id)
-    else:
-        raise ValueError(f"Unsupported model_type: {config.model_type}")
+    base_model = MoonshineForConditionalGeneration.from_pretrained(model_id)
         
     if adapter_dir:
         model = PeftModel.from_pretrained(base_model, adapter_dir)
@@ -162,43 +153,6 @@ def run_moonshine_inference(
     return processor.tokenizer.batch_decode(predicted_ids, skip_special_tokens=True)[0]
 
 
-def run_generic_inference(
-    model: PreTrainedModel, processor: Any, config: Any, item: dict[str, Any], device: torch.device
-) -> str:
-    """Run inference using the generic HF Seq2Seq processing path.
-    
-    Args:
-        model: The trained/loaded model.
-        processor: The model processor.
-        config: The model configuration.
-        item: Processed dataset item.
-        device: Target execution device.
-        
-    Returns:
-        The decoded transcription string.
-    """
-    if "input_features" in item:
-        input_key = "input_features"
-    elif "input_values" in item:
-        input_key = "input_values"
-    else:
-        raise KeyError("Item does not contain 'input_features' or 'input_values'")
-        
-    input_values = torch.tensor(item[input_key]).unsqueeze(0).to(device)
-    attention_mask = torch.tensor(item["attention_mask"]).unsqueeze(0).to(device)
-    
-    with torch.no_grad():
-        if is_ctc_config(config):
-            raise NotImplementedError("CTC decoding is explicitly unsupported.")
-        predicted_ids = model.generate(
-            **{
-                input_key: input_values,
-                "attention_mask": attention_mask,
-            },
-        )
-    return processor.decode(predicted_ids[0], skip_special_tokens=True)
-
-
 def transcribe(args: argparse.Namespace) -> SttReport:
     setup_logging()
     device = choose_device(args.device)
@@ -232,17 +186,15 @@ def transcribe(args: argparse.Namespace) -> SttReport:
     samples: list[SttSample] = []
     has_references = any(bool(e.get("text")) for e in entries)
     
-    for idx, item in enumerate(prepared):
+    for idx, _ in enumerate(prepared):
         if idx == 0 or (idx + 1) % 10 == 0:
             LOGGER.info("Inference progress | sample=%s/%s", idx + 1, len(prepared))
             
         entry = entries[idx]
         reference_text = entry.get("text", "")
         
-        if config.model_type == "moonshine":
-            prediction = run_moonshine_inference(model, processor, entry["audio"], device)
-        else:
-            prediction = run_generic_inference(model, processor, config, item, device)
+        audio_array = normalize_audio(entry["audio"])
+        prediction = run_moonshine_inference(model, processor, audio_array, device)
                 
         prediction_norm = normalize_text(prediction)
         reference_norm = normalize_text(reference_text) if reference_text else None
