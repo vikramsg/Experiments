@@ -9,6 +9,7 @@ import time
 import tomllib
 import uuid
 import wave
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -23,6 +24,18 @@ logger = logging.getLogger(__name__)
 
 # Initialize rich console
 console = Console()
+
+@dataclass
+class Record:
+    prompt: str
+    audio_path: Path
+
+@dataclass
+class RecordingSession:
+    total_prompts: int
+    completed_count: int
+    pending_prompts: list[str]
+    history: list[Record] = field(default_factory=list)
 
 class AudioRecorder:
     def __init__(self, sample_rate: int = 16000, channels: int = 1):
@@ -61,6 +74,66 @@ class AudioRecorder:
             return np.array([], dtype=np.int16)
         return np.concatenate(self.frames, axis=0)
 
+def _is_silent(audio_data: np.ndarray, threshold: int = 500) -> bool:
+    """Check if the maximum amplitude is below the silence threshold."""
+    if len(audio_data) == 0:
+        return True
+    return np.max(np.abs(audio_data)) < threshold
+
+def _load_completed_prompts(manifest_path: Path) -> set[str]:
+    """Load completed prompt texts from the JSONL manifest."""
+    completed = set()
+    if not manifest_path.exists():
+        return completed
+    
+    with open(manifest_path, "r") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            try:
+                entry = json.loads(line)
+                if "text" in entry:
+                    completed.add(entry["text"])
+            except json.JSONDecodeError:
+                continue
+    return completed
+
+def _init_session(all_prompts: list[str], completed: set[str]) -> RecordingSession:
+    """Initialize session state by filtering duplicates and shuffling remaining."""
+    pending = [p for p in all_prompts if p not in completed]
+    random.shuffle(pending)
+    return RecordingSession(
+        total_prompts=len(all_prompts),
+        completed_count=len(completed),
+        pending_prompts=pending
+    )
+
+def _append_to_manifest(manifest_path: Path, audio_path: Path, text: str) -> None:
+    """Append a single entry to the JSONL manifest safely."""
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    entry = {"audio": str(audio_path), "text": text}
+    with open(manifest_path, "a") as f:
+        f.write(json.dumps(entry))
+        f.write("\n")
+
+def _remove_last_from_manifest(manifest_path: Path) -> None:
+    """Remove the last line from the JSONL manifest (for undo)."""
+    if not manifest_path.exists():
+        return
+    with open(manifest_path, "r") as f:
+        lines = f.readlines()
+    if not lines:
+        return
+    
+    # Remove last non-empty line
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if lines:
+        lines.pop()
+        
+    with open(manifest_path, "w") as f:
+        f.writelines(lines)
+
 def save_wav(filename: str | Path, audio_data: np.ndarray, sample_rate: int = 16000):
     """Save raw int16 numpy array to a WAV file."""
     path = Path(filename)
@@ -72,17 +145,6 @@ def save_wav(filename: str | Path, audio_data: np.ndarray, sample_rate: int = 16
         wf.setframerate(sample_rate)
         wf.writeframes(audio_data.tobytes())
 
-def append_to_manifest(manifest_path: str | Path, audio_path: str | Path, text: str):
-    """Append a single entry to the JSONL manifest."""
-    path = Path(manifest_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    
-    entry = {"audio": str(audio_path), "text": text}
-    with open(path, "a") as f:
-        # Avoid literal backslash n bug entirely using Python's native newline
-        f.write(json.dumps(entry))
-        f.write("\n")
-
 def parse_prompts(content: str) -> list[str]:
     """Parse TOML content into a list of prompts."""
     data = tomllib.loads(content)
@@ -93,12 +155,24 @@ def parse_prompts(content: str) -> list[str]:
 
 def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str):
     """Run the main interactive recording loop."""
-    with open(prompts_file) as f:
-        prompts = parse_prompts(f.read())
+    try:
+        with open(prompts_file) as f:
+            all_prompts = parse_prompts(f.read())
+    except FileNotFoundError:
+        logger.error(f"Prompts file not found: {prompts_file}")
+        sys.exit(1)
         
-    if not prompts:
+    if not all_prompts:
         logger.error(f"No prompts found in {prompts_file}")
         sys.exit(1)
+
+    manifest_path = Path(manifest_file)
+    completed_set = _load_completed_prompts(manifest_path)
+    session = _init_session(all_prompts, completed_set)
+
+    if not session.pending_prompts:
+        console.print(f"[bold green]🎉 All {session.total_prompts} prompts have already been recorded![/bold green]")
+        return
 
     out_path = Path(out_dir)
     recorder = AudioRecorder()
@@ -110,10 +184,11 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
         f"[bold green]SPACEBAR[/bold green] to record.\n"
         f"3. Read the prompt out loud.\n"
         f"4. Release the [bold green]SPACEBAR[/bold green] to stop recording.\n"
-        f"5. The file is automatically saved.\n\n"
+        f"5. Press [bold yellow]'u'[/bold yellow] to undo/delete the last recording.\n\n"
         f"[bold cyan]Storage:[/bold cyan]\n"
         f"• Audio Dir: [green]{out_path}[/green]\n"
-        f"• Manifest:  [green]{manifest_file}[/green]\n\n"
+        f"• Manifest:  [green]{manifest_file}[/green]\n"
+        f"• Progress:  [green]{session.completed_count} / {session.total_prompts} completed[/green]\n\n"
         f"[dim]Press 'q' at any time to quit.[/dim]",
         title="🎙️  [bold magenta]PERSONALIZED VOICE RECORDER STARTED[/bold magenta]",
         border_style="cyan",
@@ -121,34 +196,43 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
     ))
 
     is_recording = False
-    current_prompt = ""
+    current_prompt = session.pending_prompts.pop(0) if session.pending_prompts else ""
     shutdown_requested = False
     
-    random.shuffle(prompts)
-    prompt_iter = iter(prompts)
-    
-    def pick_prompt():
-        try:
-            return next(prompt_iter)
-        except StopIteration:
-            console.print("[bold yellow]No more prompts left in the file![/bold yellow]")
-            return None
-        
-    current_prompt = pick_prompt()
-    if not current_prompt:
-        return
-    
-    console.print(
-        f"\n[bold green]\\[PROMPT]:[/bold green] "
-        f"[bold white]{current_prompt}[/bold white]"
-    )
+    def print_prompt():
+        idx = session.completed_count + 1
+        console.print(
+            f"\n[bold green]\\[PROMPT {idx}/{session.total_prompts}]:[/bold green] "
+            f"[bold white]{current_prompt}[/bold white]"
+        )
+
+    print_prompt()
 
     def on_press(key):
-        nonlocal is_recording, shutdown_requested
+        nonlocal is_recording, shutdown_requested, current_prompt
         
-        if hasattr(key, 'char') and key.char == 'q':
-            shutdown_requested = True
-            return False
+        if hasattr(key, 'char'):
+            if key.char == 'q':
+                shutdown_requested = True
+                return False
+            elif key.char == 'u' and not is_recording:
+                # Undo last
+                if not session.history:
+                    console.print("[bold yellow]⚠️ No history to undo in this session.[/bold yellow]")
+                else:
+                    last_record = session.history.pop()
+                    if last_record.audio_path.exists():
+                        last_record.audio_path.unlink()
+                    _remove_last_from_manifest(manifest_path)
+                    
+                    # Push current back to pending if it exists
+                    if current_prompt:
+                        session.pending_prompts.insert(0, current_prompt)
+                        
+                    current_prompt = last_record.prompt
+                    session.completed_count -= 1
+                    console.print(f"[bold yellow]⏪ Undid last record. Retrying: {current_prompt}[/bold yellow]")
+                    print_prompt()
 
         if key == keyboard.Key.space and not is_recording:
             is_recording = True
@@ -163,29 +247,30 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
             audio_data = recorder.stop()
             console.print("[bold bright_black]⏹️  STOPPED[/bold bright_black]")
             
-            if len(audio_data) > 0:
+            if _is_silent(audio_data, threshold=500):
+                console.print("[bold yellow]⚠️  No sound detected (or too quiet). Please try again.[/bold yellow]")
+                # We do not advance, prompt stays the same.
+            else:
                 clip_id = str(uuid.uuid4())[:8]
                 filename = out_path / f"clip_{clip_id}.wav"
                 
                 save_wav(filename, audio_data)
-                append_to_manifest(manifest_file, filename, current_prompt)
-                console.print(f"[bold green]✅ Saved to[/bold green] [cyan]{filename}[/cyan]")
-            else:
-                console.print(
-                    "[bold yellow]⚠️  No audio captured. "
-                    "Try holding spacebar longer.[/bold yellow]"
-                )
-            
-            # Show next
-            current_prompt = pick_prompt()
-            if not current_prompt:
-                shutdown_requested = True
-                return False
+                _append_to_manifest(manifest_path, filename, current_prompt)
                 
-            console.print(
-                f"\n[bold green]\\[PROMPT]:[/bold green] "
-                f"[bold white]{current_prompt}[/bold white]"
-            )
+                # Add to history
+                session.history.append(Record(prompt=current_prompt, audio_path=filename))
+                session.completed_count += 1
+                
+                console.print(f"[bold green]✅ Saved to[/bold green] [cyan]{filename}[/cyan]")
+                
+                # Advance to next prompt
+                if not session.pending_prompts:
+                    console.print(f"[bold green]🎉 All {session.total_prompts} prompts have been recorded![/bold green]")
+                    shutdown_requested = True
+                    return False
+                
+                current_prompt = session.pending_prompts.pop(0)
+                print_prompt()
 
     fd = sys.stdin.fileno()
     old_attr = termios.tcgetattr(fd)
@@ -224,9 +309,15 @@ def run_headless_verification(out_dir: str, manifest_file: str):
     text = "this is a headless verification test"
     
     save_wav(filename, audio_data)
-    append_to_manifest(manifest_file, filename, text)
+    
+    manifest_path = Path(manifest_file)
+    _append_to_manifest(manifest_path, filename, text)
+    
+    # Test _is_silent
+    silent = _is_silent(audio_data)
     
     logger.info(f"✅ Headless verification complete. Generated: {filename}")
+    logger.info(f"Silence check on generated audio: {silent} (expected False)")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Voice Recorder Tooling")
