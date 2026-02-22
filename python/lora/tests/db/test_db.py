@@ -1,8 +1,10 @@
 """Tests for the SQLAlchemy database models and logic."""
 
 from pathlib import Path
+
 from db.client import DBClient
-from db.models import Dataset, Record, Run, RunParam, RunMetric, DatasetRecord
+from db.models import Dataset, DatasetRecord, Record, Run, RunMetric, RunParam
+
 
 def test_db_init_and_datasets(tmp_path: Path):
     db_file = tmp_path / "test.sqlite"
@@ -16,8 +18,12 @@ def test_db_init_and_datasets(tmp_path: Path):
         session.flush()
 
         # Add records
-        r1 = Record(source_run_id=run.id, data_type="AUDIO", file_path="audio1.wav", content="test 1")
-        r2 = Record(source_run_id=run.id, data_type="AUDIO", file_path="audio2.wav", content="test 2")
+        r1 = Record(
+            source_run_id=run.id, data_type="AUDIO", file_path="audio1.wav", content="test 1"
+        )
+        r2 = Record(
+            source_run_id=run.id, data_type="AUDIO", file_path="audio2.wav", content="test 2"
+        )
         session.add_all([r1, r2])
         session.flush()
 
@@ -33,9 +39,16 @@ def test_db_init_and_datasets(tmp_path: Path):
         session.add_all([dr1, dr2])
 
     with client.session_scope() as session:
-        samples = session.query(Record).join(DatasetRecord).join(Dataset).filter(Dataset.name == "test_ds").all()
+        samples = (
+            session.query(Record)
+            .join(DatasetRecord)
+            .join(Dataset)
+            .filter(Dataset.name == "test_ds")
+            .all()
+        )
         assert len(samples) == 2
         assert samples[0].file_path == "audio1.wav"
+
 
 def test_experiment_tracking(tmp_path: Path):
     db_file = tmp_path / "test2.sqlite"
@@ -49,7 +62,7 @@ def test_experiment_tracking(tmp_path: Path):
 
         param = RunParam(run_id=run.id, key="lr", value="0.001")
         session.add(param)
-        
+
         metric = RunMetric(run_id=run.id, step=100, key="wer", value=0.1)
         session.add(metric)
         session.flush()

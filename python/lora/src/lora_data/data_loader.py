@@ -8,12 +8,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import librosa
 import numpy as np
 import torch
 from datasets import Audio, Dataset, load_dataset
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
+from db.client import DBClient
+from db.models import Dataset as DbDataset
+from db.models import DatasetRecord, Record
 from lora_training.logging_utils import get_logger
 from lora_training.model_utils import normalize_audio_rms
 
@@ -202,30 +206,32 @@ def split_by_speaker(
 
 
 def load_dataset_split(config: DatasetConfig, sample_rate: int) -> Dataset:
-    if config.dataset == "synthetic":
-        LOGGER.info("Loading synthetic dataset | max_seconds=%s", config.max_seconds)
-        return build_synthetic_dataset(sample_rate, config.max_seconds)
-    if config.dataset == "librispeech_dummy":
-        LOGGER.info("Loading dummy dataset | split=validation")
-        dummy = load_dataset(
-            "hf-internal-testing/librispeech_asr_dummy",
-            "clean",
-            split="validation",
-        )
-        records = {
-            "audio": [item["audio"]["array"] for item in dummy],
-            "text": [item["text"] for item in dummy],
-            "speaker_id": [item.get("speaker_id", -1) for item in dummy],
-        }
-        return Dataset.from_dict(records)
-    if config.dataset == "librispeech_clean":
-        LOGGER.info(
-            "Loading librispeech clean | split=%s | max_samples=%s",
-            config.split,
-            config.max_samples,
-        )
-        return load_librispeech_stream(config.split, sample_rate, config.max_samples)
-    raise ValueError(f"Unsupported dataset: {config.dataset}")
+    match config.dataset:
+        case "synthetic":
+            LOGGER.info("Loading synthetic dataset | max_seconds=%s", config.max_seconds)
+            return build_synthetic_dataset(sample_rate, config.max_seconds)
+        case "librispeech_dummy":
+            LOGGER.info("Loading dummy dataset | split=validation")
+            dummy = load_dataset(
+                "hf-internal-testing/librispeech_asr_dummy",
+                "clean",
+                split="validation",
+            )
+            records = {
+                "audio": [item["audio"]["array"] for item in dummy],
+                "text": [item["text"] for item in dummy],
+                "speaker_id": [item.get("speaker_id", -1) for item in dummy],
+            }
+            return Dataset.from_dict(records)
+        case "librispeech_clean":
+            LOGGER.info(
+                "Loading librispeech clean | split=%s | max_samples=%s",
+                config.split,
+                config.max_samples,
+            )
+            return load_librispeech_stream(config.split, sample_rate, config.max_samples)
+        case _:
+            raise ValueError(f"Unsupported dataset: {config.dataset}")
 
 
 def load_manifest(path: Path) -> list[dict[str, Any]]:
@@ -238,19 +244,18 @@ def load_manifest(path: Path) -> list[dict[str, Any]]:
 
 
 def normalize_audio(value: Any) -> list[float]:
-    import librosa
-
-    if isinstance(value, list):
-        return value
-    if isinstance(value, dict) and "array" in value:
-        return value["array"]
-    if isinstance(value, str):
-        # Treat as file path
-        speech, _ = librosa.load(value, sr=16000)
-        return speech.tolist()
-    raise ValueError(
-        "Unsupported audio format in manifest. Expected array, list, or file path string."
-    )
+    match value:
+        case list():
+            return value
+        case dict() if "array" in value:
+            return value["array"]
+        case str():
+            speech, _ = librosa.load(value, sr=16000)
+            return speech.tolist()
+        case _:
+            raise ValueError(
+                "Unsupported audio format in manifest. Expected array, list, or file path string."
+            )
 
 
 def build_manifest_dataset(entries: list[dict[str, Any]]) -> Dataset:
@@ -272,6 +277,30 @@ def build_manifest_dataset(entries: list[dict[str, Any]]) -> Dataset:
     return Dataset.from_dict(records)
 
 
+def _load_db_dataset(dataset_name: str) -> Dataset:
+    client = DBClient()
+
+    with client.session_scope() as session:
+        records = (
+            session.query(Record)
+            .join(DatasetRecord)
+            .join(DbDataset)
+            .filter(DbDataset.name == dataset_name, Record.is_valid)
+            .all()
+        )
+
+        if not records:
+            raise ValueError(f"No samples found for DB dataset: {dataset_name}")
+
+        entries = [{"audio": r.file_path, "text": r.content, "speaker_id": -1} for r in records]
+
+    return build_manifest_dataset(entries)
+
+
+def _load_jsonl_dataset(path: Path) -> Dataset:
+    return build_manifest_dataset(load_manifest(path))
+
+
 def load_manifest_dataset(path: str | Path) -> Dataset:
     """Load a JSONL manifest or DB dataset into a Hugging Face dataset.
 
@@ -281,30 +310,11 @@ def load_manifest_dataset(path: str | Path) -> Dataset:
     Returns:
         Dataset containing audio, text, and speaker_id fields.
     """
-    path_str = str(path)
-    if path_str.startswith("db://"):
-        dataset_name = path_str.replace("db://", "")
-        from db.client import DBClient
-        from db.models import Dataset, DatasetRecord, Record
-        client = DBClient()
-        
-        with client.session_scope() as session:
-            records = (
-                session.query(Record)
-                .join(DatasetRecord)
-                .join(Dataset)
-                .filter(Dataset.name == dataset_name, Record.is_valid == True)
-                .all()
-            )
-            
-            if not records:
-                raise ValueError(f"No samples found for DB dataset: {dataset_name}")
-                
-            entries = [{"audio": r.file_path, "text": r.content, "speaker_id": -1} for r in records]
-            
-        return build_manifest_dataset(entries)
-
-    return build_manifest_dataset(load_manifest(Path(path)))
+    match str(path).split("://", 1):
+        case ["db", dataset_name]:
+            return _load_db_dataset(dataset_name)
+        case _:
+            return _load_jsonl_dataset(Path(path))
 
 
 def prepare_dataset(dataset: Dataset, processor: Any) -> Dataset:

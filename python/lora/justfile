@@ -28,6 +28,9 @@ lint:
 fix:
 	uv run ruff check . --fix
 
+# View the DB using Datasette
+view-db:
+    uvx datasette data/tracker.sqlite
 
 # Record dataset interactively
 record-dataset:

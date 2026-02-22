@@ -140,9 +140,7 @@ def _filter_manifest_by_duration(dataset: Any, sample_rate: int, max_seconds: fl
     return dataset.filter(lambda sample: len(sample["audio"]) <= duration_limit)
 
 
-def _load_training_dataset(
-    dataset_path: str, processor: Any, max_seconds: float, seed: int
-) -> Any:
+def _load_training_dataset(dataset_path: str, processor: Any, max_seconds: float, seed: int) -> Any:
     """Load training data from manifest or dataset.
 
     Args:
@@ -368,7 +366,13 @@ def train_loop(
 
                 if exp_id is not None:
                     from db.client import DBClient
-                    DBClient().log_experiment_metric(exp_id, step, eval_ds_id, interval_wer, 0.0)
+                    from db.models import RunMetric
+
+                    with DBClient().session_scope() as session:
+                        metric = RunMetric(
+                            run_id=exp_id, step=step, key="interval_wer", value=interval_wer
+                        )
+                        session.add(metric)
 
                 if interval_wer < best_wer:
                     best_wer = interval_wer
@@ -415,7 +419,9 @@ def save_metrics(metrics: ExperimentMetrics, output_dir: Path) -> None:
     path.write_text(json.dumps(asdict(metrics), indent=2))
 
 
-def run_experiment(config: ExperimentConfig, exp_id: int | None = None, eval_ds_id: int | None = None) -> ExperimentMetrics:
+def run_experiment(
+    config: ExperimentConfig, exp_id: int | None = None, eval_ds_id: int | None = None
+) -> ExperimentMetrics:
     """Run a full experiment cycle with baseline and tuned evaluation.
 
     Args:
@@ -603,38 +609,90 @@ def main() -> None:
     )
 
     from db.client import DBClient
+    from db.models import Dataset, Run, RunDataset, RunParam
+
     client = DBClient()
     client.init_db()
 
-    train_ds_id = None
-    if config.dataset_path.startswith("db://"):
-        ds = client.get_dataset_by_name(config.dataset_path.replace("db://", ""))
-        train_ds_id = ds.id if ds else None
+    with client.session_scope() as session:
+        train_ds_id = None
+        if config.dataset_path.startswith("db://"):
+            ds = (
+                session.query(Dataset)
+                .filter_by(name=config.dataset_path.replace("db://", ""))
+                .first()
+            )
+            train_ds_id = ds.id if ds else None
 
-    eval_ds_id = None
-    if config.manifest_path.startswith("db://"):
-        ds = client.get_dataset_by_name(config.manifest_path.replace("db://", ""))
-        eval_ds_id = ds.id if ds else None
+        eval_ds_id = None
+        if config.manifest_path.startswith("db://"):
+            ds = (
+                session.query(Dataset)
+                .filter_by(name=config.manifest_path.replace("db://", ""))
+                .first()
+            )
+            eval_ds_id = ds.id if ds else None
 
-    safety_ds_id = None
-    if config.safety_manifest_path and config.safety_manifest_path.startswith("db://"):
-        ds = client.get_dataset_by_name(config.safety_manifest_path.replace("db://", ""))
-        safety_ds_id = ds.id if ds else None
+        safety_ds_id = None
+        if config.safety_manifest_path and config.safety_manifest_path.startswith("db://"):
+            ds = (
+                session.query(Dataset)
+                .filter_by(name=config.safety_manifest_path.replace("db://", ""))
+                .first()
+            )
+            safety_ds_id = ds.id if ds else None
 
-    exp_name = Path(config.output_dir).name
-    log_file = str(Path(config.output_dir) / "experiment.log")
-    raw_out = str(Path(config.output_dir) / "nohup.out")
+        exp_name = Path(config.output_dir).name
+        log_file = str(Path(config.output_dir) / "experiment.log")
+        raw_out = str(Path(config.output_dir) / "nohup.out")
 
-    exp = client.start_experiment(exp_name, asdict(config), train_ds_id, eval_ds_id, safety_ds_id, log_file, raw_out)
-    exp_id = exp.id
+        run = session.query(Run).filter_by(name=exp_name).first()
+        if not run:
+            run = Run(
+                name=exp_name,
+                run_type="TRAINING",
+                status="RUNNING",
+                log_file_path=log_file,
+                raw_stdout_path=raw_out,
+            )
+            session.add(run)
+            session.flush()
+        else:
+            run.status = "RUNNING"
+            run.log_file_path = log_file
+            run.raw_stdout_path = raw_out
+            session.query(RunParam).filter_by(run_id=run.id).delete()
+            session.query(RunDataset).filter_by(run_id=run.id).delete()
+            session.flush()
+
+        for key, value in asdict(config).items():
+            session.add(RunParam(run_id=run.id, key=key, value=str(value)))
+
+        if train_ds_id:
+            session.add(RunDataset(run_id=run.id, dataset_id=train_ds_id, usage="TRAIN"))
+        if eval_ds_id:
+            session.add(RunDataset(run_id=run.id, dataset_id=eval_ds_id, usage="EVAL"))
+        if safety_ds_id:
+            session.add(RunDataset(run_id=run.id, dataset_id=safety_ds_id, usage="SAFETY"))
+
+        exp_id = run.id
 
     try:
         metrics = run_experiment(config, exp_id=exp_id, eval_ds_id=eval_ds_id)
         save_metrics(metrics, Path(config.output_dir))
-        client.finish_experiment(exp_id, "COMPLETED", adapter_dir=str(Path(config.output_dir) / "lora_adapter"))
+        with client.session_scope() as session:
+            run = session.query(Run).get(exp_id)
+            if run:
+                run.status = "COMPLETED"
+                run.artifacts_dir = str(Path(config.output_dir) / "lora_adapter")
     except Exception as e:
         import traceback
-        client.finish_experiment(exp_id, "FAILED", traceback=traceback.format_exc())
+
+        with client.session_scope() as session:
+            run = session.query(Run).get(exp_id)
+            if run:
+                run.status = "FAILED"
+                run.error_traceback = traceback.format_exc()
         raise e
 
 
