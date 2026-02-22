@@ -17,6 +17,7 @@ from typing import Any
 
 import torch
 from peft import LoraConfig
+from sqlalchemy.orm import Session
 from transformers import AutoModelForSpeechSeq2Seq, get_linear_schedule_with_warmup, set_seed
 
 from lora_data.data_loader import (
@@ -588,7 +589,7 @@ def run_experiment(
     )
 
 
-def _resolve_dataset_id(session: Any, path: str | None) -> int | None:
+def _resolve_dataset_id(session: Session, path: str | None) -> int | None:
     if not path:
         return None
     match path:
@@ -604,7 +605,13 @@ def _resolve_dataset_id(session: Any, path: str | None) -> int | None:
             raise ValueError(f"Invalid dataset path format: {invalid_path}")
 
 
-def _register_experiment_run(config: ExperimentConfig) -> tuple[int, int | None]:
+@dataclass
+class RegisteredRun:
+    run_id: int
+    eval_ds_id: int | None
+
+
+def _register_experiment_run(config: ExperimentConfig) -> RegisteredRun:
     from db.client import DBClient
     from db.models import Run, RunDataset, RunParam
 
@@ -649,7 +656,7 @@ def _register_experiment_run(config: ExperimentConfig) -> tuple[int, int | None]
         if safety_ds_id:
             session.add(RunDataset(run_id=run.id, dataset_id=safety_ds_id, usage="SAFETY"))
 
-        return run.id, eval_ds_id
+        return RegisteredRun(run_id=run.id, eval_ds_id=eval_ds_id)
 
 
 def _finalize_experiment_run(
@@ -701,7 +708,9 @@ def main() -> None:
         lora_targets=args.lora_targets,
     )
 
-    exp_id, eval_ds_id = _register_experiment_run(config)
+    registered_run = _register_experiment_run(config)
+    exp_id = registered_run.run_id
+    eval_ds_id = registered_run.eval_ds_id
 
     try:
         metrics = run_experiment(config, exp_id=exp_id, eval_ds_id=eval_ds_id)
