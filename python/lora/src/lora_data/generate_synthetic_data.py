@@ -5,8 +5,8 @@ from pathlib import Path
 
 from db.client import DBClient
 from db.models import Dataset, DatasetRecord, Record, Run, RunParam
-from lora_data._migrate_raw_to_db import hash_file
 from lora_data._jargon_prompt_generator import generate_prompts, spell_out_for_tts
+from lora_data._migrate_raw_to_db import hash_file
 from lora_data._tts_engine import F5TTSEngine
 from lora_training.logging_utils import get_logger, setup_logging
 
@@ -138,30 +138,34 @@ def main() -> None:
         client = DBClient()
         with client.session_scope() as session:
             from db.models import Dataset
+
             real_ds = session.query(Dataset).filter_by(name="real_voice_train").first()
             if not real_ds:
-                raise ValueError("Could not find 'real_voice_train' in DB. Have you run the migration?")
-            
+                raise ValueError(
+                    "Could not find 'real_voice_train' in DB. Have you run the migration?"
+                )
+
             # Combine the two datasets
             from db.models import DatasetRecord
+
             records = (
                 session.query(DatasetRecord)
                 .filter(DatasetRecord.dataset_id.in_([real_ds.id, synth_id]))
                 .all()
             )
             record_ids = {r.record_id for r in records}
-            
+
             mixed = session.query(Dataset).filter_by(name=args.mixed_name).first()
             if mixed:
                 session.query(DatasetRecord).filter_by(dataset_id=mixed.id).delete()
             else:
-                mixed = Dataset(name=args.mixed_name, description=f"Mixed synth and real")
+                mixed = Dataset(name=args.mixed_name, description="Mixed synth and real")
                 session.add(mixed)
                 session.flush()
-                
+
             for rid in record_ids:
                 session.add(DatasetRecord(dataset_id=mixed.id, record_id=rid))
-                
+
         print(f"Success! Mixed dataset '{args.mixed_name}' created.")
     else:
         print(f"Success! Synthetic dataset '{args.dataset_name}' created.")

@@ -1,7 +1,6 @@
 """Interactive audio recording tooling for hard-negative mining and dataset correction."""
 
 import argparse
-import json
 import logging
 import sys
 import termios
@@ -14,7 +13,7 @@ from pynput import keyboard
 from rich.console import Console
 from rich.panel import Panel
 
-from lora_data.recorder import AudioRecorder, _append_to_manifest, _is_silent, save_wav
+from lora_data.recorder import AudioRecorder, _append_to_db, _is_silent, save_wav
 from lora_training.model_utils import (
     choose_device,
     configure_generation,
@@ -33,16 +32,16 @@ def save_correction(
     audio_data: np.ndarray,
     corrected_text: str,
     out_dir: Path,
-    manifest_path: Path,
+    dataset_name: str,
     sample_rate: int = 16000,
 ) -> Path:
-    """Save the audio data to a WAV file and append the corrected text to the manifest."""
+    """Save the audio data to a WAV file and append the corrected text to the database."""
     out_dir.mkdir(parents=True, exist_ok=True)
     clip_id = str(uuid.uuid4())[:8]
     filename = out_dir / f"correction_{clip_id}.wav"
 
     save_wav(filename, audio_data, sample_rate=sample_rate)
-    _append_to_manifest(manifest_path, filename, corrected_text)
+    _append_to_db(dataset_name, filename, corrected_text, audio_data, sample_rate)
 
     return filename
 
@@ -50,7 +49,7 @@ def save_correction(
 def run_interactive_session(args: argparse.Namespace):
     """Run the main interactive recording and transcription loop."""
     out_path = Path(args.out_dir)
-    manifest_path = Path(args.manifest)
+    dataset_name = args.dataset_name
 
     device = choose_device(args.device)
     console.print(f"[bold cyan]Loading model:[/bold cyan] {args.model_id} on {device}")
@@ -77,7 +76,7 @@ def run_interactive_session(args: argparse.Namespace):
             f"   - [yellow]q[/yellow]: Quit.\n\n"
             f"[bold cyan]Storage:[/bold cyan]\n"
             f"• Audio Dir: [green]{out_path}[/green]\n"
-            f"• Manifest:  [green]{manifest_path}[/green]\n",
+            f"• DB Dataset:  [green]{dataset_name}[/green]\n",
             title="🎙️  [bold magenta]CORRECTION RECORDER STARTED[/bold magenta]",
             border_style="cyan",
             expand=False,
@@ -149,7 +148,7 @@ def run_interactive_session(args: argparse.Namespace):
                     corrected_text = input("Please type the CORRECT transcription: ").strip()
                     if corrected_text:
                         saved_path = save_correction(
-                            audio_data, corrected_text, out_path, manifest_path
+                            audio_data, corrected_text, out_path, dataset_name
                         )
                         console.print(
                             f"[bold green]✅ Saved correction to[/bold green] "
@@ -192,7 +191,7 @@ def run_headless_verification(args: argparse.Namespace):
     """Run an automated verification pass without human input."""
     logger.info("Running Headless Verification...")
     out_path = Path(args.out_dir)
-    manifest_path = Path(args.manifest)
+    dataset_name = args.dataset_name
 
     device = choose_device(args.device)
     logger.info(f"Loading model: {args.model_id} on {device}")
@@ -216,17 +215,9 @@ def run_headless_verification(args: argparse.Namespace):
     logger.info(f"Prediction: {prediction}")
 
     corrected_text = "this is a headless verification test correction"
-    saved_path = save_correction(audio_data, corrected_text, out_path, manifest_path)
+    saved_path = save_correction(audio_data, corrected_text, out_path, dataset_name)
 
     logger.info(f"✅ Headless verification complete. Generated: {saved_path}")
-
-    # Check manifest
-    with open(manifest_path) as f:
-        lines = f.readlines()
-        last_line = json.loads(lines[-1])
-        logger.info(f"Manifest last entry: {last_line}")
-        assert last_line["text"] == corrected_text
-        assert str(saved_path) in last_line["audio"]
 
 
 if __name__ == "__main__":
@@ -241,7 +232,7 @@ if __name__ == "__main__":
         "--out-dir", default="data/raw_audio/corrections", help="Directory to save WAV files"
     )
     parser.add_argument(
-        "--manifest", default="data/corrections_manifest.jsonl", help="Path to JSONL manifest"
+        "--dataset-name", default="corrections_manifest", help="SQLite dataset to save into"
     )
     parser.add_argument(
         "--non-interactive", action="store_true", help="Run headless verification mode"

@@ -1,7 +1,6 @@
 """Interactive audio recording tooling for dataset generation."""
 
 import argparse
-import json
 import logging
 import random
 import sys
@@ -19,6 +18,9 @@ from pynput import keyboard
 from rich.console import Console
 from rich.panel import Panel
 
+from db.client import DBClient
+from db.models import Dataset, DatasetRecord, Record
+
 # Set up logging
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -28,9 +30,10 @@ console = Console()
 
 
 @dataclass
-class Record:
+class RecordHistory:
     prompt: str
     audio_path: Path
+    db_record_id: int
 
 
 @dataclass
@@ -38,7 +41,7 @@ class RecordingSession:
     total_prompts: int
     completed_count: int
     pending_prompts: list[str]
-    history: list[Record] = field(default_factory=list)
+    history: list[RecordHistory] = field(default_factory=list)
 
 
 class AudioRecorder:
@@ -86,22 +89,34 @@ def _is_silent(audio_data: np.ndarray, threshold: int = 500) -> bool:
     return np.max(np.abs(audio_data)) < threshold
 
 
-def _load_completed_prompts(manifest_path: Path) -> set[str]:
-    """Load completed prompt texts from the JSONL manifest."""
-    completed = set()
-    if not manifest_path.exists():
-        return completed
+def hash_audio_data(audio_data: np.ndarray) -> str:
+    """Compute a SHA256 hash of the raw audio data array."""
+    import hashlib
 
-    with open(manifest_path) as f:
-        for line in f:
-            if not line.strip():
-                continue
-            try:
-                entry = json.loads(line)
-                if "text" in entry:
-                    completed.add(entry["text"])
-            except json.JSONDecodeError:
-                continue
+    h = hashlib.sha256()
+    h.update(audio_data.tobytes())
+    return h.hexdigest()
+
+
+def _load_completed_prompts(dataset_name: str) -> set[str]:
+    """Load completed prompt texts from the DB dataset."""
+    client = DBClient()
+    completed = set()
+
+    with client.session_scope() as session:
+        ds = session.query(Dataset).filter_by(name=dataset_name).first()
+        if not ds:
+            return completed
+
+        records = (
+            session.query(Record.content)
+            .join(DatasetRecord)
+            .filter(DatasetRecord.dataset_id == ds.id)
+            .all()
+        )
+        for r in records:
+            completed.add(r.content)
+
     return completed
 
 
@@ -114,32 +129,41 @@ def _init_session(all_prompts: list[str], completed: set[str]) -> RecordingSessi
     )
 
 
-def _append_to_manifest(manifest_path: Path, audio_path: Path, text: str) -> None:
-    """Append a single entry to the JSONL manifest safely."""
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    entry = {"audio": str(audio_path), "text": text}
-    with open(manifest_path, "a") as f:
-        f.write(json.dumps(entry))
-        f.write("\n")
+def _append_to_db(
+    dataset_name: str, audio_path: Path, text: str, audio_data: np.ndarray, sample_rate: int
+) -> int:
+    """Insert the recording into SQLite and link to the dataset."""
+    client = DBClient()
+    duration = len(audio_data) / sample_rate
+    audio_hash = hash_audio_data(audio_data)
+
+    with client.session_scope() as session:
+        ds = session.query(Dataset).filter_by(name=dataset_name).first()
+        if not ds:
+            ds = Dataset(name=dataset_name, description="Manually recorded dataset")
+            session.add(ds)
+            session.flush()
+
+        rec = Record(
+            file_path=str(audio_path),
+            content=text,
+            data_type="AUDIO",
+            metadata_json={"source_type": "REAL", "duration_sec": duration},
+            file_hash=audio_hash,
+        )
+        session.add(rec)
+        session.flush()
+
+        session.add(DatasetRecord(dataset_id=ds.id, record_id=rec.id))
+        return rec.id
 
 
-def _remove_last_from_manifest(manifest_path: Path) -> None:
-    """Remove the last line from the JSONL manifest (for undo)."""
-    if not manifest_path.exists():
-        return
-    with open(manifest_path) as f:
-        lines = f.readlines()
-    if not lines:
-        return
-
-    # Remove last non-empty line
-    while lines and not lines[-1].strip():
-        lines.pop()
-    if lines:
-        lines.pop()
-
-    with open(manifest_path, "w") as f:
-        f.writelines(lines)
+def _remove_last_from_db(record_id: int) -> None:
+    """Remove the most recent DB record representing the undone action."""
+    client = DBClient()
+    with client.session_scope() as session:
+        session.query(DatasetRecord).filter_by(record_id=record_id).delete()
+        session.query(Record).filter_by(id=record_id).delete()
 
 
 def save_wav(filename: str | Path, audio_data: np.ndarray, sample_rate: int = 16000):
@@ -163,7 +187,7 @@ def parse_prompts(content: str) -> list[str]:
     return [str(p).strip() for p in prompts if str(p).strip()]
 
 
-def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str):
+def run_interactive_session(prompts_file: str, out_dir: str, dataset_name: str):
     """Run the main interactive recording loop."""
     try:
         with open(prompts_file) as f:
@@ -176,8 +200,7 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
         logger.error(f"No prompts found in {prompts_file}")
         sys.exit(1)
 
-    manifest_path = Path(manifest_file)
-    completed_set = _load_completed_prompts(manifest_path)
+    completed_set = _load_completed_prompts(dataset_name)
     session = _init_session(all_prompts, completed_set)
 
     if not session.pending_prompts:
@@ -201,7 +224,7 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
             f"5. Press [bold yellow]'u'[/bold yellow] to undo/delete the last recording.\n\n"
             f"[bold cyan]Storage:[/bold cyan]\n"
             f"• Audio Dir: [green]{out_path}[/green]\n"
-            f"• Manifest:  [green]{manifest_file}[/green]\n"
+            f"• DB Dataset:[green]{dataset_name}[/green]\n"
             f"• Progress:  [green]{session.completed_count} / {session.total_prompts} "
             f"completed[/green]\n\n"
             f"[dim]Press 'q' at any time to quit.[/dim]",
@@ -241,7 +264,7 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
                     last_record = session.history.pop()
                     if last_record.audio_path.exists():
                         last_record.audio_path.unlink()
-                    _remove_last_from_manifest(manifest_path)
+                    _remove_last_from_db(last_record.db_record_id)
 
                     # Push current back to pending if it exists
                     if current_prompt:
@@ -279,10 +302,14 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
                 filename = out_path / f"clip_{clip_id}.wav"
 
                 save_wav(filename, audio_data)
-                _append_to_manifest(manifest_path, filename, current_prompt)
+                rec_id = _append_to_db(
+                    dataset_name, filename, current_prompt, audio_data, recorder.sample_rate
+                )
 
                 # Add to history
-                session.history.append(Record(prompt=current_prompt, audio_path=filename))
+                session.history.append(
+                    RecordHistory(prompt=current_prompt, audio_path=filename, db_record_id=rec_id)
+                )
                 session.completed_count += 1
 
                 console.print(f"[bold green]✅ Saved to[/bold green] [cyan]{filename}[/cyan]")
@@ -317,7 +344,7 @@ def run_interactive_session(prompts_file: str, out_dir: str, manifest_file: str)
     console.print("\n[bold magenta]Session ended.[/bold magenta]")
 
 
-def run_headless_verification(out_dir: str, manifest_file: str):
+def run_headless_verification(out_dir: str, dataset_name: str):
     """Run an automated verification pass without human input."""
     logger.info("Running Headless Verification...")
     out_path = Path(out_dir)
@@ -337,9 +364,7 @@ def run_headless_verification(out_dir: str, manifest_file: str):
     text = "this is a headless verification test"
 
     save_wav(filename, audio_data)
-
-    manifest_path = Path(manifest_file)
-    _append_to_manifest(manifest_path, filename, text)
+    _append_to_db(dataset_name, filename, text, audio_data, sample_rate)
 
     # Test _is_silent
     silent = _is_silent(audio_data)
@@ -357,7 +382,7 @@ if __name__ == "__main__":
         "--out-dir", default="data/raw_audio/my_voice", help="Directory to save WAV files"
     )
     parser.add_argument(
-        "--manifest", default="data/my_voice_all.jsonl", help="Path to master JSONL manifest"
+        "--dataset-name", default="real_voice_train", help="Name of SQLite dataset to track"
     )
     parser.add_argument(
         "--non-interactive", action="store_true", help="Run headless verification mode"
@@ -366,6 +391,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.non_interactive:
-        run_headless_verification(args.out_dir, args.manifest)
+        run_headless_verification(args.out_dir, args.dataset_name)
     else:
-        run_interactive_session(args.prompts, args.out_dir, args.manifest)
+        run_interactive_session(args.prompts, args.out_dir, args.dataset_name)

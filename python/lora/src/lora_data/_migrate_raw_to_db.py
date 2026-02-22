@@ -13,13 +13,16 @@ from db.models import Dataset, DatasetRecord, Record
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
+
 def hash_file(filepath: str | Path) -> str:
     import hashlib
+
     h = hashlib.sha256()
     with open(str(filepath), "rb") as f:
         while chunk := f.read(8192):
             h.update(chunk)
     return h.hexdigest()
+
 
 def migrate_manifest(manifest_path: str, dataset_name: str, description: str) -> None:
     path = Path(manifest_path)
@@ -55,13 +58,13 @@ def migrate_manifest(manifest_path: str, dataset_name: str, description: str) ->
                     continue
 
                 file_hash = hash_file(filepath)
-                
+
                 # Check if this exact file is already in Records
                 rec = session.query(Record).filter_by(file_path=filepath).first()
                 if not rec:
                     # Calculate duration for real data
                     duration = float(librosa.get_duration(path=filepath))
-                    
+
                     rec = Record(
                         file_path=filepath,
                         content=text,
@@ -78,14 +81,18 @@ def migrate_manifest(manifest_path: str, dataset_name: str, description: str) ->
 
         logger.info(f"Successfully migrated {count} records into '{dataset_name}'.")
 
+
 def main():
     parser = argparse.ArgumentParser(description="Migrate JSONL manifests to DB.")
     parser.add_argument("--manifest", type=str, required=True, help="Path to JSONL file")
     parser.add_argument("--dataset-name", type=str, required=True, help="Target DB Dataset Name")
-    parser.add_argument("--description", type=str, default="Migrated from JSONL", help="Description")
+    parser.add_argument(
+        "--description", type=str, default="Migrated from JSONL", help="Description"
+    )
     args = parser.parse_args()
-    
+
     migrate_manifest(args.manifest, args.dataset_name, args.description)
+
 
 if __name__ == "__main__":
     main()
