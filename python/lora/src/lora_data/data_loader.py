@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import json
-import math
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import librosa
 import numpy as np
 import torch
-from datasets import Audio, Dataset, load_dataset
+from datasets import Dataset
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
@@ -22,40 +20,6 @@ from lora_training.logging_utils import get_logger
 from lora_training.model_utils import normalize_audio_rms
 
 
-@dataclass
-class DatasetConfig:
-    dataset: str
-    split: str
-    max_samples: int | None
-    max_seconds: float
-    seed: int
-
-
-def generate_tone(duration: float, sample_rate: int, freq: float) -> list[float]:
-    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
-    return (0.1 * np.sin(2 * math.pi * freq * t)).astype(np.float32).tolist()
-
-
-def build_synthetic_dataset(sample_rate: int, max_seconds: float) -> Dataset:
-    phrases = [
-        ("beep one", 440.0),
-        ("beep two", 554.0),
-        ("beep three", 659.0),
-        ("beep four", 880.0),
-        ("beep five", 988.0),
-        ("beep six", 523.0),
-        ("beep seven", 740.0),
-        ("beep eight", 830.0),
-    ]
-    records: dict[str, list[Any]] = {"audio": [], "text": []}
-    for text, freq in phrases:
-        duration = max(1.0, min(max_seconds, 2.0))
-        audio = generate_tone(duration, sample_rate, freq)
-        records["audio"].append(audio)
-        records["text"].append(text)
-    return Dataset.from_dict(records)
-
-
 def resample_audio(audio: list[float], original_rate: int, target_rate: int) -> list[float]:
     if original_rate != target_rate:
         raise ValueError(
@@ -63,32 +27,6 @@ def resample_audio(audio: list[float], original_rate: int, target_rate: int) -> 
             "Resampling must be done explicitly by caller."
         )
     return audio
-
-
-def load_librispeech_stream(split: str, sample_rate: int, max_samples: int | None) -> Dataset:
-    LOGGER.info("Streaming LibriSpeech | split=%s | max_samples=%s", split, max_samples)
-    dataset = load_dataset(
-        "librispeech_asr",
-        "clean",
-        split=split,
-        streaming=True,
-    )
-    dataset = dataset.cast_column("audio", Audio(sampling_rate=sample_rate))
-    if max_samples:
-        dataset = dataset.take(max_samples)
-    records: dict[str, list[Any]] = {"audio": [], "text": [], "speaker_id": []}
-    for sample in dataset:
-        audio_info = sample["audio"]
-        audio_array = audio_info["array"]
-        if isinstance(audio_array, np.ndarray) and audio_array.dtype == np.float64:
-            audio_array = audio_array.astype(np.float32)
-
-        # Audio feature handles resampling if sampling_rate is specified in cast_column.
-        # Audio(sampling_rate=...) does resampling automatically on access.
-        records["audio"].append(audio_array)
-        records["text"].append(sample["text"])
-        records["speaker_id"].append(sample.get("speaker_id", -1))
-    return Dataset.from_dict(records)
 
 
 def prepare_features(batch: dict[str, Any], processor: Any, sample_rate: int) -> dict[str, Any]:
@@ -205,35 +143,6 @@ def split_by_speaker(
     return train, val, test
 
 
-def load_dataset_split(config: DatasetConfig, sample_rate: int) -> Dataset:
-    match config.dataset:
-        case "synthetic":
-            LOGGER.info("Loading synthetic dataset | max_seconds=%s", config.max_seconds)
-            return build_synthetic_dataset(sample_rate, config.max_seconds)
-        case "librispeech_dummy":
-            LOGGER.info("Loading dummy dataset | split=validation")
-            dummy = load_dataset(
-                "hf-internal-testing/librispeech_asr_dummy",
-                "clean",
-                split="validation",
-            )
-            records = {
-                "audio": [item["audio"]["array"] for item in dummy],
-                "text": [item["text"] for item in dummy],
-                "speaker_id": [item.get("speaker_id", -1) for item in dummy],
-            }
-            return Dataset.from_dict(records)
-        case "librispeech_clean":
-            LOGGER.info(
-                "Loading librispeech clean | split=%s | max_samples=%s",
-                config.split,
-                config.max_samples,
-            )
-            return load_librispeech_stream(config.split, sample_rate, config.max_samples)
-        case _:
-            raise ValueError(f"Unsupported dataset: {config.dataset}")
-
-
 def load_manifest(path: Path) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
     for line in path.read_text().splitlines():
@@ -259,14 +168,7 @@ def normalize_audio(value: Any) -> list[float]:
 
 
 def build_manifest_dataset(entries: list[dict[str, Any]]) -> Dataset:
-    """Create a dataset from manifest entries.
-
-    Args:
-        entries: Parsed manifest entries.
-
-    Returns:
-        Dataset containing audio, text, and speaker_id fields.
-    """
+    """Create a dataset from manifest entries."""
     if not entries:
         raise ValueError("Manifest is empty")
     records = {
@@ -302,19 +204,16 @@ def _load_jsonl_dataset(path: Path) -> Dataset:
 
 
 def load_manifest_dataset(path: str | Path) -> Dataset:
-    """Load a JSONL manifest or DB dataset into a Hugging Face dataset.
-
-    Args:
-        path: Path to the manifest file or db://<dataset_name>.
-
-    Returns:
-        Dataset containing audio, text, and speaker_id fields.
-    """
+    """Load a JSONL manifest or DB dataset into a Hugging Face dataset."""
     match str(path).split("://", 1):
         case ["db", dataset_name]:
             return _load_db_dataset(dataset_name)
+        case [local_path] if local_path.endswith(".jsonl"):
+            return _load_jsonl_dataset(Path(local_path))
         case _:
-            return _load_jsonl_dataset(Path(path))
+            raise ValueError(
+                f"Invalid manifest path: '{path}'. Expected 'db://<name>' or a '.jsonl' file."
+            )
 
 
 def prepare_dataset(dataset: Dataset, processor: Any) -> Dataset:

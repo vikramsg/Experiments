@@ -15,6 +15,7 @@ def test_generate_prompts():
     assert prompts1 != prompts3
     assert any("justfile" in p for p in prompts1)
 
+
 def test_spell_out_for_tts():
     """Ensure symbols and jargon are spelled out properly for TTS."""
     assert spell_out_for_tts("@refactor.md") == "at refactor dot m d"

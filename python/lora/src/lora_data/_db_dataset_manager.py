@@ -10,13 +10,16 @@ from lora_training.logging_utils import get_logger
 
 LOGGER = get_logger(__name__)
 
+
 def hash_file(filepath: str | Path) -> str:
     import hashlib
+
     h = hashlib.sha256()
     with open(str(filepath), "rb") as f:
         while chunk := f.read(8192):
             h.update(chunk)
     return h.hexdigest()
+
 
 def ensure_heldout_manifest_db() -> int:
     """Create a dummy safety heldout dataset if missing and load to DB."""
@@ -70,6 +73,7 @@ def ensure_heldout_manifest_db() -> int:
         ds_id = ds.id
     return ds_id
 
+
 def load_eval_to_db() -> int:
     """Migrate the real voice eval manifest into DB."""
     client = DBClient()
@@ -107,6 +111,7 @@ def load_eval_to_db() -> int:
         ds_id = ds.id
     return ds_id
 
+
 def create_real_voice_dataset() -> int:
     """Migrate the real voice train manifest into DB."""
     client = DBClient()
@@ -143,6 +148,7 @@ def create_real_voice_dataset() -> int:
                 session.add(DatasetRecord(dataset_id=ds.id, record_id=rec.id))
         ds_id = ds.id
     return ds_id
+
 
 def mix_db_datasets(dataset1_id: int, dataset2_id: int, mixed_name: str) -> int:
     """Combine two DB datasets into a new logical dataset."""

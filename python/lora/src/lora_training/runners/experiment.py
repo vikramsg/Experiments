@@ -20,9 +20,7 @@ from peft import LoraConfig
 from transformers import AutoModelForSpeechSeq2Seq, get_linear_schedule_with_warmup, set_seed
 
 from lora_data.data_loader import (
-    DatasetConfig,
     create_dataloader,
-    load_dataset_split,
     load_manifest_dataset,
     prepare_dataset,
     split_by_speaker,
@@ -161,17 +159,6 @@ def _load_training_dataset(dataset_path: str, processor: Any, max_seconds: float
                 dataset, processor.feature_extractor.sampling_rate, max_seconds
             )
             return prepare_dataset(filtered, processor)
-        case "synthetic" | "librispeech_dummy" | "librispeech_clean":
-            dataset_config = DatasetConfig(
-                dataset=dataset_path,
-                split="train",
-                max_samples=None,
-                max_seconds=max_seconds,
-                seed=seed,
-            )
-            LOGGER.info("Loading dataset split | dataset=%s", dataset_path)
-            dataset = load_dataset_split(dataset_config, processor.feature_extractor.sampling_rate)
-            return prepare_dataset(dataset, processor)
         case invalid_path:
             raise ValueError(f"Unsupported dataset path or identifier: '{invalid_path}'")
 
@@ -268,6 +255,15 @@ def _resolve_lora_targets(config: ExperimentConfig) -> list[str]:
     return lora_targets
 
 
+@dataclass
+class TrainLoopResult:
+    train_loss: float
+    interval_wer: float | None
+    best_wer: float | None
+    best_step: int | None
+    safety_wer: float | None
+
+
 def train_loop(
     model: Any,
     train_loader: Any,
@@ -285,7 +281,7 @@ def train_loop(
     safety_loader: Any | None = None,
     exp_id: int | None = None,
     eval_ds_id: int | None = None,
-) -> tuple[float, float | None, float | None, int | None, float | None]:
+) -> TrainLoopResult:
     """Train LoRA adapters and optionally run interval WER checks.
 
     Args:
@@ -408,12 +404,12 @@ def train_loop(
         raise ValueError("LoRA weights did not change after updates")
     LOGGER.info("LoRA weight delta | value=%.6f", sum(deltas))
     LOGGER.info("Training loop complete | steps=%s", step)
-    return (
-        summarize_losses(losses),
-        interval_wer,
-        (best_wer if best_wer != float("inf") else None),
-        best_step,
-        safety_wer,
+    return TrainLoopResult(
+        train_loss=summarize_losses(losses),
+        interval_wer=interval_wer,
+        best_wer=(best_wer if best_wer != float("inf") else None),
+        best_step=best_step,
+        safety_wer=safety_wer,
     )
 
 
@@ -511,7 +507,7 @@ def run_experiment(
     start = time.time()
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    train_loss, interval_wer, best_wer, best_step, safety_tuned_wer = train_loop(
+    loop_result = train_loop(
         model,
         train_loader,
         optimizer,
@@ -545,9 +541,15 @@ def run_experiment(
         LOGGER.info("Evaluating HELDOUT manifest (Final Safety Tuned)")
         safety_tuned_wer = eval_wer(model, processor, safety_loader, device)
         LOGGER.info("Safety final tuned WER | wer=%.4f", safety_tuned_wer)
+    else:
+        safety_tuned_wer = None
 
-    if best_wer is not None:
-        LOGGER.info("Best metrics during training | wer=%.4f | step=%s", best_wer, best_step)
+    if loop_result.best_wer is not None:
+        LOGGER.info(
+            "Best metrics during training | wer=%.4f | step=%s",
+            loop_result.best_wer,
+            loop_result.best_step,
+        )
 
     if (
         config.wer_stop_threshold is not None
@@ -565,16 +567,16 @@ def run_experiment(
     LOGGER.info("Artifacts saved | output_dir=%s", output_dir)
 
     return ExperimentMetrics(
-        train_loss=train_loss,
+        train_loss=loop_result.train_loss,
         baseline_eval_loss=baseline_eval_loss,
         baseline_wer=baseline_wer,
         tuned_eval_loss=tuned_eval_loss,
         tuned_wer=tuned_wer,
         safety_baseline_wer=safety_baseline_wer,
         safety_tuned_wer=safety_tuned_wer,
-        best_wer=best_wer,
-        best_step=best_step,
-        interval_wer=interval_wer,
+        best_wer=loop_result.best_wer,
+        best_step=loop_result.best_step,
+        interval_wer=loop_result.interval_wer,
         elapsed_seconds=elapsed,
         device=str(device),
         used_mps_fallback=mark_mps_fallback(),
@@ -586,72 +588,33 @@ def run_experiment(
     )
 
 
-def main() -> None:
-    args = parse_args()
-    config = ExperimentConfig(
-        model_id=args.model_id,
-        output_dir=args.output_dir,
-        max_steps=args.max_steps,
-        eval_interval=args.eval_interval,
-        learning_rate=args.learning_rate,
-        lora_r=args.lora_r,
-        lora_alpha=args.lora_alpha,
-        lora_dropout=args.lora_dropout,
-        batch_size=args.batch_size,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        seed=args.seed,
-        dataset_path=args.dataset_path,
-        manifest_path=args.manifest_path,
-        safety_manifest_path=args.safety_manifest_path,
-        max_seconds=args.max_seconds,
-        device=args.device,
-        wer_stop_threshold=args.wer_stop_threshold,
-        use_dora=args.use_dora,
-        init_lora_weights=args.init_lora_weights,
-        lora_module_filter=args.lora_module_filter,
-        lora_targets=args.lora_targets,
-    )
+def _resolve_dataset_id(session: Any, path: str | None) -> int | None:
+    if not path:
+        return None
+    match path:
+        case p if p.startswith("db://"):
+            from db.models import Dataset
 
+            ds_name = p[5:]
+            ds = session.query(Dataset).filter_by(name=ds_name).first()
+            return ds.id if ds else None
+        case p if p.endswith(".jsonl"):
+            return None
+        case invalid_path:
+            raise ValueError(f"Invalid dataset path format: {invalid_path}")
+
+
+def _register_experiment_run(config: ExperimentConfig) -> tuple[int, int | None]:
     from db.client import DBClient
-    from db.models import Dataset, Run, RunDataset, RunParam
+    from db.models import Run, RunDataset, RunParam
 
     client = DBClient()
     client.init_db()
 
     with client.session_scope() as session:
-        train_ds_id = None
-        match config.dataset_path:
-            case path if path.startswith("db://"):
-                ds_name = path[5:]
-                ds = session.query(Dataset).filter_by(name=ds_name).first()
-                train_ds_id = ds.id if ds else None
-            case path if path.endswith(".jsonl") or path in ("synthetic", "librispeech_dummy", "librispeech_clean"):
-                pass
-            case invalid_path:
-                raise ValueError(f"Invalid dataset path format: {invalid_path}")
-
-        eval_ds_id = None
-        match config.manifest_path:
-            case path if path.startswith("db://"):
-                ds_name = path[5:]
-                ds = session.query(Dataset).filter_by(name=ds_name).first()
-                eval_ds_id = ds.id if ds else None
-            case path if path.endswith(".jsonl"):
-                pass
-            case invalid_path:
-                raise ValueError(f"Invalid eval manifest path format: {invalid_path}")
-
-        safety_ds_id = None
-        if config.safety_manifest_path:
-            match config.safety_manifest_path:
-                case path if path.startswith("db://"):
-                    ds_name = path[5:]
-                    ds = session.query(Dataset).filter_by(name=ds_name).first()
-                    safety_ds_id = ds.id if ds else None
-                case path if path.endswith(".jsonl"):
-                    pass
-                case invalid_path:
-                    raise ValueError(f"Invalid safety manifest path format: {invalid_path}")
+        train_ds_id = _resolve_dataset_id(session, config.dataset_path)
+        eval_ds_id = _resolve_dataset_id(session, config.manifest_path)
+        safety_ds_id = _resolve_dataset_id(session, config.safety_manifest_path)
 
         exp_name = Path(config.output_dir).name
         log_file = str(Path(config.output_dir) / "experiment.log")
@@ -686,24 +649,66 @@ def main() -> None:
         if safety_ds_id:
             session.add(RunDataset(run_id=run.id, dataset_id=safety_ds_id, usage="SAFETY"))
 
-        exp_id = run.id
+        return run.id, eval_ds_id
+
+
+def _finalize_experiment_run(
+    run_id: int, config: ExperimentConfig, error: Exception | None = None
+) -> None:
+    import traceback
+
+    from db.client import DBClient
+    from db.models import Run
+
+    with DBClient().session_scope() as session:
+        run = session.query(Run).get(run_id)
+        if not run:
+            return
+
+        if error:
+            run.status = "FAILED"
+            run.error_traceback = "".join(
+                traceback.format_exception(type(error), error, error.__traceback__)
+            )
+        else:
+            run.status = "COMPLETED"
+            run.artifacts_dir = str(Path(config.output_dir) / "lora_adapter")
+
+
+def main() -> None:
+    args = parse_args()
+    config = ExperimentConfig(
+        model_id=args.model_id,
+        output_dir=args.output_dir,
+        max_steps=args.max_steps,
+        eval_interval=args.eval_interval,
+        learning_rate=args.learning_rate,
+        lora_r=args.lora_r,
+        lora_alpha=args.lora_alpha,
+        lora_dropout=args.lora_dropout,
+        batch_size=args.batch_size,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        seed=args.seed,
+        dataset_path=args.dataset_path,
+        manifest_path=args.manifest_path,
+        safety_manifest_path=args.safety_manifest_path,
+        max_seconds=args.max_seconds,
+        device=args.device,
+        wer_stop_threshold=args.wer_stop_threshold,
+        use_dora=args.use_dora,
+        init_lora_weights=args.init_lora_weights,
+        lora_module_filter=args.lora_module_filter,
+        lora_targets=args.lora_targets,
+    )
+
+    exp_id, eval_ds_id = _register_experiment_run(config)
 
     try:
         metrics = run_experiment(config, exp_id=exp_id, eval_ds_id=eval_ds_id)
         save_metrics(metrics, Path(config.output_dir))
-        with client.session_scope() as session:
-            run = session.query(Run).get(exp_id)
-            if run:
-                run.status = "COMPLETED"
-                run.artifacts_dir = str(Path(config.output_dir) / "lora_adapter")
+        _finalize_experiment_run(exp_id, config)
     except Exception as e:
-        import traceback
-
-        with client.session_scope() as session:
-            run = session.query(Run).get(exp_id)
-            if run:
-                run.status = "FAILED"
-                run.error_traceback = traceback.format_exc()
+        _finalize_experiment_run(exp_id, config, error=e)
         raise e
 
 

@@ -7,7 +7,7 @@ from lora_data._db_dataset_manager import ensure_heldout_manifest_db
 
 def test_ensure_heldout_manifest_db(tmp_path, monkeypatch):
     import lora_data._db_dataset_manager as manager
-    
+
     db_file = tmp_path / "test.sqlite"
     client = DBClient(db_path=db_file)
     client.init_db()

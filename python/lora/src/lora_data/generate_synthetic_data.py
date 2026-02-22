@@ -132,7 +132,7 @@ def generate_synthetic_data(
 
 def main() -> None:
     args = parse_args()
-    
+
     # Pre-setup standard real datasets so they are trackable by DB if missing
     ensure_heldout_manifest_db()
     load_eval_to_db()
@@ -150,6 +150,7 @@ def main() -> None:
         print(f"Success! Mixed dataset '{args.mixed_name}' created.")
     else:
         print(f"Success! Synthetic dataset '{args.dataset_name}' created.")
+
 
 if __name__ == "__main__":
     main()
