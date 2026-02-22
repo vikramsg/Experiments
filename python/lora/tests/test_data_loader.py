@@ -7,7 +7,13 @@ import numpy as np
 import pytest
 from datasets import Dataset
 
-from lora_data.data_loader import load_manifest, normalize_audio, prepare_dataset, split_by_speaker
+from lora_data.data_loader import (
+    load_manifest,
+    load_manifest_dataset,
+    normalize_audio,
+    prepare_dataset,
+    split_by_speaker,
+)
 
 
 def test_split_by_speaker_returns_splits() -> None:
@@ -74,3 +80,19 @@ def test_load_manifest_reads_lines(tmp_path: Path) -> None:
     manifest.write_text(json.dumps({"audio": [0.0], "text": "hi"}) + "\n")
     entries = load_manifest(manifest)
     assert entries[0]["text"] == "hi"
+
+
+def test_load_manifest_dataset_invalid_path():
+    with pytest.raises(ValueError, match="Invalid manifest path"):
+        load_manifest_dataset("invalid_path.txt")
+    with pytest.raises(ValueError, match="Invalid manifest path"):
+        load_manifest_dataset("s3://bucket/data.jsonl")
+
+
+def test_load_manifest_dataset_local_jsonl(tmp_path: Path):
+    manifest = tmp_path / "valid.jsonl"
+    manifest.write_text(json.dumps({"audio": [0.0], "text": "test_audio"}) + "\n")
+
+    ds = load_manifest_dataset(manifest)
+    assert len(ds) == 1
+    assert ds[0]["text"] == "test_audio"

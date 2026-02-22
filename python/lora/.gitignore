@@ -8,3 +8,6 @@ __pycache__
 
 # Build manifest files
 data
+
+# Worktrees
+.worktrees

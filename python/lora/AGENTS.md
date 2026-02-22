@@ -76,7 +76,7 @@ Ruff is the standard linter for this repository. Configure linting rules only in
 - Prefix internal (non-public) functions with `_`.
 - Keep functions small and single-purpose; avoid hidden side effects.
 - Fail fast with specific exceptions; never use bare `except`. Do not write defensive fallback logic (e.g., silently returning empty values, inferring default behaviors on missing arguments, or ignoring missing state). Require explicit inputs, states, and configurations, and raise errors immediately if expectations are unmet.
-- Use structured `logging` instead of `print` in reusable modules and training workflows.
+- **CRITICAL**: ALWAYS use the project's structured `logging` setup. NEVER use raw `print()` statements. The logging setup allows always persisting logs to a file, which is a minimum requirement for all operations and traceability.
 - Prefer immutable data models (`frozen=True` dataclasses or immutable pydantic models) unless mutation is required.
 - Require explicit return type annotations for public and internal functions.
 - Add Google-style docstrings for all public functions.
@@ -84,8 +84,8 @@ Ruff is the standard linter for this repository. Configure linting rules only in
 ## Testing Guidelines
 - Use `pytest` for new tests.
 - Place tests in `tests/` with names like `test_<module>.py`.
-- Name test cases by behavior (for example, `test_main_prints_greeting`).
-- Prefer deterministic unit tests; isolate network/model-download steps behind mocks when practical.
+- Name test cases by behavior (for example, `test_main_logs_greeting`).
+- Prefer deterministic unit tests; do not use mocking. Instead, create actual data (even if fake) that is cleaned up after tests, such as by using the pytest `tmp_path` fixture.
 
 ## Commit & Pull Request Guidelines
 - Follow Conventional Commit style seen in history: `feat:`, `fix:`, `chore:`, optionally with scope (for example, `feat(zsh): ...`).

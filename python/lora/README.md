@@ -60,6 +60,28 @@ This project strictly adheres to a **fail-fast, no-fallback** engineering philos
 - Do not implement silent fallbacks for missing configurations, unexpected data shapes, or missing dependencies.
 - If a contract is violated, raise an explicit exception (`ValueError`, `KeyError`, `RuntimeError`, etc.) immediately. We prefer the application to crash loudly rather than proceed in an ambiguous state.
 
+## Data Module Architecture (`src/lora_data`)
+
+The `src/lora_data` package encapsulates all data loading, generation, manipulation, and database operations.
+
+### Public Interfaces
+
+These modules are intended to be used directly by the end-user or the training loop:
+
+*   **`data_loader.py`**: The core dependency for training. It parses `db://<dataset_name>` URIs to stream cleanly validated Hugging Face datasets directly from the SQLite database.
+*   **`generate_synthetic_data.py`**: The main CLI orchestrator script for generating new TTS audio. It deterministically creates target transcripts, synthesizes the audio files, logs the exact execution configurations to the DB, and constructs the logical DB datasets.
+    *   *Usage*: `uv run python -m lora_data.generate_synthetic_data --num-samples 5 --dataset-name synth_v5 --audio-prefix synth --mix-with-real --mixed-name v5_mixed`
+*   **`recorder.py`, `correction_recorder.py`, `player.py`**: User-facing utilities to record physical microphone data and play it back locally.
+
+### Internal Utilities (`_*`)
+
+Scripts prefixed with an underscore (`_`) are strictly for internal composition and should **not** be imported outside the `lora_data` package:
+
+*   **`_jargon_prompt_generator.py`**: Holds the deterministic target script logic, specific domain jargon, template expansion, and TTS phonetic spell-out algorithms.
+*   **`_tts_engine.py`**: Encapsulates the MLX/F5-TTS model initialization. Handles crucial operations like resampling audio explicitly to `24kHz` to prevent Pitch distortion errors ("chipmunk" effect) prior to synthesis.
+*   **`_db_dataset_manager.py`**: Encapsulates raw SQLAlchemy transaction logic for migrating JSONL files to the DB, joining synthetic and physical datasets together, and extracting DB identifiers for datasets.
+*   **`_manifest_*.py`**: Legacy JSONL tracking utilities. Largely deprecated by the SQLite backend.
+
 ## Documentation
 
 ### Training Guide

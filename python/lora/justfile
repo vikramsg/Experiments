@@ -28,24 +28,34 @@ lint:
 fix:
 	uv run ruff check . --fix
 
+# View the DB using Datasette
+view-db:
+    uvx datasette data/tracker.sqlite
 
-# Record dataset interactively
-record-dataset:
-	uv run python src/lora_data/recorder.py
+# Record dataset interactively into DB
+# Usage: just record-dataset [dataset_name="real_voice_train"]
+record-dataset dataset_name="real_voice_train":
+	uv run python -m lora_data.recorder --dataset-name {{dataset_name}}
 
-# Split the dataset into train and eval
-split-dataset:
-	uv run python src/lora_data/manifest_utils.py
+# Review audio interactively
+# Usage: just review-audio [dir="data/synthetic_audio"]
+review-audio dir="data/synthetic_audio":
+	uv run python -m lora_data.player --dir {{dir}}
+
+# Split the dataset into train and eval in the database
+# Usage: just split-dataset <dataset_name> [test_ratio="0.1"]
+split-dataset dataset_name test_ratio="0.1":
+	uv run python -m lora_data._dataset_splitter --dataset-name {{dataset_name}} --test-ratio {{test_ratio}}
 
 # Transcribe a single audio file or a batch manifest
 # Usage: just transcribe "--model-id <id> --audio <path>"
 transcribe args:
-	uv run python src/lora_training/transcribe.py {{args}}
+	uv run python -m lora_training.transcribe {{args}}
 
 # Run interactive STT recorder to capture corrections for hard-negative mining
-# Usage: just correction-recorder "--model-id UsefulSensors/moonshine-tiny"
-correction-recorder args="":
-	uv run python src/lora_data/correction_recorder.py {{args}}
+# Usage: just correction-recorder [dataset_name="corrections_manifest"]
+correction-recorder dataset_name="corrections_manifest":
+	uv run python -m lora_data.correction_recorder --dataset-name {{dataset_name}}
 
 # Run an experiment in the background using nohup
 # Usage: just run-experiment <name> "<extra_args>"

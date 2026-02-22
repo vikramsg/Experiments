@@ -17,12 +17,11 @@ from typing import Any
 
 import torch
 from peft import LoraConfig
+from sqlalchemy.orm import Session
 from transformers import AutoModelForSpeechSeq2Seq, get_linear_schedule_with_warmup, set_seed
 
 from lora_data.data_loader import (
-    DatasetConfig,
     create_dataloader,
-    load_dataset_split,
     load_manifest_dataset,
     prepare_dataset,
     split_by_speaker,
@@ -140,9 +139,7 @@ def _filter_manifest_by_duration(dataset: Any, sample_rate: int, max_seconds: fl
     return dataset.filter(lambda sample: len(sample["audio"]) <= duration_limit)
 
 
-def _load_training_dataset(
-    dataset_path: Path, processor: Any, max_seconds: float, seed: int
-) -> Any:
+def _load_training_dataset(dataset_path: str, processor: Any, max_seconds: float, seed: int) -> Any:
     """Load training data from manifest or dataset.
 
     Args:
@@ -154,28 +151,21 @@ def _load_training_dataset(
     Returns:
         Prepared dataset for training.
     """
-    if dataset_path.suffix == ".jsonl":
-        LOGGER.info("Loading manifest dataset | path=%s", dataset_path)
-        dataset = load_manifest_dataset(dataset_path)
-        LOGGER.info("Loaded manifest dataset | samples=%s", len(dataset))
-        filtered = _filter_manifest_by_duration(
-            dataset, processor.feature_extractor.sampling_rate, max_seconds
-        )
-        return prepare_dataset(filtered, processor)
-    dataset_config = DatasetConfig(
-        dataset=dataset_path.as_posix(),
-        split="train",
-        max_samples=None,
-        max_seconds=max_seconds,
-        seed=seed,
-    )
-    LOGGER.info("Loading dataset split | dataset=%s", dataset_path)
-    dataset = load_dataset_split(dataset_config, processor.feature_extractor.sampling_rate)
-    return prepare_dataset(dataset, processor)
+    match dataset_path:
+        case path if path.startswith("db://") or path.endswith(".jsonl"):
+            LOGGER.info("Loading manifest dataset | path=%s", dataset_path)
+            dataset = load_manifest_dataset(dataset_path)
+            LOGGER.info("Loaded manifest dataset | samples=%s", len(dataset))
+            filtered = _filter_manifest_by_duration(
+                dataset, processor.feature_extractor.sampling_rate, max_seconds
+            )
+            return prepare_dataset(filtered, processor)
+        case invalid_path:
+            raise ValueError(f"Unsupported dataset path or identifier: '{invalid_path}'")
 
 
 def _build_dataloaders(
-    dataset_path: Path,
+    dataset_path: str,
     processor: Any,
     batch_size: int,
     seed: int,
@@ -222,12 +212,12 @@ def _build_dataloaders(
 
 
 def _load_eval_loader(
-    manifest_path: Path, processor: Any, batch_size: int, max_seconds: float
+    manifest_path: str, processor: Any, batch_size: int, max_seconds: float
 ) -> Any:
     """Load evaluation dataloader from manifest.
 
     Args:
-        manifest_path: Path to manifest JSONL.
+        manifest_path: Path to manifest JSONL or DB.
         processor: Model processor.
         batch_size: Batch size.
         max_seconds: Maximum audio duration.
@@ -266,6 +256,15 @@ def _resolve_lora_targets(config: ExperimentConfig) -> list[str]:
     return lora_targets
 
 
+@dataclass
+class TrainLoopResult:
+    train_loss: float
+    interval_wer: float | None
+    best_wer: float | None
+    best_step: int | None
+    safety_wer: float | None
+
+
 def train_loop(
     model: Any,
     train_loader: Any,
@@ -281,7 +280,9 @@ def train_loop(
     wer_stop_threshold: float | None,
     output_dir: Path | None = None,
     safety_loader: Any | None = None,
-) -> tuple[float, float | None, float | None, int | None, float | None]:
+    exp_id: int | None = None,
+    eval_ds_id: int | None = None,
+) -> TrainLoopResult:
     """Train LoRA adapters and optionally run interval WER checks.
 
     Args:
@@ -364,6 +365,16 @@ def train_loop(
                     safety_wer = eval_wer(model, processor, safety_loader, device)
                     LOGGER.info("Interval Safety WER | step=%s | wer=%.4f", step, safety_wer)
 
+                if exp_id is not None:
+                    from db.client import DBClient
+                    from db.models import RunMetric
+
+                    with DBClient().session_scope() as session:
+                        metric = RunMetric(
+                            run_id=exp_id, step=step, key="interval_wer", value=interval_wer
+                        )
+                        session.add(metric)
+
                 if interval_wer < best_wer:
                     best_wer = interval_wer
                     best_step = step
@@ -394,12 +405,12 @@ def train_loop(
         raise ValueError("LoRA weights did not change after updates")
     LOGGER.info("LoRA weight delta | value=%.6f", sum(deltas))
     LOGGER.info("Training loop complete | steps=%s", step)
-    return (
-        summarize_losses(losses),
-        interval_wer,
-        (best_wer if best_wer != float("inf") else None),
-        best_step,
-        safety_wer,
+    return TrainLoopResult(
+        train_loss=summarize_losses(losses),
+        interval_wer=interval_wer,
+        best_wer=(best_wer if best_wer != float("inf") else None),
+        best_step=best_step,
+        safety_wer=safety_wer,
     )
 
 
@@ -409,11 +420,15 @@ def save_metrics(metrics: ExperimentMetrics, output_dir: Path) -> None:
     path.write_text(json.dumps(asdict(metrics), indent=2))
 
 
-def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
+def run_experiment(
+    config: ExperimentConfig, exp_id: int | None = None, eval_ds_id: int | None = None
+) -> ExperimentMetrics:
     """Run a full experiment cycle with baseline and tuned evaluation.
 
     Args:
         config: Experiment configuration.
+        exp_id: Database tracker experiment ID.
+        eval_ds_id: Database tracker evaluation dataset ID.
 
     Returns:
         Experiment metrics summary.
@@ -429,14 +444,14 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     LOGGER.info("Processor loaded | model_id=%s", config.model_id)
 
     train_loader, val_loader = _build_dataloaders(
-        Path(config.dataset_path),
+        config.dataset_path,
         processor,
         config.batch_size,
         config.seed,
         max_seconds=config.max_seconds,
     )
     eval_loader = _load_eval_loader(
-        Path(config.manifest_path),
+        config.manifest_path,
         processor,
         config.batch_size,
         max_seconds=config.max_seconds,
@@ -444,7 +459,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     safety_loader = None
     if config.safety_manifest_path:
         safety_loader = _load_eval_loader(
-            Path(config.safety_manifest_path),
+            config.safety_manifest_path,
             processor,
             config.batch_size,
             max_seconds=config.max_seconds,
@@ -493,7 +508,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     start = time.time()
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    train_loss, interval_wer, best_wer, best_step, safety_tuned_wer = train_loop(
+    loop_result = train_loop(
         model,
         train_loader,
         optimizer,
@@ -508,6 +523,8 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
         wer_stop_threshold=config.wer_stop_threshold,
         output_dir=output_dir,
         safety_loader=safety_loader,
+        exp_id=exp_id,
+        eval_ds_id=eval_ds_id,
     )
     elapsed = time.time() - start
     LOGGER.info("Training finished | elapsed=%.2fs", elapsed)
@@ -525,9 +542,15 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
         LOGGER.info("Evaluating HELDOUT manifest (Final Safety Tuned)")
         safety_tuned_wer = eval_wer(model, processor, safety_loader, device)
         LOGGER.info("Safety final tuned WER | wer=%.4f", safety_tuned_wer)
+    else:
+        safety_tuned_wer = None
 
-    if best_wer is not None:
-        LOGGER.info("Best metrics during training | wer=%.4f | step=%s", best_wer, best_step)
+    if loop_result.best_wer is not None:
+        LOGGER.info(
+            "Best metrics during training | wer=%.4f | step=%s",
+            loop_result.best_wer,
+            loop_result.best_step,
+        )
 
     if (
         config.wer_stop_threshold is not None
@@ -545,16 +568,16 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     LOGGER.info("Artifacts saved | output_dir=%s", output_dir)
 
     return ExperimentMetrics(
-        train_loss=train_loss,
+        train_loss=loop_result.train_loss,
         baseline_eval_loss=baseline_eval_loss,
         baseline_wer=baseline_wer,
         tuned_eval_loss=tuned_eval_loss,
         tuned_wer=tuned_wer,
         safety_baseline_wer=safety_baseline_wer,
         safety_tuned_wer=safety_tuned_wer,
-        best_wer=best_wer,
-        best_step=best_step,
-        interval_wer=interval_wer,
+        best_wer=loop_result.best_wer,
+        best_step=loop_result.best_step,
+        interval_wer=loop_result.interval_wer,
         elapsed_seconds=elapsed,
         device=str(device),
         used_mps_fallback=mark_mps_fallback(),
@@ -564,6 +587,99 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
         dataset_path=config.dataset_path,
         manifest_path=config.manifest_path,
     )
+
+
+def _resolve_dataset_id(session: Session, path: str | None) -> int | None:
+    if not path:
+        return None
+    match path:
+        case p if p.startswith("db://"):
+            from db.models import Dataset
+
+            ds_name = p[5:]
+            ds = session.query(Dataset).filter_by(name=ds_name).first()
+            return ds.id if ds else None
+        case p if p.endswith(".jsonl"):
+            return None
+        case invalid_path:
+            raise ValueError(f"Invalid dataset path format: {invalid_path}")
+
+
+@dataclass
+class RegisteredRun:
+    run_id: int
+    eval_ds_id: int | None
+
+
+def _register_experiment_run(config: ExperimentConfig) -> RegisteredRun:
+    from db.client import DBClient
+    from db.models import Run, RunDataset, RunParam
+
+    client = DBClient()
+    client.init_db()
+
+    with client.session_scope() as session:
+        train_ds_id = _resolve_dataset_id(session, config.dataset_path)
+        eval_ds_id = _resolve_dataset_id(session, config.manifest_path)
+        safety_ds_id = _resolve_dataset_id(session, config.safety_manifest_path)
+
+        exp_name = Path(config.output_dir).name
+        log_file = str(Path(config.output_dir) / "experiment.log")
+        raw_out = str(Path(config.output_dir) / "nohup.out")
+
+        run = session.query(Run).filter_by(name=exp_name).first()
+        if not run:
+            run = Run(
+                name=exp_name,
+                run_type="TRAINING",
+                status="RUNNING",
+                log_file_path=log_file,
+                raw_stdout_path=raw_out,
+            )
+            session.add(run)
+            session.flush()
+        else:
+            run.status = "RUNNING"
+            run.log_file_path = log_file
+            run.raw_stdout_path = raw_out
+            session.query(RunParam).filter_by(run_id=run.id).delete()
+            session.query(RunDataset).filter_by(run_id=run.id).delete()
+            session.flush()
+
+        for key, value in asdict(config).items():
+            session.add(RunParam(run_id=run.id, key=key, value=str(value)))
+
+        if train_ds_id:
+            session.add(RunDataset(run_id=run.id, dataset_id=train_ds_id, usage="TRAIN"))
+        if eval_ds_id:
+            session.add(RunDataset(run_id=run.id, dataset_id=eval_ds_id, usage="EVAL"))
+        if safety_ds_id:
+            session.add(RunDataset(run_id=run.id, dataset_id=safety_ds_id, usage="SAFETY"))
+
+        return RegisteredRun(run_id=run.id, eval_ds_id=eval_ds_id)
+
+
+def _finalize_experiment_run(
+    run_id: int, config: ExperimentConfig, error: Exception | None = None
+) -> None:
+    import traceback
+
+    from db.client import DBClient
+    from db.models import Run
+
+    with DBClient().session_scope() as session:
+        run = session.get(Run, run_id)
+        if not run:
+            return
+
+        if error:
+            run.status = "FAILED"
+            run.error_traceback = "".join(
+                traceback.format_exception(type(error), error, error.__traceback__)
+            )
+        else:
+            run.status = "COMPLETED"
+            run.artifacts_dir = str(Path(config.output_dir) / "lora_adapter")
 
 
 def main() -> None:
@@ -591,9 +707,18 @@ def main() -> None:
         lora_module_filter=args.lora_module_filter,
         lora_targets=args.lora_targets,
     )
-    metrics = run_experiment(config)
-    save_metrics(metrics, Path(config.output_dir))
-    print(json.dumps(asdict(metrics), indent=2))
+
+    registered_run = _register_experiment_run(config)
+    exp_id = registered_run.run_id
+    eval_ds_id = registered_run.eval_ds_id
+
+    try:
+        metrics = run_experiment(config, exp_id=exp_id, eval_ds_id=eval_ds_id)
+        save_metrics(metrics, Path(config.output_dir))
+        _finalize_experiment_run(exp_id, config)
+    except Exception as e:
+        _finalize_experiment_run(exp_id, config, error=e)
+        raise e
 
 
 if __name__ == "__main__":
