@@ -1,13 +1,11 @@
-import json
-import os
-import subprocess
-from pathlib import Path
 import sys
+from pathlib import Path
 
 # Add project root to sys.path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from lora_training.logging_utils import setup_logging, get_logger
+from lora_training.logging_utils import get_logger, setup_logging
+
 
 def spell_out_for_tts(text: str) -> str:
     replacements = {
@@ -51,12 +49,12 @@ def main():
     ]
     
     logger.info("Loading F5-TTS...")
+    import librosa
     import mlx.core as mx
+    import numpy as np
+    import soundfile as sf
     from f5_tts_mlx.cfm import F5TTS
     from f5_tts_mlx.utils import convert_char_to_pinyin
-    import soundfile as sf
-    import librosa
-    import numpy as np
 
     f5tts = F5TTS.from_pretrained("lucasnewman/f5-tts-mlx")
     

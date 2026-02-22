@@ -2,14 +2,14 @@ import json
 import os
 import random
 import subprocess
+import sys
 import time
 from pathlib import Path
-import sys
 
 # Add project root to sys.path so we can import lora_training logging
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from lora_training.logging_utils import setup_logging, get_logger
+from lora_training.logging_utils import get_logger, setup_logging
 
 # Initialize logging
 log_path = Path("outputs/my_voice_tune_v5/pipeline.log")
@@ -69,12 +69,12 @@ def spell_out_for_tts(text: str) -> str:
 
 def run_synthetic_generation(num_samples: int, manifest_path: str, audio_prefix: str):
     logger.info("Starting synthetic data generation for %d samples...", num_samples)
+    import librosa
     import mlx.core as mx
+    import numpy as np
+    import soundfile as sf
     from f5_tts_mlx.cfm import F5TTS
     from f5_tts_mlx.utils import convert_char_to_pinyin
-    import soundfile as sf
-    import librosa
-    import numpy as np
 
     ref_audio_path = "data/raw_audio/my_voice/clip_ec16024b.wav"
     ref_audio_text = "put a to do docstring at the top of the build domain manifest script about this issue. put in known issues document. Don't put a single or two liner, be a little more detailed."
@@ -143,11 +143,11 @@ def mix_datasets(synthetic_manifest: str, output_manifest: str):
     logger.info("Mixing datasets into %s...", output_manifest)
     mixed = []
     
-    with open("data/my_voice_train.jsonl", "r") as f:
+    with open("data/my_voice_train.jsonl") as f:
         for line in f:
             mixed.append(json.loads(line))
             
-    with open(synthetic_manifest, "r") as f:
+    with open(synthetic_manifest) as f:
         for line in f:
             mixed.append(json.loads(line))
             
@@ -175,7 +175,7 @@ def run_experiment_and_monitor(experiment_name: str, train_manifest: str, max_st
     while not os.path.exists(log_file):
         time.sleep(2)
         
-    with open(log_file, "r") as f:
+    with open(log_file) as f:
         while True:
             line = f.readline()
             if not line:

@@ -141,7 +141,7 @@ def _filter_manifest_by_duration(dataset: Any, sample_rate: int, max_seconds: fl
 
 
 def _load_training_dataset(
-    dataset_path: Path, processor: Any, max_seconds: float, seed: int
+    dataset_path: str, processor: Any, max_seconds: float, seed: int
 ) -> Any:
     """Load training data from manifest or dataset.
 
@@ -154,7 +154,7 @@ def _load_training_dataset(
     Returns:
         Prepared dataset for training.
     """
-    if dataset_path.suffix == ".jsonl":
+    if dataset_path.endswith(".jsonl") or dataset_path.startswith("db://"):
         LOGGER.info("Loading manifest dataset | path=%s", dataset_path)
         dataset = load_manifest_dataset(dataset_path)
         LOGGER.info("Loaded manifest dataset | samples=%s", len(dataset))
@@ -163,7 +163,7 @@ def _load_training_dataset(
         )
         return prepare_dataset(filtered, processor)
     dataset_config = DatasetConfig(
-        dataset=dataset_path.as_posix(),
+        dataset=dataset_path,
         split="train",
         max_samples=None,
         max_seconds=max_seconds,
@@ -175,7 +175,7 @@ def _load_training_dataset(
 
 
 def _build_dataloaders(
-    dataset_path: Path,
+    dataset_path: str,
     processor: Any,
     batch_size: int,
     seed: int,
@@ -222,12 +222,12 @@ def _build_dataloaders(
 
 
 def _load_eval_loader(
-    manifest_path: Path, processor: Any, batch_size: int, max_seconds: float
+    manifest_path: str, processor: Any, batch_size: int, max_seconds: float
 ) -> Any:
     """Load evaluation dataloader from manifest.
 
     Args:
-        manifest_path: Path to manifest JSONL.
+        manifest_path: Path to manifest JSONL or DB.
         processor: Model processor.
         batch_size: Batch size.
         max_seconds: Maximum audio duration.
@@ -281,6 +281,8 @@ def train_loop(
     wer_stop_threshold: float | None,
     output_dir: Path | None = None,
     safety_loader: Any | None = None,
+    exp_id: int | None = None,
+    eval_ds_id: int | None = None,
 ) -> tuple[float, float | None, float | None, int | None, float | None]:
     """Train LoRA adapters and optionally run interval WER checks.
 
@@ -364,6 +366,10 @@ def train_loop(
                     safety_wer = eval_wer(model, processor, safety_loader, device)
                     LOGGER.info("Interval Safety WER | step=%s | wer=%.4f", step, safety_wer)
 
+                if exp_id is not None:
+                    from db.client import DBClient
+                    DBClient().log_experiment_metric(exp_id, step, eval_ds_id, interval_wer, 0.0)
+
                 if interval_wer < best_wer:
                     best_wer = interval_wer
                     best_step = step
@@ -409,11 +415,13 @@ def save_metrics(metrics: ExperimentMetrics, output_dir: Path) -> None:
     path.write_text(json.dumps(asdict(metrics), indent=2))
 
 
-def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
+def run_experiment(config: ExperimentConfig, exp_id: int | None = None, eval_ds_id: int | None = None) -> ExperimentMetrics:
     """Run a full experiment cycle with baseline and tuned evaluation.
 
     Args:
         config: Experiment configuration.
+        exp_id: Database tracker experiment ID.
+        eval_ds_id: Database tracker evaluation dataset ID.
 
     Returns:
         Experiment metrics summary.
@@ -429,14 +437,14 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     LOGGER.info("Processor loaded | model_id=%s", config.model_id)
 
     train_loader, val_loader = _build_dataloaders(
-        Path(config.dataset_path),
+        config.dataset_path,
         processor,
         config.batch_size,
         config.seed,
         max_seconds=config.max_seconds,
     )
     eval_loader = _load_eval_loader(
-        Path(config.manifest_path),
+        config.manifest_path,
         processor,
         config.batch_size,
         max_seconds=config.max_seconds,
@@ -444,7 +452,7 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
     safety_loader = None
     if config.safety_manifest_path:
         safety_loader = _load_eval_loader(
-            Path(config.safety_manifest_path),
+            config.safety_manifest_path,
             processor,
             config.batch_size,
             max_seconds=config.max_seconds,
@@ -508,6 +516,8 @@ def run_experiment(config: ExperimentConfig) -> ExperimentMetrics:
         wer_stop_threshold=config.wer_stop_threshold,
         output_dir=output_dir,
         safety_loader=safety_loader,
+        exp_id=exp_id,
+        eval_ds_id=eval_ds_id,
     )
     elapsed = time.time() - start
     LOGGER.info("Training finished | elapsed=%.2fs", elapsed)
@@ -591,9 +601,41 @@ def main() -> None:
         lora_module_filter=args.lora_module_filter,
         lora_targets=args.lora_targets,
     )
-    metrics = run_experiment(config)
-    save_metrics(metrics, Path(config.output_dir))
-    print(json.dumps(asdict(metrics), indent=2))
+
+    from db.client import DBClient
+    client = DBClient()
+    client.init_db()
+
+    train_ds_id = None
+    if config.dataset_path.startswith("db://"):
+        ds = client.get_dataset_by_name(config.dataset_path.replace("db://", ""))
+        train_ds_id = ds.id if ds else None
+
+    eval_ds_id = None
+    if config.manifest_path.startswith("db://"):
+        ds = client.get_dataset_by_name(config.manifest_path.replace("db://", ""))
+        eval_ds_id = ds.id if ds else None
+
+    safety_ds_id = None
+    if config.safety_manifest_path and config.safety_manifest_path.startswith("db://"):
+        ds = client.get_dataset_by_name(config.safety_manifest_path.replace("db://", ""))
+        safety_ds_id = ds.id if ds else None
+
+    exp_name = Path(config.output_dir).name
+    log_file = str(Path(config.output_dir) / "experiment.log")
+    raw_out = str(Path(config.output_dir) / "nohup.out")
+
+    exp = client.start_experiment(exp_name, asdict(config), train_ds_id, eval_ds_id, safety_ds_id, log_file, raw_out)
+    exp_id = exp.id
+
+    try:
+        metrics = run_experiment(config, exp_id=exp_id, eval_ds_id=eval_ds_id)
+        save_metrics(metrics, Path(config.output_dir))
+        client.finish_experiment(exp_id, "COMPLETED", adapter_dir=str(Path(config.output_dir) / "lora_adapter"))
+    except Exception as e:
+        import traceback
+        client.finish_experiment(exp_id, "FAILED", traceback=traceback.format_exc())
+        raise e
 
 
 if __name__ == "__main__":

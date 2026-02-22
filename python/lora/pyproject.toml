@@ -9,6 +9,7 @@ dependencies = [
     "moonshine-voice",
     "rich>=13.7",
     "soundfile>=0.12",
+    "sqlalchemy>=2.0.46",
     "torch>=2.2",
     "transformers>=4.40",
 ]

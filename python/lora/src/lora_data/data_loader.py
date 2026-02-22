@@ -272,16 +272,39 @@ def build_manifest_dataset(entries: list[dict[str, Any]]) -> Dataset:
     return Dataset.from_dict(records)
 
 
-def load_manifest_dataset(path: Path) -> Dataset:
-    """Load a JSONL manifest into a Hugging Face dataset.
+def load_manifest_dataset(path: str | Path) -> Dataset:
+    """Load a JSONL manifest or DB dataset into a Hugging Face dataset.
 
     Args:
-        path: Path to the manifest file.
+        path: Path to the manifest file or db://<dataset_name>.
 
     Returns:
         Dataset containing audio, text, and speaker_id fields.
     """
-    return build_manifest_dataset(load_manifest(path))
+    path_str = str(path)
+    if path_str.startswith("db://"):
+        dataset_name = path_str.replace("db://", "")
+        from db.client import DBClient
+        from db.models import Dataset, DatasetRecord, Record
+        client = DBClient()
+        
+        with client.session_scope() as session:
+            records = (
+                session.query(Record)
+                .join(DatasetRecord)
+                .join(Dataset)
+                .filter(Dataset.name == dataset_name, Record.is_valid == True)
+                .all()
+            )
+            
+            if not records:
+                raise ValueError(f"No samples found for DB dataset: {dataset_name}")
+                
+            entries = [{"audio": r.file_path, "text": r.content, "speaker_id": -1} for r in records]
+            
+        return build_manifest_dataset(entries)
+
+    return build_manifest_dataset(load_manifest(Path(path)))
 
 
 def prepare_dataset(dataset: Dataset, processor: Any) -> Dataset:
