@@ -668,7 +668,7 @@ def _finalize_experiment_run(
     from db.models import Run
 
     with DBClient().session_scope() as session:
-        run = session.query(Run).get(run_id)
+        run = session.get(Run, run_id)
         if not run:
             return
 
