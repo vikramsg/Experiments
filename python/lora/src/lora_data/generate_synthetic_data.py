@@ -5,13 +5,7 @@ from pathlib import Path
 
 from db.client import DBClient
 from db.models import Dataset, DatasetRecord, Record, Run, RunParam
-from lora_data._db_dataset_manager import (
-    create_real_voice_dataset,
-    ensure_heldout_manifest_db,
-    hash_file,
-    load_eval_to_db,
-    mix_db_datasets,
-)
+from lora_data._migrate_raw_to_db import hash_file
 from lora_data._jargon_prompt_generator import generate_prompts, spell_out_for_tts
 from lora_data._tts_engine import F5TTSEngine
 from lora_training.logging_utils import get_logger, setup_logging
@@ -133,11 +127,6 @@ def generate_synthetic_data(
 def main() -> None:
     args = parse_args()
 
-    # Pre-setup standard real datasets so they are trackable by DB if missing
-    ensure_heldout_manifest_db()
-    load_eval_to_db()
-    real_id = create_real_voice_dataset()
-
     synth_id = generate_synthetic_data(
         num_samples=args.num_samples,
         dataset_name=args.dataset_name,
@@ -146,7 +135,33 @@ def main() -> None:
     )
 
     if args.mix_with_real and args.mixed_name:
-        mix_db_datasets(real_id, synth_id, args.mixed_name)
+        client = DBClient()
+        with client.session_scope() as session:
+            from db.models import Dataset
+            real_ds = session.query(Dataset).filter_by(name="real_voice_train").first()
+            if not real_ds:
+                raise ValueError("Could not find 'real_voice_train' in DB. Have you run the migration?")
+            
+            # Combine the two datasets
+            from db.models import DatasetRecord
+            records = (
+                session.query(DatasetRecord)
+                .filter(DatasetRecord.dataset_id.in_([real_ds.id, synth_id]))
+                .all()
+            )
+            record_ids = {r.record_id for r in records}
+            
+            mixed = session.query(Dataset).filter_by(name=args.mixed_name).first()
+            if mixed:
+                session.query(DatasetRecord).filter_by(dataset_id=mixed.id).delete()
+            else:
+                mixed = Dataset(name=args.mixed_name, description=f"Mixed synth and real")
+                session.add(mixed)
+                session.flush()
+                
+            for rid in record_ids:
+                session.add(DatasetRecord(dataset_id=mixed.id, record_id=rid))
+                
         print(f"Success! Mixed dataset '{args.mixed_name}' created.")
     else:
         print(f"Success! Synthetic dataset '{args.dataset_name}' created.")
