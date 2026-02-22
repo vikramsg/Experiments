@@ -1,4 +1,8 @@
-"""Migrate legacy JSONL raw audio manifests into the SQLite tracker."""
+"""
+Migrate legacy JSONL raw audio manifests into the SQLite tracker.
+
+ToDo: Remove after we are done removing synthetic data as well.
+"""
 
 import argparse
 import json

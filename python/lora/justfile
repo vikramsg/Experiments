@@ -32,13 +32,6 @@ fix:
 view-db:
     uvx datasette data/tracker.sqlite
 
-# Migrate raw audio files and legacy JSONL manifests into the SQLite tracking database
-migrate-db:
-	uv run python -m lora_data._migrate_raw_to_db --manifest data/my_voice_train.jsonl --dataset-name real_voice_train
-	uv run python -m lora_data._migrate_raw_to_db --manifest data/my_voice_eval.jsonl --dataset-name real_voice_eval
-	uv run python -m lora_data._migrate_raw_to_db --manifest data/heldout_manifest.jsonl --dataset-name heldout_eval
-	uv run python -m lora_data._migrate_raw_to_db --manifest data/corrections_manifest.jsonl --dataset-name corrections_manifest || true
-
 # Record dataset interactively into DB
 # Usage: just record-dataset [dataset_name="real_voice_train"]
 record-dataset dataset_name="real_voice_train":
