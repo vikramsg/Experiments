@@ -1,37 +1,58 @@
-# Model Training & Evaluation Plan: Synthetic Vocabulary Expansion (End-to-End)
+# FastHTML UI Transition Plan
 
-**Goal**: Overcome the vocabulary generalization plateau by generating a massive synthetic dataset using local voice cloning (F5-TTS MLX), mixing it with real recordings, training a high-capacity DoRA adapter on `Moonshine-Tiny`, and rigorously verifying the improvements on real held-out data.
+**Goal**: Replace all CLI-based interactions with a unified, lightweight, pure-Python web dashboard using FastHTML, backed by the existing SQLite `tracker.db`.
 
-**Execution Guidance (CRITICAL ZERO-STOP MANDATE):**
-The agent MUST NOT stop or ask for permission between any of the steps outlined below. Once the user triggers the execution, the agent must autonomously orchestrate the entire two-phase pipeline—from the initial proof-of-concept through the full-scale generation, training, and final evaluation—in a single continuous block of work. It will only return control to the user after the final Word Error Rate (WER) and qualitative transcriptions of the FULL run are printed to the console. If Phase 1 fails, it will halt and report the error.
+**Constraints**:
+*   No heavy frontend frameworks (React, Vue, Streamlit).
+*   No Node.js or Javascript build steps.
+*   Must be highly modular (no monolithic `app.py`).
+*   Must be fully end-to-end testable without manual browser interaction.
+*   Must maintain strict linting (Ruff) and testing (Pytest) standards.
 
----
+### Phase 1: Infrastructure & Scaffolding (The Foundation)
+1.  **Dependencies**: Add `python-fasthtml` and `pytest-asyncio` to a new `[dependency-groups.ui]` section in `pyproject.toml`.
+2.  **Tasks**: Update `justfile` to include `ui-sync` (syncs the `ui` group), `ui-dev` (runs the FastHTML server with live reload), and `ui-test` (runs `pytest tests/ui/`).
+3.  **Directory Structure**:
+    *   Create `src/ui/__init__.py`, `src/ui/main.py` (FastHTML app entrypoint).
+    *   Create `src/ui/core.py` (Database client initialization for the web context).
+    *   Create `src/ui/components/__init__.py`, `src/ui/components/layout.py` (Base HTML shell, PicoCSS CDN links, Navbar).
+    *   Create `src/ui/routes/__init__.py`, `src/ui/routes/dashboard.py` (The `/` route).
+4.  **Testing Scaffold**:
+    *   Create `tests/ui/__init__.py`, `tests/ui/conftest.py`.
+    *   In `conftest.py`, define a `test_client` fixture that returns a FastHTML `Client(app)` connected to an in-memory SQLite database (`sqlite:///:memory:`).
+    *   Create `tests/ui/test_dashboard.py` asserting a 200 OK on `/`.
+5.  **Verification (MANDATORY)**: Run `just lint`, `just fix`, and `just test` (including the new UI tests) to ensure the scaffold is solid.
 
-### Phase 1: Proof of Concept (Mini-Run)
-Before spending hours on the full generation and training, prove the pipeline works end-to-end.
-1. **Tooling & Setup**: Autonomously ensure `f5-tts-mlx` and dependencies are installed.
-2. **Mini Generation**: Generate just 5 synthetic audio files heavily saturated with the target jargon.
-3. **Mini Mix**: Combine these 5 synthetic files with the real training data (`data/mixed_train_mini.jsonl`).
-4. **Mini Training**: Launch a short background training experiment (`just run-experiment my_voice_tune_v5_mini` for 50 steps).
-5. **Mini Verification**: Monitor logs until completion. Run a quick transcription verify to ensure the model produces text without crashing and logs exist.
+### Phase 2: Read-Only Views (Data Explorer)
+1.  **Components (`src/ui/components/dataset.py`)**: Build pure Python functions returning FastHTML `Table`, `Tr`, `Td` tags to render `Dataset`, `Run`, and `Record` objects from the database.
+2.  **Routes (`src/ui/routes/datasets.py`)**: Implement `GET /datasets` to query the DB and return the dataset tables.
+3.  **Audio Review**: Implement a route that serves static `.wav` files from the `data/` directory so they can be played in the browser using the native HTML `<audio controls>` tag.
+4.  **Tests (`tests/ui/test_datasets.py`)**: Insert mock datasets into the test DB and assert the `Client(app).get("/datasets")` returns HTML containing those dataset names.
+5.  **Verification (MANDATORY)**: Run `just lint`, `just fix`, and `just test`.
 
-### Phase 2: Full Scale Run
-Immediately upon successful completion of Phase 1, seamlessly transition to Phase 2.
-1. **Full Generation**: Generate 500+ synthetic `.wav` files mimicking the user's voice speaking jargon.
-2. **Full Mix**: Output to `data/synthetic_train.jsonl` and combine with `data/my_voice_train.jsonl` into `data/mixed_train.jsonl`.
-3. **High-Capacity Experiment**: Launch `just run-experiment my_voice_tune_v5` with:
-   * **Max Steps**: `1000`
-   * **Eval Interval**: `100`
-   * **Learning Rate**: `1e-4`
-   * **Adapter Config**: `--lora-r 32`, `--lora-alpha 64`, `--lora-dropout 0.1`, `--use-dora`
-4. **Continuous Autonomous Monitoring**: Poll the experiment logs (`just poll my_voice_tune_v5`) in a loop.
-5. **Post-Training Verification**: Transcribe the evaluation split using the best v5 adapter.
+### Phase 3: Interactive Audio Generation & Recording (The Hard Part)
+1.  **Synthetic Data Form (`src/ui/routes/generate.py`)**:
+    *   Build an HTMX form (`Form(hx_post="/api/generate", hx_target="#result")`) capturing `num_samples`, `audio_prefix`, and a `mix-with-real` toggle.
+    *   **The Route**: On POST, invoke the existing logic from `generate_synthetic_data.py`. FastHTML handles the background task, returning an HTMX progress/status indicator (`Div("Generation Started...", id="result")`).
+2.  **Microphone Recorder (`src/ui/routes/record.py`)**:
+    *   Build the UI with a "Record" button.
+    *   Inject a tiny `<script>` block using the browser's `MediaRecorder` API to capture the microphone and `POST` the Blob to `/api/upload_audio`.
+    *   **The Route**: Accept the audio bytes, hash them, save to disk (`data/raw_audio/`), and write the `Record` to the DB.
+3.  **Headless Tests**:
+    *   `test_generate.py`: Mock the `F5TTSEngine` so it doesn't spin up MLX, POST to `/api/generate`, and assert DB `Run` creation.
+    *   `test_record.py`: Generate a 1-second 440Hz numpy sine wave (reusing `recorder.py` logic), convert to bytes, POST to `/api/upload_audio`, and assert DB `Record` creation.
+4.  **Verification (MANDATORY)**: Run `just lint`, `just fix`, and `just test`.
 
-**Acceptance Criteria:**
-1. The pipeline transitions from Phase 1 to Phase 2 autonomously.
-2. The final primary WER on `data/my_voice_eval.jsonl` drops significantly.
-3. Qualitative verification shows correct transcription of symbols like `@` and jargon like `WER`.
-4. Safety WER remains stable.
-
-## Reference
-- docs/personalized/exp_04_vocabulary_generalization.md
+### Phase 4: Training Orchestration
+1.  **Experiment Form (`src/ui/routes/train.py`)**:
+    *   Build an HTMX form capturing `ExperimentConfig` parameters (LR, steps, adapter config).
+2.  **Background Process**:
+    *   On POST `/api/train`, use `subprocess.Popen(["uv", "run", "python", "main.py", ...])` and store the PID/Run ID in the database.
+    *   Return an HTMX polling element: `Div(hx_get=f"/api/train/status/{run_id}", hx_trigger="every 2s")`.
+3.  **Live Logs (`src/ui/components/experiment.py`)**:
+    *   The `/api/train/status` route reads the tail of `outputs/{run_name}/experiment.log` and returns it as a `<pre><code>` block.
+4.  **Tests (`tests/ui/test_train.py`)**:
+    *   Mock `subprocess.Popen` to write a dummy log file and exit immediately.
+    *   POST to `/api/train`.
+    *   GET the returned polling URL and assert the dummy logs are present in the HTML response.
+5.  **Verification (MANDATORY)**: Run `just lint`, `just fix`, and `just test`.

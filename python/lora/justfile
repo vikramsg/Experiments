@@ -16,9 +16,17 @@ sync:
 run:
 	uv run python main.py
 
-# Run pytest
-test:
+# Run tests including UI
+test-all:
 	uv run pytest
+
+# Run the UI server
+ui-dev:
+	uv run python -m ui.main
+
+# Run UI tests
+ui-test:
+	PYTHONPATH=src uv run pytest tests/ui/
 
 # Run Ruff lint checks
 lint:
