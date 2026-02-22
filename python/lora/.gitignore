@@ -11,3 +11,6 @@ data
 
 # Worktrees
 .worktrees
+
+# Sqlite?
+.sesskey
