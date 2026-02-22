@@ -152,24 +152,28 @@ def _load_training_dataset(dataset_path: str, processor: Any, max_seconds: float
     Returns:
         Prepared dataset for training.
     """
-    if dataset_path.endswith(".jsonl") or dataset_path.startswith("db://"):
-        LOGGER.info("Loading manifest dataset | path=%s", dataset_path)
-        dataset = load_manifest_dataset(dataset_path)
-        LOGGER.info("Loaded manifest dataset | samples=%s", len(dataset))
-        filtered = _filter_manifest_by_duration(
-            dataset, processor.feature_extractor.sampling_rate, max_seconds
-        )
-        return prepare_dataset(filtered, processor)
-    dataset_config = DatasetConfig(
-        dataset=dataset_path,
-        split="train",
-        max_samples=None,
-        max_seconds=max_seconds,
-        seed=seed,
-    )
-    LOGGER.info("Loading dataset split | dataset=%s", dataset_path)
-    dataset = load_dataset_split(dataset_config, processor.feature_extractor.sampling_rate)
-    return prepare_dataset(dataset, processor)
+    match dataset_path:
+        case path if path.startswith("db://") or path.endswith(".jsonl"):
+            LOGGER.info("Loading manifest dataset | path=%s", dataset_path)
+            dataset = load_manifest_dataset(dataset_path)
+            LOGGER.info("Loaded manifest dataset | samples=%s", len(dataset))
+            filtered = _filter_manifest_by_duration(
+                dataset, processor.feature_extractor.sampling_rate, max_seconds
+            )
+            return prepare_dataset(filtered, processor)
+        case "synthetic" | "librispeech_dummy" | "librispeech_clean":
+            dataset_config = DatasetConfig(
+                dataset=dataset_path,
+                split="train",
+                max_samples=None,
+                max_seconds=max_seconds,
+                seed=seed,
+            )
+            LOGGER.info("Loading dataset split | dataset=%s", dataset_path)
+            dataset = load_dataset_split(dataset_config, processor.feature_extractor.sampling_rate)
+            return prepare_dataset(dataset, processor)
+        case invalid_path:
+            raise ValueError(f"Unsupported dataset path or identifier: '{invalid_path}'")
 
 
 def _build_dataloaders(
@@ -616,31 +620,38 @@ def main() -> None:
 
     with client.session_scope() as session:
         train_ds_id = None
-        if config.dataset_path.startswith("db://"):
-            ds = (
-                session.query(Dataset)
-                .filter_by(name=config.dataset_path.replace("db://", ""))
-                .first()
-            )
-            train_ds_id = ds.id if ds else None
+        match config.dataset_path:
+            case path if path.startswith("db://"):
+                ds_name = path[5:]
+                ds = session.query(Dataset).filter_by(name=ds_name).first()
+                train_ds_id = ds.id if ds else None
+            case path if path.endswith(".jsonl") or path in ("synthetic", "librispeech_dummy", "librispeech_clean"):
+                pass
+            case invalid_path:
+                raise ValueError(f"Invalid dataset path format: {invalid_path}")
 
         eval_ds_id = None
-        if config.manifest_path.startswith("db://"):
-            ds = (
-                session.query(Dataset)
-                .filter_by(name=config.manifest_path.replace("db://", ""))
-                .first()
-            )
-            eval_ds_id = ds.id if ds else None
+        match config.manifest_path:
+            case path if path.startswith("db://"):
+                ds_name = path[5:]
+                ds = session.query(Dataset).filter_by(name=ds_name).first()
+                eval_ds_id = ds.id if ds else None
+            case path if path.endswith(".jsonl"):
+                pass
+            case invalid_path:
+                raise ValueError(f"Invalid eval manifest path format: {invalid_path}")
 
         safety_ds_id = None
-        if config.safety_manifest_path and config.safety_manifest_path.startswith("db://"):
-            ds = (
-                session.query(Dataset)
-                .filter_by(name=config.safety_manifest_path.replace("db://", ""))
-                .first()
-            )
-            safety_ds_id = ds.id if ds else None
+        if config.safety_manifest_path:
+            match config.safety_manifest_path:
+                case path if path.startswith("db://"):
+                    ds_name = path[5:]
+                    ds = session.query(Dataset).filter_by(name=ds_name).first()
+                    safety_ds_id = ds.id if ds else None
+                case path if path.endswith(".jsonl"):
+                    pass
+                case invalid_path:
+                    raise ValueError(f"Invalid safety manifest path format: {invalid_path}")
 
         exp_name = Path(config.output_dir).name
         log_file = str(Path(config.output_dir) / "experiment.log")

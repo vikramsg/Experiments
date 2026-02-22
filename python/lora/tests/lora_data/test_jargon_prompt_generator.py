@@ -2,6 +2,7 @@
 
 from lora_data._jargon_prompt_generator import generate_prompts, spell_out_for_tts
 
+
 def test_generate_prompts():
     """Ensure prompts are generated deterministically and uniquely."""
     prompts1 = generate_prompts(num=50, seed=123)

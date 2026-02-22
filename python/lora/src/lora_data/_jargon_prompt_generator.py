@@ -1,7 +1,6 @@
 """Prompt generation logic for synthetic ASR data."""
 
 import random
-from typing import List
 
 JARGON = [
     "@refactor.md",
@@ -32,7 +31,7 @@ TEMPLATES = [
 ]
 
 
-def generate_prompts(num: int = 500, seed: int = 42) -> List[str]:
+def generate_prompts(num: int = 500, seed: int = 42) -> list[str]:
     """Deterministically generate training prompts containing jargon."""
     random.seed(seed)
     prompts = set()
