@@ -26,7 +26,10 @@ def PageLayout(*children, title="LoRA Studio"):
                         Li(A("Train", href="/train")),
                     ),
                 ),
-                style="padding-bottom: 2rem; border-bottom: 1px solid var(--pico-muted-border-color); margin-bottom: 2rem;",
+                style=(
+                    "padding-bottom: 2rem; border-bottom: 1px solid var(--pico-muted-border-color);"
+                    " margin-bottom: 2rem;"
+                ),
             ),
             # The actual page content
             Div(*children),
