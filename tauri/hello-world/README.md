@@ -1,6 +1,6 @@
 # Hello World Tauri App
 
-This project is now a working desktop text editor built with React, TypeScript, Vite, Tauri, and CodeMirror.
+This project is now a working Tauri desktop app with a launcher screen and a separate `Text Editor` app built with React, TypeScript, Vite, and CodeMirror.
 
 ## Setup
 
@@ -64,10 +64,11 @@ Command meanings:
 
 ## Text Editor Features
 
-The first app view is a text editor with:
+The app currently starts on a launcher screen and opens into a separate text editor experience with:
 
-- a desktop app shell
-- a `Text Editor` app view
+- an app selector / launcher screen
+- a separate `Text Editor` app screen
+- a `Back to Apps` return flow
 - CodeMirror editing
 - native `Open`, `Save`, and `Save As` flows through Tauri
 - dirty-state tracking
@@ -107,29 +108,6 @@ The current bundle target is the macOS app bundle written under `src-tauri/targe
 - `just` is the preferred entrypoint for local development commands
 - `npm run tauri ...` remains the underlying bridge into Tauri
 
-## Recreate From Scratch
-
-If you want to rebuild this setup manually from the parent directory:
-
-```bash
-npm create vite@latest hello-world -- --template react-ts --no-interactive
-cd hello-world
-npm install
-npm install @uiw/react-codemirror @codemirror/lang-markdown
-npm install @tauri-apps/plugin-dialog @tauri-apps/plugin-fs
-npm install -D vitest jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event
-npm exec tauri -- init --ci \
-  -A "Hello World" \
-  -W "Hello World" \
-  -D ../dist \
-  -P http://localhost:5173 \
-  --before-dev-command "npm run dev" \
-  --before-build-command "npm run build"
-npm exec tauri -- add dialog
-npm exec tauri -- add fs
-```
-
-After that, add the `justfile`, the test setup, and the React editor files in this repo.
 
 ## Notes
 

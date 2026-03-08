@@ -1,4 +1,5 @@
 type EditorToolbarProps = {
+  onBackToApps?: () => void
   onNew: () => void
   onOpen: () => void
   onSave: () => void
@@ -6,12 +7,19 @@ type EditorToolbarProps = {
   isSaving: boolean
 }
 
-export function EditorToolbar({ onNew, onOpen, onSave, onSaveAs, isSaving }: EditorToolbarProps) {
+export function EditorToolbar({ onBackToApps, onNew, onOpen, onSave, onSaveAs, isSaving }: EditorToolbarProps) {
   return (
     <div className="editor-toolbar">
-      <div>
-        <p className="editor-kicker">App View</p>
-        <h2>Text Editor</h2>
+      <div className="editor-heading">
+        {onBackToApps ? (
+          <button className="editor-back" type="button" onClick={onBackToApps}>
+            Back to Apps
+          </button>
+        ) : null}
+        <div>
+          <p className="editor-kicker">App View</p>
+          <h2>Text Editor</h2>
+        </div>
       </div>
 
       <div className="editor-actions">

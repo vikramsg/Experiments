@@ -1,34 +1,36 @@
 .workspace-shell {
   width: min(1240px, 100%);
   min-height: calc(100vh - 4rem);
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 1.25rem;
 }
 
-.workspace-nav,
-.workspace-main,
+.app-selector,
 .editor-toolbar,
 .editor-statusbar,
 .editor-summary,
 .editor-canvas {
-  background: rgba(255, 250, 245, 0.82);
+  background: rgba(255, 250, 245, 0.84);
   border: 1px solid rgba(70, 52, 32, 0.1);
   box-shadow: 0 20px 60px rgba(81, 56, 24, 0.08);
   backdrop-filter: blur(18px);
 }
 
-.workspace-nav {
-  padding: 1.5rem;
-  border-radius: 28px;
+.app-selector {
+  min-height: 100%;
+  padding: 2rem;
+  border-radius: 32px;
   display: grid;
-  align-content: start;
-  gap: 1.5rem;
+  gap: 2rem;
+}
+
+.app-selector__hero {
+  display: grid;
+  gap: 0.9rem;
 }
 
 .workspace-kicker,
 .editor-kicker,
-.editor-summary-label {
+.editor-summary-label,
+.app-card__eyebrow {
   margin: 0;
   font-size: 0.78rem;
   letter-spacing: 0.18em;
@@ -37,45 +39,57 @@
 }
 
 .workspace-title {
-  margin: 0.25rem 0 0;
+  margin: 0;
   font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  font-size: 2.5rem;
+  font-size: clamp(3rem, 7vw, 5.6rem);
   line-height: 0.95;
   color: #2c2117;
 }
 
-.workspace-app {
-  width: 100%;
-  padding: 1rem;
-  border: 1px solid rgba(152, 99, 47, 0.22);
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(255, 243, 229, 0.95), rgba(255, 252, 247, 0.95));
-  text-align: left;
+.workspace-lede {
+  max-width: 40rem;
+  margin: 0;
+  font-size: 1.1rem;
+  color: #624d3b;
 }
 
-.workspace-app--active {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
+  gap: 1.25rem;
 }
 
-.workspace-app-label,
-.editor-summary-name {
-  display: block;
-  font-size: 1rem;
-  font-weight: 700;
-  color: #312317;
+.app-card {
+  padding: 1.35rem;
+  border-radius: 28px;
+  border: 1px solid rgba(152, 99, 47, 0.18);
+  background: linear-gradient(180deg, rgba(255, 243, 229, 0.96), rgba(255, 253, 249, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
-.workspace-app-meta,
-.editor-summary-state,
-.editor-statusbar span {
-  display: block;
-  margin-top: 0.35rem;
-  color: #6c5440;
+.app-card h2 {
+  margin: 0.5rem 0 0;
+  font-size: 1.8rem;
+  color: #2f2418;
 }
 
-.workspace-main {
-  padding: 1.25rem;
-  border-radius: 32px;
+.app-card p {
+  color: #5f4b39;
+}
+
+.app-card__button,
+.editor-actions button,
+.editor-back {
+  font: inherit;
+  border-radius: 999px;
+}
+
+.app-card__button,
+.editor-actions button {
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(121, 79, 37, 0.16);
+  background: #2f2418;
+  color: #fff7ee;
 }
 
 .editor-app {
@@ -98,6 +112,19 @@
   gap: 1rem;
 }
 
+.editor-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.editor-back {
+  padding: 0.72rem 0.95rem;
+  border: 1px solid rgba(121, 79, 37, 0.16);
+  background: rgba(255, 247, 238, 0.96);
+  color: #503b2b;
+}
+
 .editor-toolbar h2 {
   margin: 0.35rem 0 0;
   font-size: 2rem;
@@ -108,19 +135,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-}
-
-.editor-actions button,
-.workspace-app {
-  font: inherit;
-}
-
-.editor-actions button {
-  padding: 0.75rem 1rem;
-  border: 1px solid rgba(121, 79, 37, 0.16);
-  border-radius: 999px;
-  background: #2f2418;
-  color: #fff7ee;
 }
 
 .editor-actions button:disabled {
@@ -146,11 +160,18 @@
 }
 
 .editor-summary-name {
-  margin-top: 0.75rem;
+  display: block;
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #312317;
 }
 
-.editor-summary-state {
-  margin-bottom: 0;
+.editor-summary-state,
+.editor-statusbar span {
+  display: block;
+  margin-top: 0.35rem;
+  color: #6c5440;
 }
 
 .editor-canvas {
@@ -192,25 +213,21 @@
 }
 
 @media (max-width: 960px) {
-  .workspace-shell {
-    grid-template-columns: 1fr;
-  }
-
   .editor-surface {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 720px) {
-  .workspace-main,
-  .workspace-nav,
+  .app-selector,
   .editor-toolbar,
   .editor-statusbar {
     padding: 1rem;
   }
 
   .editor-toolbar,
-  .editor-statusbar {
+  .editor-statusbar,
+  .editor-heading {
     flex-direction: column;
     align-items: flex-start;
   }

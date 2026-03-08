@@ -14,12 +14,28 @@ import { tauriFileService } from './services/tauri-file-service'
 import type { FileService } from './services/file-service'
 
 type TextEditorAppProps = {
+  document?: EditorDocument
+  onDocumentChange?: (document: EditorDocument) => void
+  onBackToApps?: () => void
   fileService?: FileService
 }
 
-export function TextEditorApp({ fileService = tauriFileService }: TextEditorAppProps) {
-  const [editorDocument, setEditorDocument] = useState<EditorDocument>(() => createDocument())
+export function TextEditorApp({ document, onDocumentChange, onBackToApps, fileService = tauriFileService }: TextEditorAppProps) {
+  const [internalDocument, setInternalDocument] = useState<EditorDocument>(() => createDocument())
   const [isSaving, setIsSaving] = useState(false)
+
+  const editorDocument = document ?? internalDocument
+
+  function setEditorDocument(next: EditorDocument | ((current: EditorDocument) => EditorDocument)) {
+    const resolved = typeof next === 'function' ? next(editorDocument) : next
+
+    if (onDocumentChange) {
+      onDocumentChange(resolved)
+      return
+    }
+
+    setInternalDocument(resolved)
+  }
 
   const title = useMemo(
     () => `${editorDocument.isDirty ? '* ' : ''}${editorDocument.fileName} - Hello World`,
@@ -79,6 +95,7 @@ export function TextEditorApp({ fileService = tauriFileService }: TextEditorAppP
   return (
     <section className="editor-app">
       <EditorToolbar
+        onBackToApps={onBackToApps}
         onNew={handleNew}
         onOpen={handleOpen}
         onSave={handleSave}
