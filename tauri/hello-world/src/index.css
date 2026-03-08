@@ -26,8 +26,6 @@ body {
 #root {
   min-height: 100vh;
   padding: 2rem;
-  display: grid;
-  place-items: center;
 }
 
 code {
