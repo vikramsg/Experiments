@@ -14,10 +14,11 @@ brew install rustup
 rustup default stable
 ```
 
-If you installed `rustup` with Homebrew, make sure its bin directory is on your shell `PATH`:
+If you installed `rustup` with Homebrew, make sure your shell startup files expose `cargo` and `rustc` normally before using the project commands:
 
 ```bash
-export PATH="/opt/homebrew/opt/rustup/bin:$PATH"
+cargo --version
+rustc --version
 ```
 
 Verify the toolchain:
@@ -124,8 +125,8 @@ npm exec tauri -- init --ci \
   -P http://localhost:5173 \
   --before-dev-command "npm run dev" \
   --before-build-command "npm run build"
-PATH="/opt/homebrew/opt/rustup/bin:$PATH" npm exec tauri -- add dialog
-PATH="/opt/homebrew/opt/rustup/bin:$PATH" npm exec tauri -- add fs
+npm exec tauri -- add dialog
+npm exec tauri -- add fs
 ```
 
 After that, add the `justfile`, the test setup, and the React editor files in this repo.

@@ -1,6 +1,5 @@
-set shell := ["bash", "-cu"]
+set shell := ["zsh", "-lic"]
 
-rust_path := "/opt/homebrew/opt/rustup/bin"
 app_bundle := "src-tauri/target/release/bundle/macos/Hello World.app"
 
 default: help
@@ -17,8 +16,8 @@ install:
 doctor:
 	node --version
 	npm --version
-	PATH="{{rust_path}}:$PATH" rustc --version
-	PATH="{{rust_path}}:$PATH" cargo --version
+	rustc --version
+	cargo --version
 	just --version
 
 # Run the frontend dev server only
@@ -27,7 +26,7 @@ web:
 
 # Run the Tauri desktop app in development
 dev:
-	PATH="{{rust_path}}:$PATH" npm run tauri dev
+	npm run tauri dev
 
 # Run ESLint
 lint:
@@ -55,7 +54,7 @@ web-build:
 # Build the Tauri desktop app bundle
 # This also runs the frontend production build via Tauri's beforeBuildCommand.
 build:
-	PATH="{{rust_path}}:$PATH" npm run tauri build
+	npm run tauri build
 
 # Rebuild from a clean slate
 # Since `build` already includes the frontend build, this refreshes both outputs.
