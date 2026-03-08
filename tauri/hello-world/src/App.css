@@ -1,0 +1,92 @@
+.shell {
+  width: min(980px, 100%);
+  display: grid;
+  gap: 2rem;
+}
+
+.hero,
+.panel {
+  background: rgba(255, 251, 245, 0.78);
+  border: 1px solid rgba(70, 52, 32, 0.12);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(74, 53, 31, 0.12);
+  backdrop-filter: blur(16px);
+}
+
+.hero {
+  padding: 3rem;
+}
+
+.eyebrow {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8f5a2a;
+}
+
+h1 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-size: clamp(3.2rem, 8vw, 5.4rem);
+  line-height: 0.95;
+  color: #2c2117;
+}
+
+.lede {
+  max-width: 36rem;
+  margin: 1rem 0 0;
+  font-size: 1.15rem;
+  color: #5f4b39;
+}
+
+.panel {
+  padding: 2rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7f5e44;
+}
+
+ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #433426;
+}
+
+li + li {
+  margin-top: 0.75rem;
+}
+
+.commands {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.commands code {
+  display: block;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: #2c2117;
+  color: #fff6ec;
+  font-size: 0.95rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 720px) {
+  .hero,
+  .panel {
+    padding: 1.5rem;
+  }
+
+  .panel {
+    grid-template-columns: 1fr;
+  }
+}
