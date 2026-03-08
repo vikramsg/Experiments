@@ -1,0 +1,65 @@
+set shell := ["zsh", "-lic"]
+
+app_bundle := "src-tauri/target/release/bundle/macos/Hello World.app"
+
+default: help
+
+# List available project commands
+help:
+	just --list
+
+# Install JavaScript dependencies
+install:
+	npm install
+
+# Show local toolchain versions
+doctor:
+	node --version
+	npm --version
+	rustc --version
+	cargo --version
+	just --version
+
+# Run the frontend dev server only
+web:
+	npm run dev
+
+# Run the Tauri desktop app in development
+dev:
+	npm run tauri dev
+
+# Run ESLint
+lint:
+	npm run lint
+
+# Run the frontend test suite
+test:
+	npm run test
+
+# Run tests in watch mode
+test-watch:
+	npm run test:watch
+
+# Run the fast local checks
+check: lint
+
+# Remove frontend and Tauri build artifacts
+clean:
+	rm -rf dist src-tauri/target
+
+# Build the frontend bundle only
+web-build:
+	npm run build
+
+# Build the Tauri desktop app bundle
+# This also runs the frontend production build via Tauri's beforeBuildCommand.
+build:
+	npm run tauri build
+
+# Rebuild from a clean slate
+# Since `build` already includes the frontend build, this refreshes both outputs.
+rebuild: clean build
+
+# Open the built macOS app bundle
+open-app:
+	open "{{app_bundle}}"

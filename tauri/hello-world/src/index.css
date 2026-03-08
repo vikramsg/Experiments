@@ -1,0 +1,39 @@
+:root {
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #2f2418;
+  background:
+    radial-gradient(circle at top left, rgba(255, 215, 170, 0.78), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(226, 194, 255, 0.35), transparent 28%),
+    linear-gradient(180deg, #fbf4ea 0%, #f4eadb 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+code {
+  font-family: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
+}
+
+@media (max-width: 720px) {
+  #root {
+    padding: 1rem;
+  }
+}

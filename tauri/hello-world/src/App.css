@@ -1,0 +1,234 @@
+.workspace-shell {
+  width: min(1240px, 100%);
+  min-height: calc(100vh - 4rem);
+}
+
+.app-selector,
+.editor-toolbar,
+.editor-statusbar,
+.editor-summary,
+.editor-canvas {
+  background: rgba(255, 250, 245, 0.84);
+  border: 1px solid rgba(70, 52, 32, 0.1);
+  box-shadow: 0 20px 60px rgba(81, 56, 24, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.app-selector {
+  min-height: 100%;
+  padding: 2rem;
+  border-radius: 32px;
+  display: grid;
+  gap: 2rem;
+}
+
+.app-selector__hero {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.workspace-kicker,
+.editor-kicker,
+.editor-summary-label,
+.app-card__eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #98632f;
+}
+
+.workspace-title {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  font-size: clamp(3rem, 7vw, 5.6rem);
+  line-height: 0.95;
+  color: #2c2117;
+}
+
+.workspace-lede {
+  max-width: 40rem;
+  margin: 0;
+  font-size: 1.1rem;
+  color: #624d3b;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
+  gap: 1.25rem;
+}
+
+.app-card {
+  padding: 1.35rem;
+  border-radius: 28px;
+  border: 1px solid rgba(152, 99, 47, 0.18);
+  background: linear-gradient(180deg, rgba(255, 243, 229, 0.96), rgba(255, 253, 249, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.app-card h2 {
+  margin: 0.5rem 0 0;
+  font-size: 1.8rem;
+  color: #2f2418;
+}
+
+.app-card p {
+  color: #5f4b39;
+}
+
+.app-card__button,
+.editor-actions button,
+.editor-back {
+  font: inherit;
+  border-radius: 999px;
+}
+
+.app-card__button,
+.editor-actions button {
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(121, 79, 37, 0.16);
+  background: #2f2418;
+  color: #fff7ee;
+}
+
+.editor-app {
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 1rem;
+}
+
+.editor-toolbar,
+.editor-statusbar {
+  padding: 1rem 1.25rem;
+  border-radius: 24px;
+}
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.editor-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.editor-back {
+  padding: 0.72rem 0.95rem;
+  border: 1px solid rgba(121, 79, 37, 0.16);
+  background: rgba(255, 247, 238, 0.96);
+  color: #503b2b;
+}
+
+.editor-toolbar h2 {
+  margin: 0.35rem 0 0;
+  font-size: 2rem;
+  color: #2f2418;
+}
+
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.editor-actions button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.editor-surface {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.editor-summary,
+.editor-canvas {
+  border-radius: 24px;
+}
+
+.editor-summary {
+  padding: 1rem;
+  align-self: start;
+}
+
+.editor-summary-name {
+  display: block;
+  margin: 0.75rem 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #312317;
+}
+
+.editor-summary-state,
+.editor-statusbar span {
+  display: block;
+  margin-top: 0.35rem;
+  color: #6c5440;
+}
+
+.editor-canvas {
+  min-height: 460px;
+  overflow: hidden;
+}
+
+.editor-canvas .cm-editor {
+  height: 100%;
+  background: transparent;
+}
+
+.editor-canvas .cm-scroller {
+  font-family: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 0.95rem;
+  line-height: 1.65;
+}
+
+.editor-canvas .cm-content,
+.editor-canvas .cm-gutter {
+  padding-top: 1rem;
+}
+
+.editor-canvas .cm-focused {
+  outline: none;
+}
+
+.editor-statusbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #4b3828;
+}
+
+.editor-statusbar p,
+.editor-statusbar strong,
+.editor-statusbar span {
+  margin: 0;
+}
+
+@media (max-width: 960px) {
+  .editor-surface {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-selector,
+  .editor-toolbar,
+  .editor-statusbar {
+    padding: 1rem;
+  }
+
+  .editor-toolbar,
+  .editor-statusbar,
+  .editor-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
