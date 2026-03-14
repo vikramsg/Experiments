@@ -1,4 +1,4 @@
-import type { WorkspaceSnapshot } from '../../../shared/types/workspace'
+import type { WorkspaceSnapshot } from '../../../workspace-model'
 
 export type PermissionSessionLike = {
   setPermissionRequestHandler: (

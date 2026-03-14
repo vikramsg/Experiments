@@ -1,5 +1,5 @@
-import { IPC_CHANNELS } from '../../../shared/ipc/channels'
-import type { WorkspaceSnapshot } from '../../../shared/types/workspace'
+import { IPC_CHANNELS } from '../../../ipc'
+import type { WorkspaceSnapshot } from '../../../workspace-model'
 import { clampNotesWidth, computeSplitLayout } from '../shared/split-layout'
 
 export type Rectangle = {

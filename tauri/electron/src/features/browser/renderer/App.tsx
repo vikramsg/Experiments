@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 
-import type { WorkspaceSnapshot } from '../../../shared/types/workspace'
-import type { WorkspaceApi } from '../../../types'
+import type { WorkspaceApi } from '../../../workspace-contract'
+import type { WorkspaceSnapshot } from '../../../workspace-model'
 
 export type BrowserChromeAppProps = {
   api: WorkspaceApi
@@ -49,11 +49,23 @@ export function App({ api }: BrowserChromeAppProps) {
   return (
     <main style={styles.page}>
       <div style={styles.row}>
-        <button style={styles.navButton} type="button" onClick={() => void api.goBack()} disabled={!canGoBack}>
-          Back
+        <button
+          aria-label="Back"
+          style={styles.navButton}
+          type="button"
+          onClick={() => void api.goBack()}
+          disabled={!canGoBack}
+        >
+          {'←'}
         </button>
-        <button style={styles.navButton} type="button" onClick={() => void api.goForward()} disabled={!canGoForward}>
-          Forward
+        <button
+          aria-label="Forward"
+          style={styles.navButton}
+          type="button"
+          onClick={() => void api.goForward()}
+          disabled={!canGoForward}
+        >
+          {'→'}
         </button>
         <label style={styles.label}>
           <span style={styles.caption}>Browser URL</span>
@@ -124,10 +136,11 @@ const styles: Record<string, CSSProperties> = {
     background: '#fff8ef',
     color: '#5f4628',
     cursor: 'pointer',
-    fontSize: '0.94rem',
+    fontSize: '1rem',
+    fontWeight: 700,
     flex: '0 0 auto',
     whiteSpace: 'nowrap',
-    minWidth: '78px',
+    minWidth: '56px',
   },
   button: {
     border: 'none',

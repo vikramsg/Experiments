@@ -1,18 +1,22 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import type { WorkspaceSnapshot } from '../../../shared/types/workspace'
-import type { WorkspaceApi } from '../../../types'
+import type { WorkspaceApi } from '../../../workspace-contract'
+import type { WorkspaceSnapshot } from '../../../workspace-model'
 import { App } from './App'
 
 function createApi(snapshot: WorkspaceSnapshot): WorkspaceApi {
-  return {
+  const api: WorkspaceApi = {
     loadState: vi.fn().mockResolvedValue(snapshot),
     saveNotes: vi.fn().mockResolvedValue(undefined),
     setBrowserUrl: vi.fn().mockResolvedValue(undefined),
     adjustSplitter: vi.fn().mockResolvedValue(undefined),
+    goBack: vi.fn().mockResolvedValue(undefined),
+    goForward: vi.fn().mockResolvedValue(undefined),
     onStateChange: vi.fn().mockReturnValue(() => undefined),
   }
+
+  return api
 }
 
 describe('Notes App', () => {

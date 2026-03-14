@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
-import type { WorkspaceApi } from '../../../types'
+import type { WorkspaceApi } from '../../../workspace-contract'
 
 export type NotesAppProps = {
   api: WorkspaceApi

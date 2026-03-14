@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
 
 import { normalizeUrl } from '../../features/browser/main/browser-session'
-import { IPC_CHANNELS } from '../../shared/ipc/channels'
-import { DEFAULT_WORKSPACE_SNAPSHOT } from '../../shared/types/workspace'
+import { IPC_CHANNELS } from '../../ipc'
+import { DEFAULT_WORKSPACE_SNAPSHOT } from '../../workspace-model'
 import type { WorkspaceBundle } from './create-workspace-window'
 
 export function registerIpc(input: {

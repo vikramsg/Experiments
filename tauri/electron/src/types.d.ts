@@ -1,18 +1,12 @@
-import type { WorkspaceSnapshot } from './shared/types/workspace'
+import type { LauncherApi, WorkspaceApi } from './workspace-contract'
 
-export type LauncherApi = {
-  openWorkspace: () => Promise<void>
-}
-
-export type WorkspaceApi = {
-  loadState: () => Promise<WorkspaceSnapshot>
-  saveNotes: (notes: string) => Promise<void>
-  setBrowserUrl: (url: string) => Promise<void>
-  goBack: () => Promise<void>
-  goForward: () => Promise<void>
-  adjustSplitter: (delta: number) => Promise<void>
-  onStateChange: (listener: (snapshot: WorkspaceSnapshot) => void) => () => void
-}
+/**
+ * Ambient window bridge declarations for preload-exposed APIs.
+ *
+ * This file intentionally stays minimal. The actual runtime contract lives in
+ * `src/workspace-contract.ts`; this declaration file only tells TypeScript what
+ * globals the preload layer exposes on `window` inside renderer code.
+ */
 
 declare global {
   interface Window {

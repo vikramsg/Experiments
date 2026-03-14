@@ -8,7 +8,7 @@ export default defineConfig({
     exclude: ['e2e/**', 'node_modules/**', 'out/**', '.vite/**'],
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/shared/test/setup.ts'],
+    setupFiles: ['./src/test-setup.ts'],
     css: true,
   },
 })

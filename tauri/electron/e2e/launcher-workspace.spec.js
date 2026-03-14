@@ -55,6 +55,8 @@ test('launcher opens the split workspace', async () => {
 
     await expect(backButton).toBeVisible()
     await expect(forwardButton).toBeVisible()
+    await expect(backButton).toHaveText('←')
+    await expect(forwardButton).toHaveText('→')
     await expect(backButton).toBeDisabled()
     await expect(forwardButton).toBeDisabled()
     await expect(browserChromePage.getByRole('textbox', { name: /browser url/i })).toBeVisible()

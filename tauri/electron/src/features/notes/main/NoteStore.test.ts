@@ -2,6 +2,8 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 
+import { DEFAULT_WORKSPACE_SNAPSHOT, type PersistedWorkspaceSnapshot } from '../../../workspace-model'
+
 import { NoteStore } from './NoteStore'
 
 describe('NoteStore', () => {
@@ -18,13 +20,7 @@ describe('NoteStore', () => {
   it('returns defaults before anything is saved', async () => {
     const store = new NoteStore(userDataPath)
 
-    await expect(store.load()).resolves.toEqual({
-      notes: '',
-      notesWidth: 420,
-      browserUrl: 'https://example.com',
-      canGoBack: false,
-      canGoForward: false,
-    })
+    await expect(store.load()).resolves.toEqual(DEFAULT_WORKSPACE_SNAPSHOT)
   })
 
   it('persists notes, splitter width, and browser url without storing history flags', async () => {
@@ -48,5 +44,10 @@ describe('NoteStore', () => {
 
     await expect(readFile(join(userDataPath, 'workspace-state.json'), 'utf8')).resolves.toContain('Saved from test')
     await expect(readFile(join(userDataPath, 'workspace-state.json'), 'utf8')).resolves.not.toContain('canGoBack')
+    await expect(readFile(join(userDataPath, 'workspace-state.json'), 'utf8').then((raw) => JSON.parse(raw) as PersistedWorkspaceSnapshot)).resolves.toEqual({
+      notes: 'Saved from test',
+      notesWidth: 512,
+      browserUrl: 'https://example.org/docs',
+    })
   })
 })

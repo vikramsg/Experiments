@@ -6,7 +6,7 @@ import {
   toPersistedWorkspaceSnapshot,
   type PersistedWorkspaceSnapshot,
   type WorkspaceSnapshot,
-} from '../../../shared/types/workspace'
+} from '../../../workspace-model'
 
 export class NoteStore {
   private readonly filePath: string
