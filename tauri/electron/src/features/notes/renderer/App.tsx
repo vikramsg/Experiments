@@ -13,17 +13,23 @@ export function App({ api }: NotesAppProps) {
   useEffect(() => {
     let active = true
 
-    void api.loadState().then((snapshot) => {
-      if (!active) {
-        return
-      }
+    void api
+      .loadState()
+      .then((snapshot) => {
+        if (!active) {
+          return
+        }
 
-      setNotes(snapshot.notes)
-      setIsLoaded(true)
-    })
+        setNotes(snapshot.notes)
+        setIsLoaded(true)
+      })
+      .catch(() => {
+        // Workspace state can arrive through the subscription path during startup.
+      })
 
     const unsubscribe = api.onStateChange((snapshot) => {
       setNotes(snapshot.notes)
+      setIsLoaded(true)
     })
 
     return () => {

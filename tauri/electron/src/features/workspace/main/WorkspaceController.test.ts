@@ -66,8 +66,8 @@ describe('WorkspaceController', () => {
 
     expect(notesView.bounds.at(-1)).toEqual({ x: 0, y: 0, width: 420, height: 800 })
     expect(splitterView.bounds.at(-1)).toEqual({ x: 420, y: 0, width: 12, height: 800 })
-    expect(browserChromeView.bounds.at(-1)).toEqual({ x: 432, y: 0, width: 768, height: 64 })
-    expect(browserView.bounds.at(-1)).toEqual({ x: 432, y: 64, width: 768, height: 736 })
+    expect(browserChromeView.bounds.at(-1)).toEqual({ x: 432, y: 0, width: 768, height: 88 })
+    expect(browserView.bounds.at(-1)).toEqual({ x: 432, y: 88, width: 768, height: 712 })
     expect(windowMock.sends.at(-1)).toEqual({
       channel: 'workspace:state',
       payload: {
@@ -105,8 +105,8 @@ describe('WorkspaceController', () => {
     expect(controller.getSnapshot().notesWidth).toBe(520)
     expect(notesView.bounds.at(-1)).toEqual({ x: 0, y: 0, width: 520, height: 800 })
     expect(splitterView.bounds.at(-1)).toEqual({ x: 520, y: 0, width: 12, height: 800 })
-    expect(browserChromeView.bounds.at(-1)).toEqual({ x: 532, y: 0, width: 668, height: 64 })
-    expect(browserView.bounds.at(-1)).toEqual({ x: 532, y: 64, width: 668, height: 736 })
+    expect(browserChromeView.bounds.at(-1)).toEqual({ x: 532, y: 0, width: 668, height: 88 })
+    expect(browserView.bounds.at(-1)).toEqual({ x: 532, y: 88, width: 668, height: 712 })
   })
 
   it('recomputes bounds on window resize', () => {
@@ -137,8 +137,8 @@ describe('WorkspaceController', () => {
     expect(controller.getSnapshot().notesWidth).toBe(420)
     expect(notesView.bounds.at(-1)).toEqual({ x: 0, y: 0, width: 420, height: 900 })
     expect(splitterView.bounds.at(-1)).toEqual({ x: 420, y: 0, width: 12, height: 900 })
-    expect(browserChromeView.bounds.at(-1)).toEqual({ x: 432, y: 0, width: 968, height: 64 })
-    expect(browserView.bounds.at(-1)).toEqual({ x: 432, y: 64, width: 968, height: 836 })
+    expect(browserChromeView.bounds.at(-1)).toEqual({ x: 432, y: 0, width: 968, height: 88 })
+    expect(browserView.bounds.at(-1)).toEqual({ x: 432, y: 88, width: 968, height: 812 })
   })
 
   it('closes every child webContents when the workspace closes', () => {

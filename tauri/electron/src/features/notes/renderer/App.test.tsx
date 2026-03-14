@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 import type { WorkspaceSnapshot } from '../../../shared/types/workspace'
@@ -28,6 +28,39 @@ describe('Notes App', () => {
     expect(await screen.findByRole('textbox', { name: /notes editor/i })).toHaveValue('Saved note')
     expect(screen.queryByRole('textbox', { name: /browser url/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^go$/i })).not.toBeInTheDocument()
+  })
+
+  it('clears the loading state when workspace updates arrive after an initial load failure', async () => {
+    const api = createApi({
+      notes: '',
+      notesWidth: 420,
+      browserUrl: 'https://example.com',
+    })
+    let listener: (snapshot: WorkspaceSnapshot) => void = () => undefined
+
+    vi.mocked(api.loadState).mockRejectedValue(new Error('Workspace is not open'))
+    vi.mocked(api.onStateChange).mockImplementation((nextListener) => {
+      listener = nextListener
+      return () => undefined
+    })
+
+    render(<App api={api} />)
+
+    expect(screen.getByText(/loading workspace/i)).toBeVisible()
+
+    act(() => {
+      listener({
+        notes: 'Recovered note',
+        notesWidth: 420,
+        browserUrl: 'https://example.com',
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: /notes editor/i })).toHaveValue('Recovered note')
+      expect(screen.getByText(/auto-saving notes to your workspace/i)).toBeVisible()
+      expect(screen.queryByText(/loading workspace/i)).not.toBeInTheDocument()
+    })
   })
 
   it('saves note changes as the user types', async () => {

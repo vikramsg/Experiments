@@ -96,13 +96,6 @@ export async function createWorkspaceWindow(userDataPath: string): Promise<Works
   window.contentView.addChildView(browserChromeView)
   window.contentView.addChildView(browserView)
 
-  await Promise.all([
-    loadLocalPage(notesView, 'notes.html'),
-    loadLocalPage(splitterView, 'splitter.html'),
-    loadLocalPage(browserChromeView, 'browser-chrome.html'),
-  ])
-  await browserView.webContents.loadURL(normalizeUrl(snapshot.browserUrl))
-
   const adapter = {
     getContentBounds: () => window.getContentBounds(),
     on: window.on.bind(window),
@@ -135,6 +128,14 @@ export async function createWorkspaceWindow(userDataPath: string): Promise<Works
   browserChromeView.webContents.once('did-finish-load', () => {
     browserChromeView.webContents.send(IPC_CHANNELS.workspaceState, controller.getSnapshot())
   })
+
+  void Promise.all([
+    loadLocalPage(notesView, 'notes.html'),
+    loadLocalPage(splitterView, 'splitter.html'),
+    loadLocalPage(browserChromeView, 'browser-chrome.html'),
+  ])
+
+  void browserView.webContents.loadURL(normalizeUrl(snapshot.browserUrl))
 
   return {
     window,

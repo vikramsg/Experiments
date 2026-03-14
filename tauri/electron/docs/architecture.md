@@ -83,7 +83,7 @@ electron/
 
 ## Responsibility Map
 
-- `src/app/main/create-workspace-window.ts` owns composing the four sibling views and loading the local/remote surfaces.
+- `src/app/main/create-workspace-window.ts` owns composing the four sibling views, registering the workspace bundle early, and then loading the local/remote surfaces asynchronously.
 - `src/features/workspace/main/WorkspaceController.ts` is the layout authority for:
   - notes view
   - splitter view
@@ -134,6 +134,25 @@ src/app/main/index.ts
                            +--> load local notes/splitter/browser-chrome entries
                            +--> load remote browser URL
                            `--> new WorkspaceController(...)
+```
+
+## Startup Resilience
+
+```text
+createWorkspaceWindow()
+   |
+   +--> create window + views + controller
+   +--> return bundle to index.ts early
+   +--> workspaceBundle becomes available to IPC
+   +--> renderer loadState() can resolve immediately
+   `--> page loads continue asynchronously
+```
+
+```text
+workspace:get-state
+   |
+   +--> returns live controller snapshot when workspace is ready
+   `--> falls back to DEFAULT_WORKSPACE_SNAPSHOT during startup instead of throwing
 ```
 
 ## Navigation Flow

@@ -5,8 +5,10 @@
 Start with a test first approach with writing failing tests, making sure they fail
 and then proceeding with implementation.
 
-- Keep the Electron app under `electron/` in its refactored feature-first, process-aware structure.
-- Move the browser URL input and Go action out of the notes feature and into the right browser split.
+- Fix the browser chrome layout so the URL bar is no longer vertically compressed or visually squashed.
+- Fix the workspace startup race that logs `Workspace is not open` during renderer initialization.
+- Fix the stuck `Loading workspace...` state in the notes pane so the UI transitions cleanly once workspace state becomes available.
+- Keep the Electron app under `electron/` in its current feature-first, process-aware structure.
 - Preserve the implemented behavior:
   - launcher flow
   - workspace with sibling `WebContentsView`s
@@ -14,260 +16,218 @@ and then proceeding with implementation.
   - notes persistence
   - browser navigation with the current security constraints
 - Keep the implementation isolated from the Tauri app in `hello-world/`.
-- Update docs and tests so they reflect the browser-owned renderer surface in the new structure.
 
 ## Architecture Diagram
 
 ```text
-Current runtime
-===============
+Current startup race
+====================
 
-+-------------------------------------------------------------------+
-| Workspace BaseWindow                                              |
-|                                                                   |
-| +------------------+ +----------+ +----------------------------+  |
-| | Notes view       | | Splitter | | Browser content view       |  |
-| | - notes editor   | | handle   | | - remote site             |  |
-| | - URL input      | |          | |                            |  |
-| | - Go button      | |          | |                            |  |
-| +------------------+ +----------+ +----------------------------+  |
-|                                                                   |
-+-------------------------------------------------------------------+
+openWorkspace()
+   |
+   v
+createWorkspaceWindow() -------------------------------+
+   |                                                   |
+   +--> starts loading local renderer pages            |
+   +--> browser/notes renderer mounts                  |
+   +--> renderer calls workspace:get-state             |
+   |                                                   |
+   +--> createWorkspaceWindow() still resolving        |
+   |                                                   |
+   +--> workspaceBundle not assigned yet               |
+   |                                                   |
+   `--> requireWorkspace() throws ---------------------+
 ```
 
 ```text
-Target runtime
-==============
+Target startup flow
+===================
 
-+-------------------------------------------------------------------+
-| Workspace BaseWindow                                              |
-|                                                                   |
-| +------------------+ +----------+ +----------------------------+  |
-| | Notes view       | | Splitter | | Browser chrome view        |  |
-| | - notes editor   | | handle   | | - URL input               |  |
-| |                  | |          | | - Go button               |  |
-| |                  | |          | +----------------------------+  |
-| |                  | |          | | Browser content view       |  |
-| |                  | |          | | - remote site             |  |
-| +------------------+ +----------+ +----------------------------+  |
-|                                                                   |
-| main process owns bounds for all four sibling views               |
-+-------------------------------------------------------------------+
+openWorkspace()
+   |
+   v
+createWorkspaceWindow()
+   |
+   +--> create window, views, controller, bundle
+   +--> return bundle early
+   |
+   v
+workspaceBundle assigned in main process
+   |
+   +--> renderer calls workspace:get-state
+   |       |
+   |       `--> snapshot resolves successfully
+   |
+   `--> local/remote page loads continue asynchronously
 ```
 
 ```text
-Feature ownership
+Current right pane
+==================
+
++----------------------------+
+| Browser URL                |
+| [input.................]Go |
++----------------------------+
+| Remote browser content     |
+|                            |
++----------------------------+
+
+Problem:
+- browser chrome height is too short
+- content padding + caption + stretched button make the bar feel squashed
+```
+
+```text
+Target right pane
 =================
 
-src/features/notes/
-  - note storage
-  - notes renderer UI only
++----------------------------+
+| Browser URL                |
+| [input..................] Go |
++----------------------------+
+| Remote browser content     |
+|                            |
++----------------------------+
 
-src/features/browser/
-  - remote session policy
-  - URL normalization
-  - popup and permission restrictions
-  - browser chrome renderer UI
-
-src/features/workspace/
-  - BaseWindow layout controller
-  - split-layout math
-  - workspace state publication
-```
-
-```text
-Navigation flow
-===============
-
-browser renderer App
-   |
-   | window.workspace.setBrowserUrl(url)
-   v
-app/preload/workspace.ts
-   |
-   v
-app/main/register-ipc.ts
-   |
-   +--> normalizeUrl(url)
-   +--> browserView.webContents.loadURL(url)
-   +--> persist snapshot
-   `--> publish workspace state
+Fixes:
+- taller browser chrome band
+- compact single-row alignment
+- non-stretched button sizing
 ```
 
 ## Current Status
 
-- The `sm` branch refactor is already in place:
-  - bootstrap is in `src/app/main/`
-  - preloads are in `src/app/preload/`
-  - renderer entries are in `src/app/renderer/entries/`
-  - features are under `src/features/`
-- The current implementation still renders the browser URL controls inside the notes renderer in `electron/src/features/notes/renderer/App.tsx`.
-- The browser feature currently has only main-process logic in `electron/src/features/browser/main/` and no renderer surface yet.
-- The workspace currently creates and lays out only three sibling views:
-  - notes
-  - splitter
-  - browser content
-- Existing renderer and E2E tests still assume the browser URL UI lives in the notes pane.
-- `electron/docs/architecture.md`, `electron/README.md`, and `electron/Justfile` already exist, but they currently describe the old notes-owned URL UI and three-view workspace.
+- The browser chrome renderer currently lives in `electron/src/features/browser/renderer/App.tsx` and is visible, but its container height is too small for its content.
+- `electron/src/features/workspace/main/WorkspaceController.ts` currently reserves only `64px` for the browser chrome band.
+- The notes renderer in `electron/src/features/notes/renderer/App.tsx` still depends on `loadState()` resolving before it can clear the `Loading workspace...` text.
+- The main process in `electron/src/app/main/index.ts` only assigns `workspaceBundle` after `createWorkspaceWindow(...)` resolves.
+- `electron/src/app/main/create-workspace-window.ts` still waits on page-loading work before returning, which allows renderer IPC to arrive before the bundle is registered.
+- Current logs show repeated `workspace:get-state` failures with `Workspace is not open`, matching the startup race.
 
 ## Short summary of changes
 
-- Add a browser renderer feature under `src/features/browser/renderer/` for the local URL bar UI.
-- Add a new renderer entry HTML file under `src/app/renderer/entries/browser-chrome.html`.
-- Remove browser URL controls from the notes renderer.
-- Extend workspace composition and layout from three sibling views to four sibling views.
-- Keep browser security and navigation logic in the browser feature main-process modules.
-- Update docs so they reflect the browser-owned renderer surface and four-view workspace runtime.
+- Update the plan to cover the browser-chrome sizing fix, the startup race fix, and the loading-state fix.
+- Write failing tests for:
+  - taller browser chrome layout bounds
+  - notes renderer recovery from initial `loadState()` failure via workspace state updates
+  - Electron E2E confirmation that the loading text does not remain stuck
+- Refactor workspace creation so the bundle becomes available to IPC before renderer page loads complete.
+- Make the notes and browser chrome renderers robust against an initial `loadState()` miss.
+- Adjust browser chrome styling and workspace layout height so the right-side header renders comfortably.
+- Re-run full verification after the fixes.
 
 ### Options considered
 
-1. Add `features/browser/renderer` and a fourth sibling `WebContentsView`
-   - fits the refactored structure cleanly
-   - keeps browser UI with browser ownership
-   - preserves remote-content isolation
+1. Fix both the race and the layout in the current architecture
+   - smallest targeted repair
+   - preserves the current four-view workspace design
    - recommended
 
-2. Keep URL UI in `features/notes/renderer`
-   - lower code churn
-   - incorrect feature ownership and wrong UX placement
+2. Only increase the browser chrome height
+   - fixes the visual compression
+   - leaves the startup errors and stuck loading state unresolved
    - rejected
 
-3. Replace the right side with a larger local shell renderer
-   - possible
-   - larger architectural change than needed
+3. Only suppress `workspace:get-state` errors in the renderer
+   - hides the symptom
+   - leaves the main-process lifecycle race intact
    - rejected
 
 ## Files to be changed
 
 - `electron/plan.md`
-- `electron/vite.renderer.config.ts`
+- `electron/src/app/main/index.ts`
 - `electron/src/app/main/create-workspace-window.ts`
 - `electron/src/app/main/register-ipc.ts`
-- `electron/src/app/preload/workspace.ts`
 - `electron/src/features/workspace/main/WorkspaceController.ts`
 - `electron/src/features/workspace/main/WorkspaceController.test.ts`
 - `electron/src/features/notes/renderer/App.tsx`
 - `electron/src/features/notes/renderer/App.test.tsx`
+- `electron/src/features/browser/renderer/App.tsx`
+- `electron/src/features/browser/renderer/App.test.tsx`
 - `electron/e2e/launcher-workspace.spec.js`
-- `electron/e2e/persistence.spec.js`
-- `electron/e2e/splitter-drag.spec.js`
-- `electron/e2e/workspace-resize.spec.js`
 - `electron/docs/architecture.md`
 - `electron/README.md`
 
 ## Files to be added
 
-- `electron/src/app/renderer/entries/browser-chrome.html`
-- `electron/src/features/browser/renderer/App.tsx`
-- `electron/src/features/browser/renderer/App.test.tsx`
-- `electron/src/features/browser/renderer/main.tsx`
+- None required unless a dedicated startup-lifecycle test helper proves necessary during implementation.
 
 ## Verification Criteria
 
-- The browser URL input and Go button are no longer rendered by `electron/src/features/notes/renderer/App.tsx`.
-- A browser renderer feature exists under `electron/src/features/browser/renderer/`.
-- A browser renderer entrypoint exists at `electron/src/app/renderer/entries/browser-chrome.html`.
-- `electron/vite.renderer.config.ts` includes the browser-chrome entry.
-- `electron/src/app/main/create-workspace-window.ts` creates and loads four sibling views:
-  - notes
-  - splitter
-  - browser chrome
-  - browser content
-- `electron/src/features/workspace/main/WorkspaceController.ts` computes and applies four-view layout correctly.
-- Browser URL changes still navigate the remote browser and persist across relaunch.
-- Notes persistence still works unchanged.
-- `electron/docs/architecture.md` reflects the browser renderer in the file tree and runtime diagrams.
-- `electron/README.md` reflects the browser-owned renderer surface and current commands.
+- The browser chrome band has enough height that the URL input and Go button render without obvious vertical compression.
+- The notes pane no longer stays stuck on `Loading workspace...` after workspace startup succeeds.
+- Normal startup no longer logs `Workspace is not open` for `workspace:get-state`.
+- The browser chrome and notes renderers both recover cleanly if `loadState()` is temporarily unavailable during initialization.
+- `WorkspaceController` applies the updated browser chrome height consistently on first layout, splitter drags, and window resize.
+- The launcher/workspace E2E flow confirms the notes pane reaches its loaded state and the browser chrome controls are visible.
 - Lint, unit tests, Playwright E2E tests, and production build all succeed.
 
 ## Acceptance Criteria
 
-- The browser URL field lives in the browser split, not the notes split.
-- The browser feature owns both:
-  - browser main-process logic
-  - browser renderer chrome UI
-- The right pane is composed of:
-  - a local browser chrome area
-  - a remote browser content area
-- The Electron workspace still uses sibling `WebContentsView`s rather than `BrowserView` or a primary `<webview>` architecture.
+- The right-side browser chrome is visually stable and not squashed.
+- The workspace opens without noisy `Workspace is not open` errors during normal startup.
+- The notes pane transitions out of `Loading workspace...` once workspace state is available.
+- The app still uses sibling `WebContentsView`s rather than `BrowserView` or a primary `<webview>` architecture.
 - The splitter remains draggable and persistent.
-- Notes remain isolated to the left pane.
-- Browser URL persistence still works across reopen and relaunch.
-- The refactored file structure remains feature-first and process-aware.
-- Docs and tests align with the implemented new structure.
+- Notes persistence and browser URL persistence still work.
+- Browser security restrictions still apply unchanged.
 - Work is not complete until all automated verification passes.
 
 ## Checklist of tasks to be done
 
-1. Inspect the refactored app wiring in:
+1. Inspect the current startup path in:
+   - `src/app/main/index.ts`
    - `src/app/main/create-workspace-window.ts`
    - `src/app/main/register-ipc.ts`
-   - `src/app/preload/workspace.ts`
    - `src/features/notes/renderer/App.tsx`
+   - `src/features/browser/renderer/App.tsx`
    - `src/features/workspace/main/WorkspaceController.ts`
-   to identify every assumption that the browser URL UI lives in the notes feature.
+   to identify the exact causes of the startup race, loading-state stall, and browser chrome compression.
 
-2. Update `electron/plan.md` first so it reflects the current refactored structure and the new browser-renderer ownership before implementation begins.
+2. Update `electron/plan.md` first so it reflects the startup-race fix, loading-state fix, and browser chrome layout fix before implementation begins.
 
-3. Write failing renderer tests for `electron/src/features/notes/renderer/App.test.tsx` proving the notes surface no longer contains:
-   - browser URL input
-   - Go button
+3. Write failing workspace controller tests for the updated browser chrome height and bounds behavior.
 
-4. Run the notes renderer tests immediately to verify they fail for the expected reason; if they do not fail, tighten the assertions before implementing.
+4. Run the workspace controller tests immediately to verify the new height expectations fail against the current `64px` implementation; if they do not fail, tighten the assertions before implementing.
 
-5. Write failing renderer tests for the new browser renderer in `electron/src/features/browser/renderer/App.test.tsx` covering:
-   - saved browser URL rendering
-   - URL editing
-   - Go-triggered navigation
-   - reaction to workspace state updates
+5. Write failing renderer tests for the notes app proving it can leave the loading state after an initial `loadState()` failure once workspace state arrives through the subscription path.
 
-6. Run the new browser renderer tests immediately to confirm they fail before implementation; if they do not fail, correct the tests first.
+6. Run the notes renderer tests immediately to verify they fail for the expected reason; if they do not fail, strengthen the assertions before implementation.
 
-7. Write failing workspace controller tests in `electron/src/features/workspace/main/WorkspaceController.test.ts` for the new four-view layout:
-   - initial bounds for notes, splitter, browser chrome, and browser content
-   - updates on splitter drag
-   - updates on window resize
-   - cleanup of all child `webContents`
+7. Write failing renderer tests for the browser chrome app if needed to confirm it tolerates the same initialization path and still updates from workspace state changes.
 
-8. Run the workspace controller tests immediately to prove the new expectations fail against the current three-view implementation; if they pass unexpectedly, strengthen the assertions.
+8. Run those browser renderer tests immediately to confirm they fail before implementation; if they do not fail, correct the test first.
 
-9. Add `electron/src/features/browser/renderer/` and `electron/src/app/renderer/entries/browser-chrome.html`.
+9. Update the launcher/workspace Playwright coverage to assert:
+   - browser chrome controls are fully visible
+   - the notes pane no longer remains on `Loading workspace...`
 
-10. Implement the browser renderer UI and entrypoint, keeping URL/chrome responsibility inside the browser feature.
+10. Run the relevant Playwright spec immediately to verify the new startup assertions fail first; if they do not fail, tighten the expectation before implementing.
 
-11. Remove the URL controls from `electron/src/features/notes/renderer/App.tsx` while preserving notes load, autosave, and state-sync behavior.
+11. Refactor workspace startup so the workspace bundle becomes available to IPC before page-load completion work finishes.
 
-12. Update `electron/src/app/main/create-workspace-window.ts` to create and load a fourth sibling `WebContentsView` for browser chrome and publish workspace state to it.
+12. Update main-process workspace state handling so normal startup no longer throws `Workspace is not open` for `workspace:get-state`.
 
-13. Update `electron/src/features/workspace/main/WorkspaceController.ts` to manage browser chrome and browser content bounds separately while preserving splitter behavior.
+13. Update the notes renderer so an initial `loadState()` miss does not leave the status permanently stuck in the loading state.
 
-14. Re-run the directly related renderer and controller tests until they all pass.
+14. Update the browser chrome renderer to tolerate the same startup timing and keep its URL state synchronized through workspace updates.
 
-15. Update Playwright Electron specs so browser URL interactions happen in the browser-chrome page instead of the notes page.
+15. Increase the reserved browser chrome height in the workspace controller and update the browser chrome styling so the URL bar lays out comfortably in a single compact row.
 
-16. Run the Playwright tests to verify those new expectations fail first; if they do not fail, tighten the assertions and rerun.
+16. Re-run the directly related unit and renderer tests until the controller, notes, and browser chrome suites all pass.
 
-17. Implement any remaining wiring needed for Playwright to discover and use the browser-chrome surface in:
-   - launcher flow
-   - persistence flow
-   - resize flow
-   - splitter flow
+17. Re-run the updated Playwright startup spec and keep fixing behavior until the loading-state and visibility checks pass.
 
-18. Re-run Playwright until launcher, persistence, resize, splitter, and browser navigation behavior all pass with the browser URL UI on the right.
+18. Update `electron/docs/architecture.md` and `electron/README.md` so they describe the improved startup behavior and current browser chrome layout accurately.
 
-19. Update `electron/docs/architecture.md` with:
-   - the new file tree including `features/browser/renderer`
-   - updated responsibility notes
-   - updated four-view runtime diagrams
+19. If a browser skill is available, use it for smoke checks of the visible browser chrome change. No browser skill is available in this environment, so use Playwright Electron coverage as the browser-level smoke baseline.
 
-20. Update `electron/README.md` so it reflects the new browser-owned renderer surface and the current supported commands.
-
-21. If a browser skill is available, use it for smoke checks of the visible UI change. No browser skill is available in this environment, so use the Playwright Electron coverage as the browser-level smoke baseline.
-
-22. Run the full automated verification suite:
+20. Run the full automated verification suite:
    - lint
    - unit and renderer tests
    - Playwright Electron E2E tests
    - build/package flow
 
-23. Stop only after the browser URL UI is in the right split, the refactored structure remains coherent, all fail-first checks were exercised where new seams were introduced, and every automated verification step passes.
+21. Stop only after the browser chrome is visually stable, the startup race is resolved, the loading state clears correctly, all fail-first checks were exercised where new seams were introduced, and every automated verification step passes.
