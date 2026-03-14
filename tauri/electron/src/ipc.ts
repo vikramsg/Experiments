@@ -13,6 +13,7 @@
  */
 export const IPC_CHANNELS = {
   launcherOpenWorkspace: 'launcher:open-workspace',
+  launcherOpenOpenCode: 'launcher:open-opencode',
   workspaceGetState: 'workspace:get-state',
   workspaceSaveNotes: 'workspace:save-notes',
   workspaceSetBrowserUrl: 'workspace:set-browser-url',
@@ -20,4 +21,7 @@ export const IPC_CHANNELS = {
   workspaceGoForward: 'workspace:go-forward',
   workspaceAdjustSplitter: 'workspace:adjust-splitter',
   workspaceState: 'workspace:state',
+  opencodeGetState: 'opencode:get-state',
+  opencodeSendPrompt: 'opencode:send-prompt',
+  opencodeState: 'opencode:state',
 } as const

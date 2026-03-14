@@ -26,6 +26,11 @@ const config: ForgeConfig = {
           config: 'vite.preload.config.ts',
           target: 'preload',
         },
+        {
+          entry: 'src/app/preload/opencode.ts',
+          config: 'vite.preload.config.ts',
+          target: 'preload',
+        },
       ],
       renderer: [
         {
@@ -34,6 +39,10 @@ const config: ForgeConfig = {
         },
         {
           name: 'workspace_window',
+          config: 'vite.renderer.config.ts',
+        },
+        {
+          name: 'opencode_window',
           config: 'vite.renderer.config.ts',
         },
       ],

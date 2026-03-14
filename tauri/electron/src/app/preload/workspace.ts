@@ -1,9 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 import { IPC_CHANNELS } from '../../ipc'
+import type { WorkspaceApi } from '../../workspace-contract'
 import type { WorkspaceSnapshot } from '../../workspace-model'
 
-contextBridge.exposeInMainWorld('workspace', {
+const workspaceApi: WorkspaceApi = {
   loadState: () => ipcRenderer.invoke(IPC_CHANNELS.workspaceGetState) as Promise<WorkspaceSnapshot>,
   saveNotes: (notes: string) => ipcRenderer.invoke(IPC_CHANNELS.workspaceSaveNotes, notes) as Promise<void>,
   setBrowserUrl: (url: string) => ipcRenderer.invoke(IPC_CHANNELS.workspaceSetBrowserUrl, url) as Promise<void>,
@@ -20,4 +21,6 @@ contextBridge.exposeInMainWorld('workspace', {
       ipcRenderer.removeListener(IPC_CHANNELS.workspaceState, wrapped)
     }
   },
-})
+}
+
+contextBridge.exposeInMainWorld('workspace', workspaceApi)
