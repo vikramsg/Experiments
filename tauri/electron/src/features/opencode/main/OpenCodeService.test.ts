@@ -9,11 +9,19 @@ function createJsonResponse(data: unknown): Response {
 }
 
 describe('OpenCodeService', () => {
-  it('builds a read-only OpenCode config', () => {
-    const config = JSON.parse(buildOpenCodeConfig()) as {
+  it('builds a read-only OpenCode config with the browser MCP tool enabled', () => {
+    const config = JSON.parse(
+      buildOpenCodeConfig({
+        browserMcp: {
+          url: 'http://127.0.0.1:4318/mcp',
+          headers: { authorization: 'Bearer test-token' },
+        },
+      }),
+    ) as {
       default_agent: string
       share: string
       permission: Record<string, string>
+      mcp: Record<string, { type: string; url: string; headers?: Record<string, string> }>
     }
 
     expect(config.default_agent).toBe('plan')
@@ -24,6 +32,14 @@ describe('OpenCodeService', () => {
     expect(config.permission.list).toBe('allow')
     expect(config.permission.edit).toBe('deny')
     expect(config.permission.bash).toBe('deny')
+    expect(config.permission['browser_*']).toBe('allow')
+    expect(config.mcp.browser).toEqual({
+      type: 'remote',
+      url: 'http://127.0.0.1:4318/mcp',
+      headers: { authorization: 'Bearer test-token' },
+      oauth: false,
+      enabled: true,
+    })
   })
 
   it('starts the local server and creates a repo-scoped session', async () => {
@@ -35,6 +51,7 @@ describe('OpenCodeService', () => {
       .fn()
       .mockResolvedValueOnce(createJsonResponse({ healthy: true, version: '1.0.0' }))
       .mockResolvedValueOnce(createJsonResponse({ id: 'session-1' }))
+      .mockResolvedValueOnce(createJsonResponse({ info: { id: 'message-1' }, parts: [] }))
 
     const service = new OpenCodeService({
       repoRoot: '/repo/tauri',
@@ -66,6 +83,7 @@ describe('OpenCodeService', () => {
       .fn()
       .mockResolvedValueOnce(createJsonResponse({ healthy: true, version: '1.0.0' }))
       .mockResolvedValueOnce(createJsonResponse({ id: 'session-1' }))
+      .mockResolvedValueOnce(createJsonResponse({ info: { id: 'message-1' }, parts: [] }))
       .mockResolvedValueOnce(
         createJsonResponse({
           parts: [

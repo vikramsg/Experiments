@@ -2,6 +2,7 @@ import path from 'node:path'
 
 import { BaseWindow, WebContentsView } from 'electron'
 
+import type { BrowserContextSnapshot } from '../../features/browser/main/browser-context'
 import { OpenCodeService } from '../../features/opencode/main/OpenCodeService'
 import { IPC_CHANNELS } from '../../ipc'
 
@@ -9,6 +10,15 @@ export type OpenCodeBundle = {
   window: BaseWindow
   view: WebContentsView
   service: OpenCodeService
+}
+
+export type OpenCodeWindowOptions = {
+  repoRoot: string
+  browserMcp?: {
+    url: string
+    headers: Record<string, string>
+  }
+  browserContextProvider?: () => Promise<BrowserContextSnapshot | null>
 }
 
 function getOpenCodeEntryUrl() {
@@ -29,7 +39,7 @@ function loadOpenCodePage(view: WebContentsView) {
   return view.webContents.loadFile(target)
 }
 
-export async function createOpenCodeWindow(repoRoot: string): Promise<OpenCodeBundle> {
+export async function createOpenCodeWindow(input: OpenCodeWindowOptions): Promise<OpenCodeBundle> {
   const window = new BaseWindow({
     width: 1320,
     height: 900,
@@ -46,7 +56,11 @@ export async function createOpenCodeWindow(repoRoot: string): Promise<OpenCodeBu
     },
   })
 
-  const service = new OpenCodeService({ repoRoot })
+  const service = new OpenCodeService({
+    repoRoot: input.repoRoot,
+    browserMcp: input.browserMcp,
+    browserContextProvider: input.browserContextProvider,
+  })
 
   const applyBounds = () => {
     const bounds = window.getContentBounds()

@@ -72,9 +72,12 @@ just dev
 - Notes, browser URL, and splitter width are persisted in `app.getPath('userData')/workspace-state.json`, while browser history availability remains live-only state.
 - OpenCode uses its own `BaseWindow` with one local `WebContentsView` and a dedicated preload bridge on `window.opencode`.
 - The main-process `OpenCodeService` starts a local `opencode serve` process rooted at the `tauri/` repo scope, creates a chat session, and publishes renderer-facing state.
+- Electron main also hosts a localhost MCP server for browser inspection, so OpenCode can call a browser tool instead of relying on prompt-time screenshot injection.
+- The first browser MCP tool captures the current browser URL and a fresh screenshot of the browser pane when the model needs to explain what it sees.
 - The OpenCode bridge is intentionally read-only for the repo scope:
   - reads, globbing, listing, and search are allowed
   - edits, write-style tools, and destructive shell or git actions are denied
+- The OpenCode config explicitly allows the `browser_*` MCP tool namespace while keeping the rest of the app's destructive tool surface denied.
 
 For the detailed file tree, diagrams, and responsibilities, see `docs/architecture.md`.
 
@@ -97,6 +100,13 @@ access, or unrestricted server handles to the renderer. The renderer can only:
 - load the current OpenCode state
 - send a prompt
 - subscribe to state updates
+
+Browser inspection happens through a separate main-process-owned MCP tool. That
+tool can:
+
+- read the current browser URL
+- capture a fresh screenshot of the browser pane
+- return both to OpenCode on demand
 
 ## TODO / Follow-up
 

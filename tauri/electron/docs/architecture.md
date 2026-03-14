@@ -3,7 +3,7 @@
 This document describes the implemented feature-first, process-aware structure
 for the Electron app, including the split Browser + Notes workspace and the
 separate OpenCode app that chats with the repo through a read-only local
-OpenCode server.
+OpenCode server plus a main-process-owned browser MCP tool.
 
 ## Code Organization
 
@@ -64,6 +64,8 @@ electron/
     |-- features/
     |   |-- browser/
     |   |   |-- main/
+    |   |   |   |-- browser-context.ts      # Current URL + screenshot capture for browser inspection
+    |   |   |   `-- browser-context.test.ts # Browser context capture tests
     |   |   |   |-- browser-session.ts      # URL normalization, browser-state reading, security rules
     |   |   |   `-- browser-session.test.ts # Browser main-process tests
     |   |   `-- renderer/
@@ -90,6 +92,8 @@ electron/
     |   |       `-- main.tsx                # Splitter React entrypoint
     |   |-- opencode/
     |   |   |-- main/
+    |   |   |   |-- BrowserMcpServer.ts      # Local MCP server that exposes browser inspection tools
+    |   |   |   |-- BrowserMcpServer.test.ts # Browser MCP server tests
     |   |   |   |-- OpenCodeService.ts      # Local OpenCode server lifecycle and prompt orchestration
     |   |   |   `-- OpenCodeService.test.ts # OpenCode service tests
     |   |   `-- renderer/
@@ -166,8 +170,10 @@ src/features/opencode/renderer/App.tsx
 - `src/app/main/create-opencode-window.ts` owns composing the OpenCode app window and wiring service-driven state publication into the local renderer.
 - `src/features/workspace/main/WorkspaceController.ts` is the layout authority and publisher of workspace snapshots.
 - `src/features/browser/main/browser-session.ts` owns URL normalization, browser navigation-state reading, and remote-browser security policy.
+- `src/features/browser/main/browser-context.ts` owns live browser URL inspection and `capturePage()`-based screenshot capture.
 - `src/features/notes/main/NoteStore.ts` persists only durable workspace fields, while browser history availability remains live-only state derived from `webContents`.
-- `src/features/opencode/main/OpenCodeService.ts` owns the local OpenCode server lifecycle, session creation, prompt submission, and read-only repo boundary.
+- `src/features/opencode/main/BrowserMcpServer.ts` owns the localhost MCP endpoint that OpenCode can call for browser context.
+- `src/features/opencode/main/OpenCodeService.ts` owns the local OpenCode server lifecycle, session creation, prompt submission, MCP configuration, and read-only repo boundary.
 
 ## Launcher Overview
 
@@ -287,9 +293,29 @@ OpenCodeService
    |
    +--> spawn `opencode serve` in the tauri/ repo scope
    +--> apply a read-only config with the plan agent
+   +--> register the browser MCP server and allow `browser_*`
    +--> create a session
+   +--> inject a no-reply instruction telling the model to call the browser tool when the user asks what it sees in the browser
    +--> submit prompt messages over HTTP
    `--> publish renderer-facing chat state
+```
+
+## Browser MCP Flow
+
+```text
+OpenCode model
+   |
+   | calls browser_browser_context_current
+   v
+OpenCode MCP client
+   |
+   v
+BrowserMcpServer (Electron main)
+   |
+   +--> current workspace bundle
+   +--> browserView.webContents.getURL()
+   +--> browserView.webContents.capturePage()
+   `--> return text + image attachment
 ```
 
 ## OpenCode Permission Boundary
@@ -297,6 +323,7 @@ OpenCodeService
 The OpenCode app is intentionally narrower than the full CLI experience.
 
 - Allowed: `read`, `glob`, `grep`, `list`, and LSP-backed inspection
+- Allowed: `browser_*` MCP browser inspection tools
 - Denied: `edit`, write-style operations, arbitrary `bash`, destructive git, and external directory access
 - The renderer never receives raw shell access or unrestricted filesystem handles
 

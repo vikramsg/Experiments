@@ -2,6 +2,7 @@ import { spawn as nodeSpawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 
+import type { BrowserContextSnapshot } from '../../browser/main/browser-context'
 import { createDefaultOpenCodeState, type OpenCodeMessage, type OpenCodeState } from '../../../opencode-model'
 
 type FetchLike = typeof fetch
@@ -13,11 +14,29 @@ type ServerHandle = {
   child: ChildProcess
 }
 
-export function buildOpenCodeConfig(): string {
+type BrowserMcpConfig = {
+  url: string
+  headers: Record<string, string>
+}
+
+export function buildOpenCodeConfig(input?: { browserMcp?: BrowserMcpConfig }): string {
+  const mcp = input?.browserMcp
+    ? {
+        browser: {
+          type: 'remote',
+          url: input.browserMcp.url,
+          headers: input.browserMcp.headers,
+          oauth: false,
+          enabled: true,
+        },
+      }
+    : undefined
+
   return JSON.stringify({
     $schema: 'https://opencode.ai/config.json',
     default_agent: 'plan',
     share: 'disabled',
+    ...(mcp ? { mcp } : {}),
     permission: {
       '*': 'deny',
       read: 'allow',
@@ -34,6 +53,7 @@ export function buildOpenCodeConfig(): string {
       todoread: 'deny',
       todowrite: 'deny',
       external_directory: 'deny',
+      'browser_*': 'allow',
     },
   })
 }
@@ -114,6 +134,8 @@ export class OpenCodeService {
       spawn?: SpawnLike
       getPort?: () => Promise<number>
       environment?: NodeJS.ProcessEnv
+      browserMcp?: BrowserMcpConfig
+      browserContextProvider?: () => Promise<BrowserContextSnapshot | null>
     },
   ) {
     this.state = createDefaultOpenCodeState(input.repoRoot)
@@ -165,7 +187,7 @@ export class OpenCodeService {
 
     try {
       const assistantReply = (this.input.mockMode ?? process.env.ELECTRON_OPENCODE_MOCK === '1')
-        ? this.buildMockReply(trimmed)
+        ? await this.buildMockReply(trimmed)
         : await this.requestAssistantReply(trimmed)
 
       this.updateState({
@@ -216,6 +238,20 @@ export class OpenCodeService {
       error: null,
     })
 
+    await requestJson(fetchImpl, `${server.baseUrl}/session/${session.id}/message`, {
+      method: 'POST',
+      body: JSON.stringify({
+        noReply: true,
+        parts: [
+          {
+            type: 'text',
+            text:
+              'When the user asks what is visible in the browser, what page is on screen, or asks you to explain the current browser page, call the browser_browser_context_current tool before answering.',
+          },
+        ],
+      }),
+    })
+
     return this.state
   }
 
@@ -241,8 +277,25 @@ export class OpenCodeService {
     return extractAssistantText(result)
   }
 
-  private buildMockReply(prompt: string): string {
+  private async buildMockReply(prompt: string): Promise<string> {
+    if (/what do you see in the browser|what is in the browser|explain the browser/i.test(prompt)) {
+      return await this.buildMockBrowserReply()
+    }
+
     return `Mock OpenCode reply for ${this.input.repoRoot}: ${prompt}`
+  }
+
+  private async buildMockBrowserReply(): Promise<string> {
+    const browserContext = await this.input.browserContextProvider?.().catch(() => null)
+    if (!browserContext) {
+      return 'I can see the browser workspace is not open right now, so there is no live page or screenshot to inspect.'
+    }
+
+    return (
+      `I can see the browser is currently at ${browserContext.url}. ` +
+      `I also captured a fresh screenshot of the browser pane (${browserContext.screenshot.width}x${browserContext.screenshot.height}), ` +
+      'so this explanation is based on that screenshot.'
+    )
   }
 
   private async ensureServer(): Promise<ServerHandle> {
@@ -260,7 +313,9 @@ export class OpenCodeService {
         env: {
           ...process.env,
           ...(this.input.environment ?? {}),
-          OPENCODE_CONFIG_CONTENT: buildOpenCodeConfig(),
+          OPENCODE_CONFIG_CONTENT: buildOpenCodeConfig({
+            browserMcp: this.input.browserMcp,
+          }),
         },
       },
     )

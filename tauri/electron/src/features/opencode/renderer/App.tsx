@@ -104,6 +104,7 @@ export function App({ api }: OpenCodeAppProps) {
           <p style={styles.kicker}>OpenCode</p>
           <h1 style={styles.title}>OpenCode</h1>
           <p style={styles.lede}>Read-only repo chat with a local OpenCode server behind a narrow Electron bridge.</p>
+          <p style={styles.helper}>Ask what OpenCode sees in the browser after you open the Browser + Notes workspace.</p>
         </div>
         <div style={styles.scopeCard}>
           <p style={styles.scopeLabel}>Repo scope</p>
@@ -131,7 +132,7 @@ export function App({ api }: OpenCodeAppProps) {
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={handlePromptKeyDown}
-              placeholder="Ask about architecture, files, behavior, or where something lives in this repo."
+              placeholder="Ask about architecture, files, behavior, where something lives in this repo, or what OpenCode sees in the browser."
             />
           </label>
           <button style={styles.sendButton} type="submit" disabled={isBusy}>
@@ -191,6 +192,12 @@ const styles: Record<string, CSSProperties> = {
     margin: 0,
     lineHeight: 1.65,
     maxWidth: '52ch',
+  },
+  helper: {
+    margin: '12px 0 0',
+    lineHeight: 1.55,
+    maxWidth: '52ch',
+    color: '#6f5533',
   },
   scopeCard: {
     flex: '0 1 320px',

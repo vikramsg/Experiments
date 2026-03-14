@@ -24,6 +24,7 @@ describe('OpenCode App', () => {
     expect(screen.getByText(/local opencode server behind a narrow electron bridge/i)).toBeVisible()
     expect(screen.getByText(/repo scope/i)).toBeVisible()
     expect(screen.getByDisplayValue('')).toBeVisible()
+    expect(screen.getAllByText(/ask what opencode sees in the browser/i).length).toBeGreaterThan(0)
   })
 
   it('submits prompts through the renderer api', async () => {
