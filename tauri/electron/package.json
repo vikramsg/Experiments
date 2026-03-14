@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron-forge start",
     "dev": "electron-forge start",
-    "lint": "eslint . --ignore-pattern .vite --ignore-pattern out --ignore-pattern dist --ignore-pattern playwright-report --ignore-pattern test-results",
+    "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "build:app": "electron-forge package",

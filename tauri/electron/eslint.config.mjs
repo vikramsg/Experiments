@@ -7,6 +7,8 @@ import tseslint from 'typescript-eslint'
 export default tseslint.config(
   {
     ignores: ['dist/**', '.vite/**', 'out/**', 'playwright-report/**', 'test-results/**', '**/dist/**', '**/.vite/**', '**/out/**', '**/playwright-report/**', '**/test-results/**'],
+  },
+  {
     linterOptions: {
       reportUnusedDisableDirectives: 'error',
     },
