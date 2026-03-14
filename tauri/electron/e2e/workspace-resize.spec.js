@@ -6,8 +6,10 @@ const { _electron: electron, expect, test } = require('@playwright/test')
 
 async function launchApp(userDataDir) {
   return electron.launch({
-    args: ['.'],
-    cwd: path.resolve(__dirname, '..'),
+    executablePath: path.resolve(
+      __dirname,
+      '../out/electron-workspace-darwin-arm64/electron-workspace.app/Contents/MacOS/electron-workspace',
+    ),
     env: {
       ...process.env,
       ELECTRON_USER_DATA_DIR: userDataDir,
@@ -36,7 +38,10 @@ test('window resize keeps notes and browser panes within safe widths', async () 
     await launcher.getByRole('button', { name: /launch browser \+ notes/i }).click()
 
     const notesPage = await waitForPageByUrlPart(electronApp, 'notes.html')
+    const browserChromePage = await waitForPageByUrlPart(electronApp, 'browser-chrome.html')
     const browserPage = await waitForPageByUrlPart(electronApp, 'example.com')
+
+    await expect(browserChromePage.getByRole('textbox', { name: /browser url/i })).toBeVisible()
 
     await electronApp.evaluate(async ({ BaseWindow }) => {
       const workspaceWindow = BaseWindow.getAllWindows().find((window) => window.getTitle() === 'Browser + Notes')

@@ -1,28 +1,37 @@
 # Electron Workspace
 
-Electron workspace app with a launcher window and a split workspace containing notes, a draggable splitter, and a browser pane.
+Electron workspace app with a launcher window and a split workspace containing notes on the left, a draggable splitter in the middle, and a browser area on the right with a local URL bar above remote content.
 
-## Commands
+## Requirements
+
+- Node.js
+- npm
+- `just`
+
+## Install
 
 ```bash
-npm run dev
-npm run lint
-npm test
-npm run e2e
-npm run build
-npm run verify
+just install
 ```
 
-If you use `just`:
+## Run Locally
 
 ```bash
 just dev
-just lint
-just test
-just e2e
-just build
-just verify
 ```
+
+## Command Reference
+
+- `just install` - install project dependencies
+- `just dev` - start the Electron app in development mode
+- `just lint` - run ESLint
+- `just test` - run Vitest unit and renderer tests
+- `just e2e` - package the app and run Playwright Electron tests
+- `just build` - package the Electron app
+- `just package` - run the Forge package step directly
+- `just make` - build platform distributables
+- `just verify` - run lint, tests, E2E, and build
+- `just verify-no-e2e` - run lint, tests, and build without Playwright
 
 ## Structure
 
@@ -35,27 +44,19 @@ just verify
   - `splitter`
 - `src/shared/` holds only true cross-feature code such as IPC channel names, shared types, and test setup.
 
-For the detailed tree and diagrams, see `docs/architecture.md`.
+## Architecture
 
-## Process Boundaries
+- Launcher uses a local `BrowserWindow` renderer.
+- Workspace uses a `BaseWindow` with four sibling `WebContentsView`s:
+  - notes
+  - splitter
+  - browser chrome
+  - browser content
+- Main-process layout ownership lives in `src/features/workspace/main/WorkspaceController.ts`.
+- Browser URL updates are triggered from `src/features/browser/renderer/App.tsx` and applied in the main process.
+- Notes, browser URL, and splitter width are persisted in `app.getPath('userData')/workspace-state.json`.
 
-- `app/main` and `features/*/main` are Electron/Node-side code.
-- `app/preload` exposes narrow safe APIs to renderer code.
-- `features/*/renderer` contains UI-only code.
-
-## Persistence
-
-Workspace state is stored under:
-
-```text
-app.getPath('userData')/workspace-state.json
-```
-
-Persisted values include:
-
-- notes content
-- notes pane width
-- browser URL
+For the detailed file tree, diagrams, and responsibilities, see `docs/architecture.md`.
 
 ## Browser Security
 
@@ -70,15 +71,6 @@ The remote browser pane uses:
 
 ## Verification
 
-Full verification:
-
 ```bash
-npm run verify
+just verify
 ```
-
-This runs:
-
-- lint
-- unit and renderer tests
-- Playwright Electron E2E tests
-- build/package flow

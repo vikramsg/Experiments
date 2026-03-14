@@ -8,7 +8,6 @@ export type NotesAppProps = {
 
 export function App({ api }: NotesAppProps) {
   const [notes, setNotes] = useState('')
-  const [browserUrl, setBrowserUrl] = useState('https://example.com')
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
@@ -20,13 +19,11 @@ export function App({ api }: NotesAppProps) {
       }
 
       setNotes(snapshot.notes)
-      setBrowserUrl(snapshot.browserUrl)
       setIsLoaded(true)
     })
 
     const unsubscribe = api.onStateChange((snapshot) => {
       setNotes(snapshot.notes)
-      setBrowserUrl(snapshot.browserUrl)
     })
 
     return () => {
@@ -46,21 +43,6 @@ export function App({ api }: NotesAppProps) {
         </div>
         <p style={styles.status}>{status}</p>
       </header>
-
-      <label style={styles.label}>
-        Browser URL
-        <div style={styles.urlRow}>
-          <input
-            aria-label="Browser URL"
-            style={styles.input}
-            value={browserUrl}
-            onChange={(event) => setBrowserUrl(event.target.value)}
-          />
-          <button style={styles.button} type="button" onClick={() => void api.setBrowserUrl(browserUrl)}>
-            Go
-          </button>
-        </div>
-      </label>
 
       <label style={styles.label}>
         Notes Editor
@@ -119,25 +101,7 @@ const styles: Record<string, CSSProperties> = {
     flexDirection: 'column',
     gap: '8px',
     fontWeight: 600,
-  },
-  urlRow: {
-    display: 'flex',
-    gap: '8px',
-  },
-  input: {
     flex: 1,
-    padding: '10px 12px',
-    borderRadius: '12px',
-    border: '1px solid #c7baa0',
-    fontSize: '1rem',
-  },
-  button: {
-    border: 'none',
-    borderRadius: '999px',
-    padding: '10px 16px',
-    background: '#8a5a1d',
-    color: '#fff9f0',
-    cursor: 'pointer',
   },
   editor: {
     flex: 1,

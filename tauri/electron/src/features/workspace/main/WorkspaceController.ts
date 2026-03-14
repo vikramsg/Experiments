@@ -29,10 +29,12 @@ export type ViewLike = {
 const SPLITTER_WIDTH = 12
 const MIN_NOTES_WIDTH = 280
 const MIN_BROWSER_WIDTH = 360
+const BROWSER_CHROME_HEIGHT = 64
 
 export type WorkspaceViews = {
   notesView: ViewLike
   splitterView: ViewLike
+  browserChromeView: ViewLike
   browserView: ViewLike
 }
 
@@ -53,6 +55,7 @@ export class WorkspaceController {
     this.window.on('closed', () => {
       this.views.notesView.webContents.close()
       this.views.splitterView.webContents.close()
+      this.views.browserChromeView.webContents.close()
       this.views.browserView.webContents.close()
     })
 
@@ -108,6 +111,10 @@ export class WorkspaceController {
       notesWidth: layout.notesWidth,
     }
 
+    const rightPaneX = layout.notesWidth + SPLITTER_WIDTH
+    const browserChromeHeight = Math.min(BROWSER_CHROME_HEIGHT, bounds.height)
+    const browserContentHeight = Math.max(0, bounds.height - browserChromeHeight)
+
     this.views.notesView.setBounds({
       x: 0,
       y: 0,
@@ -122,11 +129,18 @@ export class WorkspaceController {
       height: bounds.height,
     })
 
-    this.views.browserView.setBounds({
-      x: layout.notesWidth + SPLITTER_WIDTH,
+    this.views.browserChromeView.setBounds({
+      x: rightPaneX,
       y: 0,
       width: layout.browserWidth,
-      height: bounds.height,
+      height: browserChromeHeight,
+    })
+
+    this.views.browserView.setBounds({
+      x: rightPaneX,
+      y: browserChromeHeight,
+      width: layout.browserWidth,
+      height: browserContentHeight,
     })
   }
 
@@ -135,4 +149,4 @@ export class WorkspaceController {
   }
 }
 
-export { computeSplitLayout }
+export { BROWSER_CHROME_HEIGHT, computeSplitLayout }

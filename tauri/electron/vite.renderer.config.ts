@@ -11,6 +11,7 @@ export default defineConfig({
         launcher: path.resolve(import.meta.dirname, 'src/app/renderer/entries/launcher.html'),
         notes: path.resolve(import.meta.dirname, 'src/app/renderer/entries/notes.html'),
         splitter: path.resolve(import.meta.dirname, 'src/app/renderer/entries/splitter.html'),
+        'browser-chrome': path.resolve(import.meta.dirname, 'src/app/renderer/entries/browser-chrome.html'),
       },
     },
   },

@@ -6,8 +6,10 @@ const { _electron: electron, expect, test } = require('@playwright/test')
 
 async function launchApp(userDataDir) {
   return electron.launch({
-    args: ['.'],
-    cwd: path.resolve(__dirname, '..'),
+    executablePath: path.resolve(
+      __dirname,
+      '../out/electron-workspace-darwin-arm64/electron-workspace.app/Contents/MacOS/electron-workspace',
+    ),
     env: {
       ...process.env,
       ELECTRON_USER_DATA_DIR: userDataDir,

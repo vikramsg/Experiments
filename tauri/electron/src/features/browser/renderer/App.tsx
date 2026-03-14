@@ -1,0 +1,108 @@
+import { useEffect, useState, type CSSProperties } from 'react'
+
+import type { WorkspaceApi } from '../../../types'
+
+export type BrowserChromeAppProps = {
+  api: WorkspaceApi
+}
+
+export function App({ api }: BrowserChromeAppProps) {
+  const [browserUrl, setBrowserUrl] = useState('https://example.com')
+
+  useEffect(() => {
+    let active = true
+
+    void api.loadState().then((snapshot) => {
+      if (!active) {
+        return
+      }
+
+      setBrowserUrl(snapshot.browserUrl)
+    })
+
+    const unsubscribe = api.onStateChange((snapshot) => {
+      setBrowserUrl(snapshot.browserUrl)
+    })
+
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [api])
+
+  const navigate = () => void api.setBrowserUrl(browserUrl)
+
+  return (
+    <main style={styles.page}>
+      <div style={styles.row}>
+        <label style={styles.label}>
+          <span style={styles.caption}>Browser URL</span>
+          <input
+            aria-label="Browser URL"
+            style={styles.input}
+            value={browserUrl}
+            onChange={(event) => setBrowserUrl(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                navigate()
+              }
+            }}
+          />
+        </label>
+        <button style={styles.button} type="button" onClick={navigate}>
+          Go
+        </button>
+      </div>
+    </main>
+  )
+}
+
+const styles: Record<string, CSSProperties> = {
+  page: {
+    minHeight: '100vh',
+    boxSizing: 'border-box',
+    margin: 0,
+    padding: '12px 16px',
+    background: 'linear-gradient(180deg, #f2ecdf 0%, #e6ddca 100%)',
+    color: '#2c2418',
+    fontFamily: 'Georgia, serif',
+    borderBottom: '1px solid rgba(88, 69, 43, 0.2)',
+  },
+  row: {
+    display: 'flex',
+    alignItems: 'end',
+    gap: '12px',
+  },
+  label: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    flex: 1,
+  },
+  caption: {
+    fontSize: '0.72rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.12em',
+    color: '#7b6442',
+  },
+  input: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '10px 12px',
+    borderRadius: '999px',
+    border: '1px solid #cdbd9f',
+    background: '#fffbf3',
+    fontSize: '0.98rem',
+    color: '#2c2418',
+  },
+  button: {
+    border: 'none',
+    borderRadius: '999px',
+    padding: '10px 18px',
+    background: '#7a4b19',
+    color: '#fff8ef',
+    cursor: 'pointer',
+    fontSize: '0.98rem',
+    alignSelf: 'stretch',
+  },
+}

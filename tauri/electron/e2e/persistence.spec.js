@@ -6,8 +6,10 @@ const { _electron: electron, expect, test } = require('@playwright/test')
 
 async function launchApp(userDataDir) {
   return electron.launch({
-    args: ['.'],
-    cwd: path.resolve(__dirname, '..'),
+    executablePath: path.resolve(
+      __dirname,
+      '../out/electron-workspace-darwin-arm64/electron-workspace.app/Contents/MacOS/electron-workspace',
+    ),
     env: {
       ...process.env,
       ELECTRON_USER_DATA_DIR: userDataDir,
@@ -32,9 +34,10 @@ async function openWorkspace(electronApp, browserUrlPart = null) {
 
   const notesPage = await waitForPageByUrlPart(electronApp, 'notes.html')
   const splitterPage = await waitForPageByUrlPart(electronApp, 'splitter.html')
+  const browserChromePage = await waitForPageByUrlPart(electronApp, 'browser-chrome.html')
   const browserPage = browserUrlPart ? await waitForPageByUrlPart(electronApp, browserUrlPart) : null
 
-  return { notesPage, splitterPage, browserPage }
+  return { notesPage, splitterPage, browserChromePage, browserPage }
 }
 
 test('notes, splitter width, and browser url persist across relaunch', async () => {
@@ -46,8 +49,8 @@ test('notes, splitter width, and browser url persist across relaunch', async () 
     const firstRun = await openWorkspace(electronApp, 'example.com')
 
     await firstRun.notesPage.getByRole('textbox', { name: /notes editor/i }).fill('Persist this note')
-    await firstRun.notesPage.getByRole('textbox', { name: /browser url/i }).fill('https://example.org/')
-    await firstRun.notesPage.getByRole('button', { name: /^go$/i }).click()
+    await firstRun.browserChromePage.getByRole('textbox', { name: /browser url/i }).fill('https://example.org/')
+    await firstRun.browserChromePage.getByRole('button', { name: /^go$/i }).click()
 
     await expect
       .poll(async () => firstRun.browserPage.url(), { timeout: 15000 })
@@ -77,7 +80,7 @@ test('notes, splitter width, and browser url persist across relaunch', async () 
     const secondRun = await openWorkspace(electronApp, 'example.org')
 
     await expect(secondRun.notesPage.getByRole('textbox', { name: /notes editor/i })).toHaveValue('Persist this note')
-    await expect(secondRun.notesPage.getByRole('textbox', { name: /browser url/i })).toHaveValue('https://example.org/')
+    await expect(secondRun.browserChromePage.getByRole('textbox', { name: /browser url/i })).toHaveValue('https://example.org/')
     await expect.poll(async () => secondRun.notesPage.evaluate(() => window.innerWidth)).toBe(savedWidth)
     await expect.poll(async () => secondRun.browserPage.url(), { timeout: 15000 }).toContain('https://example.org/')
   } finally {

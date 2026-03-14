@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import type { WorkspaceApi } from '../../../types'
 import type { WorkspaceSnapshot } from '../../../shared/types/workspace'
+import type { WorkspaceApi } from '../../../types'
 import { App } from './App'
 
 function createApi(snapshot: WorkspaceSnapshot): WorkspaceApi {
@@ -16,7 +16,7 @@ function createApi(snapshot: WorkspaceSnapshot): WorkspaceApi {
 }
 
 describe('Notes App', () => {
-  it('loads and renders saved notes and browser url', async () => {
+  it('loads and renders saved notes without browser controls', async () => {
     const api = createApi({
       notes: 'Saved note',
       notesWidth: 420,
@@ -26,7 +26,8 @@ describe('Notes App', () => {
     render(<App api={api} />)
 
     expect(await screen.findByRole('textbox', { name: /notes editor/i })).toHaveValue('Saved note')
-    expect(screen.getByRole('textbox', { name: /browser url/i })).toHaveValue('https://example.com')
+    expect(screen.queryByRole('textbox', { name: /browser url/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^go$/i })).not.toBeInTheDocument()
   })
 
   it('saves note changes as the user types', async () => {
@@ -44,22 +45,5 @@ describe('Notes App', () => {
     await waitFor(() => {
       expect(api.saveNotes).toHaveBeenLastCalledWith('Draft')
     })
-  })
-
-  it('navigates the browser when the go button is pressed', async () => {
-    const user = userEvent.setup()
-    const api = createApi({
-      notes: '',
-      notesWidth: 420,
-      browserUrl: 'https://example.com',
-    })
-
-    render(<App api={api} />)
-    const urlInput = await screen.findByRole('textbox', { name: /browser url/i })
-    await user.clear(urlInput)
-    await user.type(urlInput, 'https://example.org/docs')
-    await user.click(screen.getByRole('button', { name: /^go$/i }))
-
-    expect(api.setBrowserUrl).toHaveBeenCalledWith('https://example.org/docs')
   })
 })

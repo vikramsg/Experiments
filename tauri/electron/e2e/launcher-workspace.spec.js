@@ -6,8 +6,10 @@ const { _electron: electron, expect, test } = require('@playwright/test')
 
 async function launchApp(userDataDir) {
   return electron.launch({
-    args: ['.'],
-    cwd: path.resolve(__dirname, '..'),
+    executablePath: path.resolve(
+      __dirname,
+      '../out/electron-workspace-darwin-arm64/electron-workspace.app/Contents/MacOS/electron-workspace',
+    ),
     env: {
       ...process.env,
       ELECTRON_USER_DATA_DIR: userDataDir,
@@ -39,10 +41,14 @@ test('launcher opens the split workspace', async () => {
 
     const notesPage = await waitForPageByUrlPart(electronApp, 'notes.html')
     const splitterPage = await waitForPageByUrlPart(electronApp, 'splitter.html')
+    const browserChromePage = await waitForPageByUrlPart(electronApp, 'browser-chrome.html')
     const browserPage = await waitForPageByUrlPart(electronApp, 'example.com')
 
     await expect(notesPage.getByRole('textbox', { name: /notes editor/i })).toBeVisible()
+    await expect(notesPage.getByRole('textbox', { name: /browser url/i })).toHaveCount(0)
     await expect(splitterPage.getByRole('separator', { name: /resize panes/i })).toBeVisible()
+    await expect(browserChromePage.getByRole('textbox', { name: /browser url/i })).toBeVisible()
+    await expect(browserChromePage.getByRole('button', { name: /^go$/i })).toBeVisible()
     await expect
       .poll(async () => browserPage.url(), { timeout: 15000 })
       .toContain('https://example.com')
