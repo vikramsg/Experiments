@@ -3,3 +3,4 @@
 3. Move to different repo
 4. Log file which is always available with browser and opencode etc logs if if start `just dev --debug`
 5. No imports like ../../
+6. No splitter next to opencode
