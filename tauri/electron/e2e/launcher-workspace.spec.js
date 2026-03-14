@@ -37,6 +37,7 @@ test('launcher opens the split workspace', async () => {
     const launcher = await electronApp.firstWindow()
 
     await expect(launcher.getByRole('heading', { name: /choose an app/i })).toBeVisible()
+    await expect(launcher.getByRole('button', { name: /launch opencode/i })).toBeVisible()
     await launcher.getByRole('button', { name: /launch browser \+ notes/i }).click()
 
     const notesPage = await waitForPageByUrlPart(electronApp, 'notes.html')
