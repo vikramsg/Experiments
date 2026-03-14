@@ -1,12 +1,29 @@
 # Electron Architecture
 
-This document describes the implemented feature-first, process-aware structure for the Electron workspace app, including the browser-owned renderer surface in the right split and the main-process synchronization that keeps local browser controls aligned with the remote page.
+This document describes the implemented feature-first, process-aware structure for the Electron workspace app, including the shallow root boundary files that keep contracts obvious and the main-process synchronization that keeps local browser controls aligned with the remote page.
+
+## Code Organization
+
+- `src/app/` is the composition layer.
+  - It may import feature entrypoints and root boundary files.
+  - It should not absorb feature business logic.
+- `src/features/` contains isolated business features.
+  - Features may import their own files.
+  - Features may import the shallow root boundary files.
+  - Features must not import other features directly.
+- Root `src/*.ts` boundary files exist for cross-cutting contracts that are truly application-wide:
+  - `src/ipc.ts`
+  - `src/workspace-contract.ts`
+  - `src/workspace-model.ts`
+  - `src/test-setup.ts`
+- `src/types.d.ts` is ambient-only and exists to declare preload-exposed globals.
+- `src/features/workspace/shared/` is still valid because it is scoped to the workspace feature and does not act as a project-wide runtime bucket.
 
 ## File Structure
 
 ```text
 electron/
-|-- README.md                               # Project overview, commands, and verification guide
+|-- README.md                               # Project overview, commands, and code-organization guide
 |-- Justfile                                # Local command aliases for development and verification
 |-- package.json                            # npm scripts and dependency definitions
 |-- forge.config.ts                         # Electron Forge packaging and Vite plugin wiring
@@ -37,10 +54,10 @@ electron/
     |-- features/
     |   |-- browser/
     |   |   |-- main/
-    |   |   |   |-- browser-session.ts      # URL normalization and remote-content security rules
-    |   |   |   `-- browser-session.test.ts # Tests for browser security/session behavior
+    |   |   |   |-- browser-session.ts      # URL normalization, browser-state reading, security rules
+    |   |   |   `-- browser-session.test.ts # Browser main-process tests
     |   |   `-- renderer/
-    |   |       |-- App.tsx                 # Right-side local back/forward controls, URL bar, and Go action
+    |   |       |-- App.tsx                 # Right-side local arrow controls, URL bar, and Go action
     |   |       |-- App.test.tsx            # Browser chrome renderer tests
     |   |       `-- main.tsx                # Browser chrome React entrypoint
     |   |-- launcher/
@@ -54,7 +71,7 @@ electron/
     |   |   |   `-- NoteStore.test.ts       # NoteStore tests
     |   |   `-- renderer/
     |   |       |-- App.tsx                 # Notes editor UI only
-    |   |       |-- App.test.tsx            # Notes renderer tests after URL removal
+    |   |       |-- App.test.tsx            # Notes renderer tests
     |   |       `-- main.tsx                # Notes React entrypoint
     |   |-- splitter/
     |   |   `-- renderer/
@@ -69,31 +86,58 @@ electron/
     |       `-- shared/
     |           |-- split-layout.ts         # Pure width math for the split workspace
     |           `-- split-layout.test.ts    # Layout math tests
-    |-- shared/
-    |   |-- ipc/
-    |   |   `-- channels.ts                 # Shared IPC channel names
-    |   |-- test/
-    |   |   `-- setup.ts                    # Vitest setup shared across renderer tests
-    |   `-- types/
-    |       `-- workspace.ts                # Shared workspace snapshot types and defaults
-    |-- types.d.ts                          # Global window.launcher and window.workspace typings
-    `-- vite-env.d.ts                       # Vite environment types
+    |-- ipc.ts                              # Root IPC transport boundary
+    |-- test-setup.ts                       # Root Vitest setup boundary
+    |-- types.d.ts                          # Ambient window.launcher/window.workspace typings only
+    |-- vite-env.d.ts                       # Vite environment types
+    |-- workspace-contract.ts               # Root renderer-facing workspace contract
+    `-- workspace-model.ts                  # Root workspace snapshot model and persistence helpers
 |-- e2e/                                    # Playwright Electron end-to-end tests
+```
+
+## Boundary Rule
+
+```text
+Allowed
+=======
+
+src/app/main/create-workspace-window.ts
+  -> ../../features/browser/...
+  -> ../../features/notes/...
+  -> ../../features/workspace/...
+  -> ../../ipc
+  -> ../../workspace-model
+
+src/features/browser/renderer/App.tsx
+  -> ../../../workspace-contract
+  -> ../../../workspace-model
+  -> ./local-files
+```
+
+```text
+Forbidden
+=========
+
+src/features/browser/renderer/App.tsx
+  -> ../../../features/notes/...
+  -> ../../../features/workspace/...
+
+src/features/notes/renderer/App.tsx
+  -> ../../../features/browser/...
 ```
 
 ## Responsibility Map
 
-- `src/app/main/create-workspace-window.ts` owns composing the four sibling views, registering the workspace bundle early, loading the local/remote surfaces asynchronously, and publishing live browser navigation updates from the remote `webContents`.
-- `src/features/workspace/main/WorkspaceController.ts` is the layout authority for:
-  - notes view
-  - splitter view
-  - browser chrome view
-  - browser content view
+- `src/ipc.ts` owns IPC channel names only.
+- `src/workspace-contract.ts` owns the renderer-facing workspace API contract shared through preload.
+- `src/workspace-model.ts` owns the canonical workspace snapshot model and the durable-vs-live state split.
+- `src/test-setup.ts` owns shared Vitest setup only.
+- `src/app/main/create-workspace-window.ts` owns composing the four sibling views, loading local and remote surfaces, and wiring remote browser navigation back into workspace state.
+- `src/features/workspace/main/WorkspaceController.ts` is the layout authority and the publisher of workspace snapshots.
 - `src/features/browser/main/browser-session.ts` owns URL normalization, browser navigation-state reading, and remote-browser security policy.
-- `src/features/browser/renderer/` owns browser-specific local UI only, including the back/forward controls and synchronized URL field.
+- `src/features/browser/renderer/` owns browser-specific local UI only.
 - `src/features/notes/renderer/` owns note-taking UI only.
-- `src/features/notes/main/NoteStore.ts` persists notes, browser URL, and splitter width into the workspace snapshot while leaving history availability as live-only browser state.
-- `src/shared/types/workspace.ts` defines the shared state contract passed across process boundaries.
+- `src/features/notes/main/NoteStore.ts` persists only durable workspace fields, while browser history availability remains live-only state derived from `webContents`.
 
 ## Runtime Overview
 
@@ -162,6 +206,9 @@ Browser chrome renderer
    |
    | window.workspace.setBrowserUrl(url) / goBack() / goForward()
    v
+src/workspace-contract.ts
+   |
+   v
 src/app/preload/workspace.ts
    |
    v
@@ -195,6 +242,8 @@ splitter drag ------------------------------+|   |
                                             ||   |
                                             vv   v
                                   WorkspaceController snapshot
+                                            |
+                                            +--> toPersistedWorkspaceSnapshot(...)
                                             |
                                             v
                                   NoteStore.save(snapshot)

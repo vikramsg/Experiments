@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-import { IPC_CHANNELS } from '../../shared/ipc/channels'
-import type { WorkspaceSnapshot } from '../../shared/types/workspace'
+import { IPC_CHANNELS } from '../../ipc'
+import type { WorkspaceSnapshot } from '../../workspace-model'
 
 contextBridge.exposeInMainWorld('workspace', {
   loadState: () => ipcRenderer.invoke(IPC_CHANNELS.workspaceGetState) as Promise<WorkspaceSnapshot>,

@@ -1,4 +1,5 @@
 import { applyBrowserSecurityPolicy, normalizeUrl, readBrowserNavigationState, subscribeToBrowserNavigation } from './browser-session'
+import type { WorkspaceSnapshot } from '../../../workspace-model'
 
 describe('browser-session', () => {
   it('normalizes hostnames to https URLs', () => {
@@ -44,7 +45,7 @@ describe('browser-session', () => {
       browserUrl: 'https://example.org/docs',
       canGoBack: true,
       canGoForward: false,
-    })
+    } satisfies Pick<WorkspaceSnapshot, 'browserUrl' | 'canGoBack' | 'canGoForward'>)
   })
 
   it('subscribes to browser navigation events and publishes fresh browser state', () => {
@@ -74,7 +75,7 @@ describe('browser-session', () => {
       browserUrl: 'https://www.iana.org/help/example-domains',
       canGoBack: true,
       canGoForward: false,
-    })
+    } satisfies Pick<WorkspaceSnapshot, 'browserUrl' | 'canGoBack' | 'canGoForward'>)
     expect(webContents.on).toHaveBeenCalledWith('did-navigate', expect.any(Function))
     expect(webContents.on).toHaveBeenCalledWith('did-navigate-in-page', expect.any(Function))
   })

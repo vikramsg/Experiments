@@ -1,14 +1,16 @@
+import type { WorkspaceSnapshot } from '../../../workspace-model'
+
 import { WorkspaceController, type Rectangle, type ViewLike, type WorkspaceWindowLike } from './WorkspaceController'
 
 function createWindowMock() {
   const listeners: Partial<Record<'resize' | 'closed', Array<() => void>>> = {}
-  const sends: Array<{ channel: string; payload: unknown }> = []
+  const sends: Array<{ channel: string; payload: WorkspaceSnapshot }> = []
 
   const window: WorkspaceWindowLike = {
     getContentBounds: () => ({ width: 1200, height: 800 }),
     on: (event, listener) => {
       listeners[event] ??= []
-      listeners[event]!.push(listener)
+      listeners[event].push(listener)
     },
     webContents: {
       send: (channel, payload) => {

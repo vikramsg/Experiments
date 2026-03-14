@@ -9,7 +9,7 @@ import {
 } from '../../features/browser/main/browser-session'
 import { NoteStore } from '../../features/notes/main/NoteStore'
 import { WorkspaceController } from '../../features/workspace/main/WorkspaceController'
-import { IPC_CHANNELS } from '../../shared/ipc/channels'
+import { IPC_CHANNELS } from '../../ipc'
 
 const BROWSER_PARTITION = 'persist:workspace-browser'
 

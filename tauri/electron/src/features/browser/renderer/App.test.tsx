@@ -1,12 +1,12 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import type { WorkspaceSnapshot } from '../../../shared/types/workspace'
-import type { WorkspaceApi } from '../../../types'
+import type { WorkspaceApi } from '../../../workspace-contract'
+import type { WorkspaceSnapshot } from '../../../workspace-model'
 import { App } from './App'
 
 function createApi(snapshot: WorkspaceSnapshot): WorkspaceApi {
-  return {
+  const api: WorkspaceApi = {
     loadState: vi.fn().mockResolvedValue(snapshot),
     saveNotes: vi.fn().mockResolvedValue(undefined),
     setBrowserUrl: vi.fn().mockResolvedValue(undefined),
@@ -14,7 +14,9 @@ function createApi(snapshot: WorkspaceSnapshot): WorkspaceApi {
     goForward: vi.fn().mockResolvedValue(undefined),
     adjustSplitter: vi.fn().mockResolvedValue(undefined),
     onStateChange: vi.fn().mockReturnValue(() => undefined),
-  } as WorkspaceApi
+  }
+
+  return api
 }
 
 describe('Browser Chrome App', () => {
@@ -26,12 +28,16 @@ describe('Browser Chrome App', () => {
       browserUrl: 'https://example.com',
       canGoBack: false,
       canGoForward: false,
-    } as WorkspaceSnapshot)
+    })
 
     render(<App api={api} />)
 
     const input = await screen.findByRole('textbox', { name: /browser url/i })
     expect(input).toHaveValue('https://example.com')
+    expect(screen.getByRole('button', { name: /back/i })).toHaveTextContent('←')
+    expect(screen.getByRole('button', { name: /forward/i })).toHaveTextContent('→')
+    expect(screen.queryByText(/^Back$/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/^Forward$/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /back/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /forward/i })).toBeDisabled()
 
@@ -50,7 +56,7 @@ describe('Browser Chrome App', () => {
       browserUrl: 'https://example.com',
       canGoBack: true,
       canGoForward: true,
-    } as WorkspaceSnapshot)
+    })
 
     render(<App api={api} />)
 
@@ -68,7 +74,7 @@ describe('Browser Chrome App', () => {
       browserUrl: 'https://example.com',
       canGoBack: false,
       canGoForward: false,
-    } as WorkspaceSnapshot)
+    })
 
     let listener: ((snapshot: WorkspaceSnapshot) => void) | undefined
     vi.mocked(api.onStateChange).mockImplementation((nextListener) => {
@@ -87,7 +93,7 @@ describe('Browser Chrome App', () => {
         browserUrl: 'https://example.net/app',
         canGoBack: true,
         canGoForward: false,
-      } as WorkspaceSnapshot)
+      })
     })
 
     expect(input).toHaveValue('https://example.net/app')
