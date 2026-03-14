@@ -103,8 +103,8 @@ export function App({ api }: OpenCodeAppProps) {
         <div style={styles.heroCopy}>
           <p style={styles.kicker}>OpenCode</p>
           <h1 style={styles.title}>OpenCode</h1>
-          <p style={styles.lede}>Read-only repo chat with a local OpenCode server behind a narrow Electron bridge.</p>
-          <p style={styles.helper}>Ask what OpenCode sees in the browser after you open the Browser + Notes workspace.</p>
+          <p style={styles.lede}>Read-only repo chat with a local OpenCode server beside a live browser surface.</p>
+          <p style={styles.helper}>Ask what OpenCode sees in the browser on the right whenever you want a screenshot-backed explanation.</p>
         </div>
         <div style={styles.scopeCard}>
           <p style={styles.scopeLabel}>Repo scope</p>
@@ -132,7 +132,7 @@ export function App({ api }: OpenCodeAppProps) {
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
               onKeyDown={handlePromptKeyDown}
-              placeholder="Ask about architecture, files, behavior, where something lives in this repo, or what OpenCode sees in the browser."
+              placeholder="Ask about architecture, files, behavior, what OpenCode sees in the browser, or where something lives in this repo."
             />
           </label>
           <button style={styles.sendButton} type="submit" disabled={isBusy}>

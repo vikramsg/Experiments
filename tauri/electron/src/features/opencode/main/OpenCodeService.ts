@@ -2,7 +2,7 @@ import { spawn as nodeSpawn, type ChildProcess } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 
-import type { BrowserContextSnapshot } from '../../browser/main/browser-context'
+import type { BrowserContextSnapshot } from '../../../browser-model'
 import { createDefaultOpenCodeState, type OpenCodeMessage, type OpenCodeState } from '../../../opencode-model'
 
 type FetchLike = typeof fetch
@@ -288,7 +288,7 @@ export class OpenCodeService {
   private async buildMockBrowserReply(): Promise<string> {
     const browserContext = await this.input.browserContextProvider?.().catch(() => null)
     if (!browserContext) {
-      return 'I can see the browser workspace is not open right now, so there is no live page or screenshot to inspect.'
+      return 'I cannot inspect the browser on the right right now because its live page context is unavailable.'
     }
 
     return (

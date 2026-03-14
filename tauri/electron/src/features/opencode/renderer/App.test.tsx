@@ -21,7 +21,7 @@ describe('OpenCode App', () => {
     render(<App api={api} />)
 
     expect(await screen.findByRole('heading', { name: /opencode/i })).toBeVisible()
-    expect(screen.getByText(/local opencode server behind a narrow electron bridge/i)).toBeVisible()
+    expect(screen.getByText(/local opencode server beside a live browser surface/i)).toBeVisible()
     expect(screen.getByText(/repo scope/i)).toBeVisible()
     expect(screen.getByDisplayValue('')).toBeVisible()
     expect(screen.getAllByText(/ask what opencode sees in the browser/i).length).toBeGreaterThan(0)

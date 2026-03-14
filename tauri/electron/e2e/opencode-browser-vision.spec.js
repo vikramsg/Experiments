@@ -40,16 +40,15 @@ test('OpenCode can explain what it sees in the browser', async () => {
     electronApp = await launchApp(userDataDir)
     const launcher = await electronApp.firstWindow()
 
-    await launcher.getByRole('button', { name: /launch browser \+ notes/i }).click()
+    await launcher.getByRole('button', { name: /launch opencode/i }).click()
+    const openCodePage = await waitForPageByUrlPart(electronApp, 'opencode.html')
     const browserChromePage = await waitForPageByUrlPart(electronApp, 'browser-chrome.html')
     const browserPage = await waitForPageByUrlPart(electronApp, 'example.com')
 
     await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('https://example.com')
-    await browserChromePage.getByRole('textbox', { name: /browser url/i }).fill('https://example.com')
+    await browserChromePage.getByRole('textbox', { name: /browser url/i }).fill('https://example.com/docs')
     await browserChromePage.getByRole('button', { name: /^go$/i }).click()
-
-    await launcher.getByRole('button', { name: /launch opencode/i }).click()
-    const openCodePage = await waitForPageByUrlPart(electronApp, 'opencode.html')
+    await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('https://example.com/docs')
 
     const prompt = openCodePage.getByRole('textbox', { name: /ask opencode/i })
     await prompt.fill('What do you see in the browser?')
@@ -57,7 +56,7 @@ test('OpenCode can explain what it sees in the browser', async () => {
 
     await expect(openCodePage.getByText(/i can see the browser is currently at/i)).toBeVisible()
     await expect(openCodePage.getByText(/example.com/i)).toBeVisible()
-    await expect(openCodePage.getByText(/screenshot/i)).toBeVisible()
+    await expect(openCodePage.getByText(/based on that screenshot/i)).toBeVisible()
   } finally {
     await electronApp?.close()
     await rm(userDataDir, { recursive: true, force: true })

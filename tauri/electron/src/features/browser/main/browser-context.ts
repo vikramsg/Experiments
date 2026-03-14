@@ -1,16 +1,5 @@
 import { normalizeUrl } from './browser-session'
-
-export type BrowserScreenshot = {
-  mimeType: 'image/png'
-  data: string
-  width: number
-  height: number
-}
-
-export type BrowserContextSnapshot = {
-  url: string
-  screenshot: BrowserScreenshot
-}
+import type { BrowserContextSnapshot } from '../../../browser-model'
 
 export type BrowserContextWebContentsLike = {
   getURL: () => string

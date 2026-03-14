@@ -2,23 +2,33 @@ import path from 'node:path'
 
 import { BaseWindow, WebContentsView } from 'electron'
 
-import type { BrowserContextSnapshot } from '../../features/browser/main/browser-context'
+import { getBrowserContextSnapshot } from '../../features/browser/main/browser-context'
+import { BrowserMcpServer } from '../../features/browser/main/BrowserMcpServer'
 import { OpenCodeService } from '../../features/opencode/main/OpenCodeService'
 import { IPC_CHANNELS } from '../../ipc'
+import { BROWSER_CHROME_HEIGHT, createBrowserHost, type BrowserHost } from './browser-host'
+
+const OPEN_CODE_LEFT_WIDTH = 520
+const MIN_OPEN_CODE_WIDTH = 420
+const MIN_BROWSER_WIDTH = 420
+const BROWSER_PARTITION = 'persist:opencode-browser'
 
 export type OpenCodeBundle = {
   window: BaseWindow
-  view: WebContentsView
+  openCodeView: WebContentsView
+  browserChromeView: WebContentsView
+  browserView: WebContentsView
+  browserHost: BrowserHost
   service: OpenCodeService
 }
 
 export type OpenCodeWindowOptions = {
   repoRoot: string
-  browserMcp?: {
-    url: string
-    headers: Record<string, string>
-  }
-  browserContextProvider?: () => Promise<BrowserContextSnapshot | null>
+}
+
+function clampOpenCodeWidth(windowWidth: number) {
+  const maxLeftWidth = Math.max(MIN_OPEN_CODE_WIDTH, windowWidth - MIN_BROWSER_WIDTH)
+  return Math.min(Math.max(OPEN_CODE_LEFT_WIDTH, MIN_OPEN_CODE_WIDTH), maxLeftWidth)
 }
 
 function getOpenCodeEntryUrl() {
@@ -41,13 +51,13 @@ function loadOpenCodePage(view: WebContentsView) {
 
 export async function createOpenCodeWindow(input: OpenCodeWindowOptions): Promise<OpenCodeBundle> {
   const window = new BaseWindow({
-    width: 1320,
-    height: 900,
-    title: 'OpenCode',
+    width: 1440,
+    height: 920,
+    title: 'OpenCode + Browser',
     backgroundColor: '#efe4cf',
   })
 
-  const view = new WebContentsView({
+  const openCodeView = new WebContentsView({
     webPreferences: {
       preload: path.join(__dirname, 'opencode.js'),
       sandbox: true,
@@ -56,48 +66,84 @@ export async function createOpenCodeWindow(input: OpenCodeWindowOptions): Promis
     },
   })
 
+  const browserHost = await createBrowserHost({
+    partition: BROWSER_PARTITION,
+    initialUrl: 'https://example.com',
+  })
+
+  const browserMcpServer = new BrowserMcpServer({
+    getBrowserContext: async () => await getBrowserContextSnapshot(browserHost.browserView.webContents),
+  })
+  const browserMcp = await browserMcpServer.start()
+
   const service = new OpenCodeService({
     repoRoot: input.repoRoot,
-    browserMcp: input.browserMcp,
-    browserContextProvider: input.browserContextProvider,
+    browserMcp,
+    browserContextProvider: async () => await getBrowserContextSnapshot(browserHost.browserView.webContents),
   })
 
   const applyBounds = () => {
     const bounds = window.getContentBounds()
-    view.setBounds({
+    const openCodeWidth = clampOpenCodeWidth(bounds.width)
+    const rightPaneX = openCodeWidth
+    const rightPaneWidth = Math.max(0, bounds.width - openCodeWidth)
+    const chromeHeight = Math.min(BROWSER_CHROME_HEIGHT, bounds.height)
+
+    openCodeView.setBounds({
       x: 0,
       y: 0,
-      width: bounds.width,
+      width: openCodeWidth,
       height: bounds.height,
+    })
+
+    browserHost.browserChromeView.setBounds({
+      x: rightPaneX,
+      y: 0,
+      width: rightPaneWidth,
+      height: chromeHeight,
+    })
+
+    browserHost.browserView.setBounds({
+      x: rightPaneX,
+      y: chromeHeight,
+      width: rightPaneWidth,
+      height: Math.max(0, bounds.height - chromeHeight),
     })
   }
 
   const unsubscribe = service.subscribe((state) => {
-    view.webContents.send(IPC_CHANNELS.opencodeState, state)
+    openCodeView.webContents.send(IPC_CHANNELS.opencodeState, state)
   })
 
-  window.contentView.addChildView(view)
+  window.contentView.addChildView(openCodeView)
+  window.contentView.addChildView(browserHost.browserChromeView)
+  window.contentView.addChildView(browserHost.browserView)
   applyBounds()
 
   window.on('resize', applyBounds)
   window.on('closed', () => {
     unsubscribe()
+    void browserMcpServer.stop()
     void service.dispose()
-    view.webContents.close()
+    browserHost.close()
+    openCodeView.webContents.close()
   })
 
-  view.webContents.once('did-finish-load', () => {
-    view.webContents.send(IPC_CHANNELS.opencodeState, service.getState())
+  openCodeView.webContents.once('did-finish-load', () => {
+    openCodeView.webContents.send(IPC_CHANNELS.opencodeState, service.getState())
     void service.initialize().catch(() => {
-      view.webContents.send(IPC_CHANNELS.opencodeState, service.getState())
+      openCodeView.webContents.send(IPC_CHANNELS.opencodeState, service.getState())
     })
   })
 
-  await loadOpenCodePage(view)
+  await loadOpenCodePage(openCodeView)
 
   return {
     window,
-    view,
+    openCodeView,
+    browserChromeView: browserHost.browserChromeView,
+    browserView: browserHost.browserView,
+    browserHost,
     service,
   }
 }

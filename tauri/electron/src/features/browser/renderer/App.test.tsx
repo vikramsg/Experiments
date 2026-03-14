@@ -1,18 +1,16 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import type { WorkspaceApi } from '../../../workspace-contract'
-import type { WorkspaceSnapshot } from '../../../workspace-model'
+import type { BrowserApi } from '../../../browser-contract'
+import type { BrowserSnapshot } from '../../../browser-model'
 import { App } from './App'
 
-function createApi(snapshot: WorkspaceSnapshot): WorkspaceApi {
-  const api: WorkspaceApi = {
+function createApi(snapshot: BrowserSnapshot): BrowserApi {
+  const api: BrowserApi = {
     loadState: vi.fn().mockResolvedValue(snapshot),
-    saveNotes: vi.fn().mockResolvedValue(undefined),
     setBrowserUrl: vi.fn().mockResolvedValue(undefined),
     goBack: vi.fn().mockResolvedValue(undefined),
     goForward: vi.fn().mockResolvedValue(undefined),
-    adjustSplitter: vi.fn().mockResolvedValue(undefined),
     onStateChange: vi.fn().mockReturnValue(() => undefined),
   }
 
@@ -23,8 +21,6 @@ describe('Browser Chrome App', () => {
   it('loads the saved browser url and navigates on go', async () => {
     const user = userEvent.setup()
     const api = createApi({
-      notes: 'Saved note',
-      notesWidth: 420,
       browserUrl: 'https://example.com',
       canGoBack: false,
       canGoForward: false,
@@ -51,8 +47,6 @@ describe('Browser Chrome App', () => {
   it('calls the back and forward browser actions', async () => {
     const user = userEvent.setup()
     const api = createApi({
-      notes: '',
-      notesWidth: 420,
       browserUrl: 'https://example.com',
       canGoBack: true,
       canGoForward: true,
@@ -69,14 +63,12 @@ describe('Browser Chrome App', () => {
 
   it('reacts to workspace state updates', async () => {
     const api = createApi({
-      notes: '',
-      notesWidth: 420,
       browserUrl: 'https://example.com',
       canGoBack: false,
       canGoForward: false,
     })
 
-    let listener: ((snapshot: WorkspaceSnapshot) => void) | undefined
+    let listener: ((snapshot: BrowserSnapshot) => void) | undefined
     vi.mocked(api.onStateChange).mockImplementation((nextListener) => {
       listener = nextListener
       return () => undefined
@@ -88,8 +80,6 @@ describe('Browser Chrome App', () => {
 
     act(() => {
       listener?.({
-        notes: '',
-        notesWidth: 420,
         browserUrl: 'https://example.net/app',
         canGoBack: true,
         canGoForward: false,

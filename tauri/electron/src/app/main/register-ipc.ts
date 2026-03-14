@@ -1,6 +1,7 @@
+import type { BrowserHost } from './browser-host'
 import { ipcMain } from 'electron'
 
-import { normalizeUrl } from '../../features/browser/main/browser-session'
+import { DEFAULT_BROWSER_SNAPSHOT } from '../../browser-model'
 import { createDefaultOpenCodeState } from '../../opencode-model'
 import { IPC_CHANNELS } from '../../ipc'
 import { DEFAULT_WORKSPACE_SNAPSHOT } from '../../workspace-model'
@@ -14,14 +15,41 @@ export function registerIpc(input: {
   getOpenCode: () => OpenCodeBundle | null
   requireWorkspace: () => WorkspaceBundle
   requireOpenCode: () => OpenCodeBundle
+  getBrowserHostForSender: (webContentsId: number) => BrowserHost | null
   openCodeRepoRoot: string
 }) {
+  const requireBrowserHost = (senderId: number) => {
+    const host = input.getBrowserHostForSender(senderId)
+    if (!host) {
+      throw new Error('Browser surface is not available for this renderer')
+    }
+
+    return host
+  }
+
   ipcMain.handle(IPC_CHANNELS.launcherOpenWorkspace, async () => {
     await input.createWorkspace()
   })
 
   ipcMain.handle(IPC_CHANNELS.launcherOpenOpenCode, async () => {
     await input.createOpenCode()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.browserGetState, async (event) => {
+    const host = input.getBrowserHostForSender(event.sender.id)
+    return host ? host.getSnapshot() : DEFAULT_BROWSER_SNAPSHOT
+  })
+
+  ipcMain.handle(IPC_CHANNELS.browserSetUrl, async (event, url: string) => {
+    await requireBrowserHost(event.sender.id).setBrowserUrl(url)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.browserGoBack, async (event) => {
+    requireBrowserHost(event.sender.id).goBack()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.browserGoForward, async (event) => {
+    requireBrowserHost(event.sender.id).goForward()
   })
 
   ipcMain.handle(IPC_CHANNELS.workspaceGetState, async () => {
@@ -33,34 +61,6 @@ export function registerIpc(input: {
     const workspace = input.requireWorkspace()
     workspace.controller.setNotes(notes)
     await workspace.store.save(workspace.controller.getSnapshot())
-  })
-
-  ipcMain.handle(IPC_CHANNELS.workspaceSetBrowserUrl, async (_event, url: string) => {
-    const workspace = input.requireWorkspace()
-    const normalized = normalizeUrl(url)
-    workspace.controller.setBrowserUrl(normalized)
-    await workspace.browserView.webContents.loadURL(normalized)
-    await workspace.store.save(workspace.controller.getSnapshot())
-  })
-
-  ipcMain.handle(IPC_CHANNELS.workspaceGoBack, async () => {
-    const workspace = input.requireWorkspace()
-
-    if (!workspace.browserView.webContents.canGoBack()) {
-      return
-    }
-
-    workspace.browserView.webContents.goBack()
-  })
-
-  ipcMain.handle(IPC_CHANNELS.workspaceGoForward, async () => {
-    const workspace = input.requireWorkspace()
-
-    if (!workspace.browserView.webContents.canGoForward()) {
-      return
-    }
-
-    workspace.browserView.webContents.goForward()
   })
 
   ipcMain.handle(IPC_CHANNELS.workspaceAdjustSplitter, async (_event, delta: number) => {

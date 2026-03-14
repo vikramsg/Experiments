@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 
-import type { WorkspaceApi } from '../../../workspace-contract'
-import type { WorkspaceSnapshot } from '../../../workspace-model'
+import type { BrowserApi } from '../../../browser-contract'
+import type { BrowserSnapshot } from '../../../browser-model'
 
 export type BrowserChromeAppProps = {
-  api: WorkspaceApi
+  api: BrowserApi
 }
 
 export function App({ api }: BrowserChromeAppProps) {
@@ -12,7 +12,7 @@ export function App({ api }: BrowserChromeAppProps) {
   const [canGoBack, setCanGoBack] = useState(false)
   const [canGoForward, setCanGoForward] = useState(false)
 
-  const applySnapshot = useCallback((snapshot: WorkspaceSnapshot) => {
+  const applySnapshot = useCallback((snapshot: BrowserSnapshot) => {
     setBrowserUrl(snapshot.browserUrl)
     setCanGoBack(snapshot.canGoBack)
     setCanGoForward(snapshot.canGoForward)
@@ -31,7 +31,7 @@ export function App({ api }: BrowserChromeAppProps) {
         applySnapshot(snapshot)
       })
       .catch(() => {
-        // Workspace state can arrive through the subscription path during startup.
+        // Browser state can arrive through the subscription path during startup.
       })
 
     const unsubscribe = api.onStateChange((snapshot) => {

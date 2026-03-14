@@ -32,7 +32,7 @@ export function createDefaultOpenCodeState(repoRoot: string): OpenCodeState {
         id: 'system-welcome',
         role: 'system',
         text:
-          'Read-only repo chat is ready. Ask about files, architecture, behavior in this repo, or ask what OpenCode sees in the browser.',
+          'Read-only repo chat is ready. Ask about files, architecture, behavior in this repo, or ask what OpenCode sees in the browser on the right.',
       },
     ],
     error: null,

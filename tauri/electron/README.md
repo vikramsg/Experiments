@@ -3,7 +3,7 @@
 Electron app with a launcher window that opens two local apps:
 
 - `Browser + Notes` for the split notes/browser workspace
-- `OpenCode` for read-only chat against this repo through a local OpenCode server
+- `OpenCode` for read-only chat against this repo with a browser pane on the right
 
 ## Requirements
 
@@ -48,7 +48,13 @@ just dev
   - `opencode`
 - `app/*` may compose feature entrypoints and root boundary files.
 - Features should depend on themselves plus shallow root runtime boundaries under `src/`; they should not import other features directly.
+- Services, adapters, and transports belong to the domain they expose.
+  - Browser screenshot capture and browser MCP services belong to the browser or app-main side.
+  - OpenCode process lifecycle belongs to OpenCode.
+  - Cross-domain wiring belongs in `app/*`, not in feature-to-feature imports.
 - Shallow root boundary files own cross-cutting runtime contracts and models:
+  - `src/browser-contract.ts`
+  - `src/browser-model.ts`
   - `src/ipc.ts`
   - `src/workspace-contract.ts`
   - `src/workspace-model.ts`
@@ -65,14 +71,17 @@ just dev
   - splitter
   - browser chrome
   - browser content
+- OpenCode uses its own `BaseWindow` with sibling `WebContentsView`s for:
+  - OpenCode chat on the left
+  - browser chrome on the right top
+  - browser content on the right bottom
 - Main-process layout ownership lives in `src/features/workspace/main/WorkspaceController.ts`.
 - Browser chrome actions in `src/features/browser/renderer/App.tsx` use arrow buttons with accessible back/forward names, plus a synchronized URL field.
 - Browser URL and history availability stay synchronized from the remote browser `webContents`, so the local chrome reflects link clicks, redirects, and in-page navigation.
 - Workspace startup registers the window bundle before renderer page loads finish, which prevents transient `workspace:get-state` errors during initialization.
 - Notes, browser URL, and splitter width are persisted in `app.getPath('userData')/workspace-state.json`, while browser history availability remains live-only state.
-- OpenCode uses its own `BaseWindow` with one local `WebContentsView` and a dedicated preload bridge on `window.opencode`.
 - The main-process `OpenCodeService` starts a local `opencode serve` process rooted at the `tauri/` repo scope, creates a chat session, and publishes renderer-facing state.
-- Electron main also hosts a localhost MCP server for browser inspection, so OpenCode can call a browser tool instead of relying on prompt-time screenshot injection.
+- Electron main also hosts a localhost browser MCP server in the browser domain, so OpenCode can call a browser tool instead of relying on prompt-time screenshot injection.
 - The first browser MCP tool captures the current browser URL and a fresh screenshot of the browser pane when the model needs to explain what it sees.
 - The OpenCode bridge is intentionally read-only for the repo scope:
   - reads, globbing, listing, and search are allowed

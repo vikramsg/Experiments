@@ -31,7 +31,7 @@ describe('BrowserMcpServer', () => {
       content: [
         expect.objectContaining({
           type: 'text',
-          text: expect.stringMatching(/browser workspace is not open/i),
+          text: expect.stringMatching(/browser surface for this window is not available/i),
         }),
       ],
     })

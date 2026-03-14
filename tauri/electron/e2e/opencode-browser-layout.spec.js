@@ -32,16 +32,14 @@ async function waitForPageByUrlPart(electronApp, urlPart) {
   })
 }
 
-test('launcher opens OpenCode with a browser on the right and the chat responds', async () => {
-  const userDataDir = await mkdtemp(path.join(tmpdir(), 'electron-e2e-opencode-'))
+test('OpenCode launcher opens a split OpenCode plus browser window', async () => {
+  const userDataDir = await mkdtemp(path.join(tmpdir(), 'electron-e2e-opencode-layout-'))
   let electronApp
 
   try {
     electronApp = await launchApp(userDataDir)
     const launcher = await electronApp.firstWindow()
 
-    await expect(launcher.getByRole('heading', { name: /choose an app/i })).toBeVisible()
-    await expect(launcher.getByRole('button', { name: /launch opencode/i })).toBeVisible()
     await launcher.getByRole('button', { name: /launch opencode/i }).click()
 
     const openCodePage = await waitForPageByUrlPart(electronApp, 'opencode.html')
@@ -49,31 +47,13 @@ test('launcher opens OpenCode with a browser on the right and the chat responds'
     const browserPage = await waitForPageByUrlPart(electronApp, 'example.com')
 
     await expect(openCodePage.getByRole('heading', { name: /opencode/i })).toBeVisible()
-    await expect(openCodePage.getByText(/local opencode server beside a live browser surface/i)).toBeVisible()
     await expect(browserChromePage.getByRole('textbox', { name: /browser url/i })).toBeVisible()
-    await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('https://example.com')
 
-    const prompt = openCodePage.getByRole('textbox', { name: /ask opencode/i })
-    await prompt.fill('Where does the launcher live?')
-    await prompt.press('Enter')
+    await browserChromePage.getByRole('textbox', { name: /browser url/i }).fill('https://example.org')
+    await browserChromePage.getByRole('button', { name: /^go$/i }).click()
 
-    await expect(openCodePage.getByText('Where does the launcher live?', { exact: true })).toBeVisible()
-    await expect(openCodePage.getByText(/mock opencode reply/i)).toBeVisible()
-    await expect(openCodePage.getByText(repoRoot, { exact: true })).toBeVisible()
-
-    await prompt.fill('Line one')
-    await prompt.press('Shift+Enter')
-    await expect(prompt).toHaveValue('Line one\n')
-    await prompt.fill('Overflow check')
-    await prompt.press('Enter')
-
-    for (let index = 0; index < 5; index += 1) {
-      await prompt.fill(`Prompt ${index}`)
-      await prompt.press('Enter')
-    }
-
-    await expect(openCodePage.getByRole('heading', { name: /opencode/i })).toBeVisible()
-    await expect(openCodePage.getByRole('button', { name: /send prompt/i })).toBeVisible()
+    await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('https://example.org')
+    await expect(openCodePage.getByRole('textbox', { name: /ask opencode/i })).toBeVisible()
   } finally {
     await electronApp?.close()
     await rm(userDataDir, { recursive: true, force: true })

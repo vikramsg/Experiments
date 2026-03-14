@@ -5,7 +5,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { z } from 'zod'
 
-import type { BrowserContextSnapshot } from '../../browser/main/browser-context'
+import type { BrowserContextSnapshot } from './browser-context'
 
 type CallToolResult = {
   content: Array<
@@ -14,7 +14,7 @@ type CallToolResult = {
   >
 }
 
-type BrowserMcpConnection = {
+export type BrowserMcpConnection = {
   url: string
   headers: Record<string, string>
 }
@@ -154,7 +154,7 @@ export class BrowserMcpServer {
           content: [
             {
               type: 'text',
-              text: 'The browser workspace is not open right now, so there is no live browser context to inspect.',
+              text: 'The browser surface for this window is not available right now, so there is no live browser context to inspect.',
             },
           ],
         }
