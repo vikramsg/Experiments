@@ -1,6 +1,6 @@
 # Electron Workspace
 
-Electron workspace app with a launcher window and a split workspace containing notes on the left, a draggable splitter in the middle, and a browser area on the right with a local URL bar above remote content.
+Electron workspace app with a launcher window and a split workspace containing notes on the left, a draggable splitter in the middle, and a browser area on the right with local back/forward controls plus a synchronized URL bar above remote content.
 
 ## Requirements
 
@@ -53,7 +53,8 @@ just dev
   - browser chrome
   - browser content
 - Main-process layout ownership lives in `src/features/workspace/main/WorkspaceController.ts`.
-- Browser URL updates are triggered from `src/features/browser/renderer/App.tsx` and applied in the main process.
+- Browser chrome actions in `src/features/browser/renderer/App.tsx` can navigate directly, go back, and go forward.
+- Browser URL and history availability stay synchronized from the remote browser `webContents`, so the local chrome reflects link clicks, redirects, and in-page navigation.
 - Workspace startup now registers the window bundle before renderer page loads finish, which prevents transient `workspace:get-state` errors during initialization.
 - Notes, browser URL, and splitter width are persisted in `app.getPath('userData')/workspace-state.json`.
 

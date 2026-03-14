@@ -61,6 +61,8 @@ describe('WorkspaceController', () => {
         notes: 'hello',
         notesWidth: 420,
         browserUrl: 'https://example.com',
+        canGoBack: false,
+        canGoForward: false,
       },
     )
 
@@ -74,6 +76,8 @@ describe('WorkspaceController', () => {
         notes: 'hello',
         notesWidth: 420,
         browserUrl: 'https://example.com',
+        canGoBack: false,
+        canGoForward: false,
       },
     })
   })
@@ -97,6 +101,8 @@ describe('WorkspaceController', () => {
         notes: '',
         notesWidth: 420,
         browserUrl: 'https://example.com',
+        canGoBack: false,
+        canGoForward: false,
       },
     )
 
@@ -128,6 +134,8 @@ describe('WorkspaceController', () => {
         notes: '',
         notesWidth: 420,
         browserUrl: 'https://example.com',
+        canGoBack: false,
+        canGoForward: false,
       },
     )
 
@@ -161,6 +169,8 @@ describe('WorkspaceController', () => {
         notes: '',
         notesWidth: 420,
         browserUrl: 'https://example.com',
+        canGoBack: false,
+        canGoForward: false,
       },
     )
 
@@ -170,5 +180,54 @@ describe('WorkspaceController', () => {
     expect(splitterView.view.webContents.close).toHaveBeenCalledTimes(1)
     expect(browserChromeView.view.webContents.close).toHaveBeenCalledTimes(1)
     expect(browserView.view.webContents.close).toHaveBeenCalledTimes(1)
+  })
+
+  it('publishes live browser navigation state updates', () => {
+    const notesView = createViewMock()
+    const splitterView = createViewMock()
+    const browserChromeView = createViewMock()
+    const browserView = createViewMock()
+
+    const windowMock = createWindowMock()
+    const controller = new WorkspaceController(
+      windowMock.window,
+      {
+        notesView: notesView.view,
+        splitterView: splitterView.view,
+        browserChromeView: browserChromeView.view,
+        browserView: browserView.view,
+      },
+      {
+        notes: '',
+        notesWidth: 420,
+        browserUrl: 'https://example.com',
+        canGoBack: false,
+        canGoForward: false,
+      },
+    )
+
+    controller.setBrowserNavigationState({
+      browserUrl: 'https://www.iana.org/help/example-domains',
+      canGoBack: true,
+      canGoForward: false,
+    })
+
+    expect(controller.getSnapshot()).toEqual({
+      notes: '',
+      notesWidth: 420,
+      browserUrl: 'https://www.iana.org/help/example-domains',
+      canGoBack: true,
+      canGoForward: false,
+    })
+    expect(windowMock.sends.at(-1)).toEqual({
+      channel: 'workspace:state',
+      payload: {
+        notes: '',
+        notesWidth: 420,
+        browserUrl: 'https://www.iana.org/help/example-domains',
+        canGoBack: true,
+        canGoForward: false,
+      },
+    })
   })
 })

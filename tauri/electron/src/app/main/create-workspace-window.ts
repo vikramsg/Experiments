@@ -2,7 +2,11 @@ import path from 'node:path'
 
 import { BaseWindow, WebContentsView, session } from 'electron'
 
-import { applyBrowserSecurityPolicy, normalizeUrl } from '../../features/browser/main/browser-session'
+import {
+  applyBrowserSecurityPolicy,
+  normalizeUrl,
+  subscribeToBrowserNavigation,
+} from '../../features/browser/main/browser-session'
 import { NoteStore } from '../../features/notes/main/NoteStore'
 import { WorkspaceController } from '../../features/workspace/main/WorkspaceController'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
@@ -120,6 +124,16 @@ export async function createWorkspaceWindow(userDataPath: string): Promise<Works
       browserUrl: normalizeUrl(snapshot.browserUrl),
     },
   )
+
+  subscribeToBrowserNavigation({
+    webContents: browserView.webContents,
+    onChange: (browserState) => {
+      // The remote page can navigate without any renderer IPC, so the main
+      // process keeps the browser chrome state authoritative from webContents.
+      controller.setBrowserNavigationState(browserState)
+      void store.save(controller.getSnapshot())
+    },
+  })
 
   notesView.webContents.once('did-finish-load', () => {
     notesView.webContents.send(IPC_CHANNELS.workspaceState, controller.getSnapshot())

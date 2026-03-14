@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('workspace', {
   loadState: () => ipcRenderer.invoke(IPC_CHANNELS.workspaceGetState) as Promise<WorkspaceSnapshot>,
   saveNotes: (notes: string) => ipcRenderer.invoke(IPC_CHANNELS.workspaceSaveNotes, notes) as Promise<void>,
   setBrowserUrl: (url: string) => ipcRenderer.invoke(IPC_CHANNELS.workspaceSetBrowserUrl, url) as Promise<void>,
+  goBack: () => ipcRenderer.invoke(IPC_CHANNELS.workspaceGoBack) as Promise<void>,
+  goForward: () => ipcRenderer.invoke(IPC_CHANNELS.workspaceGoForward) as Promise<void>,
   adjustSplitter: (delta: number) => ipcRenderer.invoke(IPC_CHANNELS.workspaceAdjustSplitter, delta) as Promise<void>,
   onStateChange: (listener: (snapshot: WorkspaceSnapshot) => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, snapshot: WorkspaceSnapshot) => {

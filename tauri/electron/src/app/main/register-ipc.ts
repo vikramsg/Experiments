@@ -33,6 +33,26 @@ export function registerIpc(input: {
     await workspace.store.save(workspace.controller.getSnapshot())
   })
 
+  ipcMain.handle(IPC_CHANNELS.workspaceGoBack, async () => {
+    const workspace = input.requireWorkspace()
+
+    if (!workspace.browserView.webContents.canGoBack()) {
+      return
+    }
+
+    workspace.browserView.webContents.goBack()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.workspaceGoForward, async () => {
+    const workspace = input.requireWorkspace()
+
+    if (!workspace.browserView.webContents.canGoForward()) {
+      return
+    }
+
+    workspace.browserView.webContents.goForward()
+  })
+
   ipcMain.handle(IPC_CHANNELS.workspaceAdjustSplitter, async (_event, delta: number) => {
     const workspace = input.requireWorkspace()
     const current = workspace.controller.getSnapshot()

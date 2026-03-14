@@ -49,11 +49,38 @@ test('launcher opens the split workspace', async () => {
     await expect(notesPage.getByText(/loading workspace/i)).toHaveCount(0)
     await expect(notesPage.getByText(/auto-saving notes to your workspace/i)).toBeVisible()
     await expect(splitterPage.getByRole('separator', { name: /resize panes/i })).toBeVisible()
+    const backButton = browserChromePage.getByRole('button', { name: /back/i })
+    const forwardButton = browserChromePage.getByRole('button', { name: /forward/i })
+    const urlInput = browserChromePage.getByRole('textbox', { name: /browser url/i })
+
+    await expect(backButton).toBeVisible()
+    await expect(forwardButton).toBeVisible()
+    await expect(backButton).toBeDisabled()
+    await expect(forwardButton).toBeDisabled()
     await expect(browserChromePage.getByRole('textbox', { name: /browser url/i })).toBeVisible()
     await expect(browserChromePage.getByRole('button', { name: /^go$/i })).toBeVisible()
     await expect
       .poll(async () => browserPage.url(), { timeout: 15000 })
       .toContain('https://example.com')
+
+    await browserPage.getByRole('link', { name: /learn more/i }).click()
+
+    await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('iana.org')
+    await expect(urlInput).toHaveValue(/iana\.org/i)
+    await expect(backButton).toBeEnabled()
+    await expect(forwardButton).toBeDisabled()
+
+    await backButton.click()
+
+    await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('https://example.com')
+    await expect(urlInput).toHaveValue(/example\.com/i)
+    await expect(backButton).toBeDisabled()
+    await expect(forwardButton).toBeEnabled()
+
+    await forwardButton.click()
+
+    await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('iana.org')
+    await expect(urlInput).toHaveValue(/iana\.org/i)
   } finally {
     await electronApp?.close()
     await rm(userDataDir, { recursive: true, force: true })

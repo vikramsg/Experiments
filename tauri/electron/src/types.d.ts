@@ -8,6 +8,8 @@ export type WorkspaceApi = {
   loadState: () => Promise<WorkspaceSnapshot>
   saveNotes: (notes: string) => Promise<void>
   setBrowserUrl: (url: string) => Promise<void>
+  goBack: () => Promise<void>
+  goForward: () => Promise<void>
   adjustSplitter: (delta: number) => Promise<void>
   onStateChange: (listener: (snapshot: WorkspaceSnapshot) => void) => () => void
 }
