@@ -5,288 +5,387 @@
 Start with a test first approach with writing failing tests, making sure they fail
 and then proceeding with implementation.
 
-- Build an Electron app under `electron/` that starts on a launcher window and opens a split workspace with:
-  - a left notes editor
-  - a center draggable splitter
-  - a right browser pane for visiting sites
-- Use `BaseWindow` with sibling `WebContentsView`s for the workspace, matching the research direction in `electron/research.md`.
-- Keep the implementation isolated from the existing Tauri app in `hello-world/`.
-- Persist both note content and splitter width under Electron `userData`.
+- Refactor the Electron app under `electron/` into a feature-first, process-aware structure.
+- Keep Electron runtime boundaries explicit:
+  - `main`
+  - `preload`
+  - `renderer`
+- Organize business logic by feature/domain instead of flat technical folders.
+- Move renderer HTML entry files out of the repo root into a renderer-owned location.
+- Add `electron/docs/architecture.md` with:
+  - helpful ASCII diagrams
+  - a tree view of the file structure
+  - responsibility notes for important files and folders
+- Add `electron/README.md` and `electron/Justfile`.
+- Keep the implementation isolated from the Tauri app in `hello-world/`.
+- Preserve the implemented behavior:
+  - launcher flow
+  - workspace with sibling `WebContentsView`s
+  - draggable splitter
+  - notes persistence
+  - browser navigation with the current security constraints
 
 ## Architecture Diagram
 
 ```text
-Runtime architecture
-====================
+Current shape
+=============
 
-+-------------------------------------------------------------+
-| Launcher BrowserWindow                                      |
-|  - local renderer                                           |
-|  - one app card: "Browser + Notes"                         |
-+----------------------------+--------------------------------+
-                             |
-                             | launch app
-                             v
-+-------------------------------------------------------------+
-| Workspace BaseWindow                                         |
-|                                                             |
-|  +----------------+ +----------+ +------------------------+ |
-|  | Notes          | | Splitter | | Browser                | |
-|  | WebContentsView| | WebCV    | | WebContentsView        | |
-|  | local UI       | | local UI | | remote site            | |
-|  +----------------+ +----------+ +------------------------+ |
-|                                                             |
-|  main process owns bounds for all three sibling views       |
-+-------------------------------------------------------------+
+electron/
+|-- launcher.html
+|-- notes.html
+|-- splitter.html
+`-- src/
+    |-- main.ts
+    |-- main/
+    |-- preloads/
+    |-- launcher/
+    |-- notes/
+    |-- splitter/
+    `-- shared/
+
+Problems:
+- process boundaries exist, but feature ownership is flat and scattered
+- renderer HTML entry files live at the project root
+- business logic is not clearly grouped by domain
 ```
 
 ```text
-Drag flow
-=========
+Target shape
+============
 
-User drag on splitter
+electron/
+`-- src/
+    |-- app/
+    |   |-- main/          # bootstrap, window creation, IPC registration
+    |   |-- preload/       # preload entry wiring only
+    |   `-- renderer/
+    |       `-- entries/   # launcher.html, notes.html, splitter.html
     |
-    v
-Splitter renderer pointer events
+    |-- features/
+    |   |-- launcher/
+    |   |   |-- renderer/
+    |   |   `-- shared/
+    |   |
+    |   |-- workspace/
+    |   |   |-- main/
+    |   |   |-- preload/
+    |   |   `-- shared/
+    |   |
+    |   |-- notes/
+    |   |   |-- main/
+    |   |   |-- renderer/
+    |   |   `-- shared/
+    |   |
+    |   |-- browser/
+    |   |   |-- main/
+    |   |   `-- shared/
+    |   |
+    |   `-- splitter/
+    |       |-- renderer/
+    |       `-- shared/
     |
-    v
-preload API -> IPC to main
-    |
-    v
-workspace layout controller updates split position
-    |
-    v
-main recomputes bounds for:
-- notes view
-- splitter view
-- browser view
-    |
-    v
-setBounds() on all sibling WebContentsViews
+    `-- shared/
+        |-- ipc/
+        |-- types/
+        `-- test/
 ```
 
 ```text
-Persistence flow
-================
+Runtime call flow
+=================
 
-Notes renderer ----save/load----> preload ----IPC----> main store
-                                                   |
-                                                   v
-                                          app.getPath('userData')
+app/main/index
+   |
+   +--> createLauncherWindow()
+   |       |
+   |       `--> loads launcher renderer entry
+   |
+   `--> registerIpc()
+           |
+           `--> open workspace request
+                   |
+                   v
+             createWorkspaceWindow()
+                   |
+                   +--> notes WebContentsView
+                   +--> splitter WebContentsView
+                   +--> browser WebContentsView
+                   |
+                   `--> WorkspaceController.applyLayout()
+```
 
-Splitter drag ----persist width----> preload ----IPC----> main store
+```text
+Feature ownership
+=================
+
+Launcher feature
+  - renderer app card UI
+  - open-workspace intent
+
+Workspace feature
+  - BaseWindow composition
+  - layout controller
+  - snapshot publication
+
+Notes feature
+  - notes UI
+  - note persistence
+  - browser URL form state
+
+Browser feature
+  - remote session policy
+  - URL normalization
+  - popup and permission restrictions
+
+Splitter feature
+  - pointer drag UI
+  - drag delta emission
 ```
 
 ## Current Status
 
-- `electron/research.md` exists and already captures the recommended Electron architecture and citations.
-- The existing app implementation in this repo is the Tauri app under `hello-world/`, not Electron.
-- The Tauri app already shows patterns worth reusing conceptually:
-  - launcher flow in `hello-world/src/features/app-shell/AppSelector.tsx`
-  - editor app structure in `hello-world/src/features/editor/TextEditorApp.tsx`
-  - Vitest + React Testing Library patterns in `hello-world/src/features/editor/TextEditorApp.test.tsx`
-  - test configuration in `hello-world/vitest.config.ts`
-- The Electron research currently treats draggable splitter support as a future enhancement; this plan promotes it into the MVP.
+- The Electron app already exists under `electron/` and is separate from the Tauri app.
+- The current source tree is partly process-aware but still mostly flat:
+  - `src/main.ts`
+  - `src/main/`
+  - `src/preloads/`
+  - `src/launcher/`
+  - `src/notes/`
+  - `src/splitter/`
+  - `src/shared/`
+- Renderer HTML entrypoints currently live at the project root:
+  - `electron/launcher.html`
+  - `electron/notes.html`
+  - `electron/splitter.html`
+- `electron/vite.renderer.config.ts` points directly at those root HTML files.
+- `electron/forge.config.ts` still references the flat main and preload entrypoints.
+- `electron/docs/reference.md` exists and already captures reusable Electron guidance from `electron/research.md`.
+- `electron/docs/architecture.md` does not exist yet.
+- `electron/README.md` does not exist yet.
+- `electron/Justfile` does not exist yet.
 
 ## Short summary of changes
 
-- Scaffold a separate Electron app under `electron/`.
-- Create `electron/docs/reference.md` by extracting stable Electron guidance and citations from `electron/research.md`.
-- Keep `electron/plan.md` as the implementation-only plan for the current app.
-- Create a launcher window with one app card, `Browser + Notes`.
-- Create a workspace window using sibling `WebContentsView`s for:
-  - notes pane
-  - splitter handle
-  - browser pane
-- Add a layout controller that updates pane bounds on drag and on window resize.
-- Add a persistent store for:
-  - note content
-  - splitter width
-- Add preload and IPC boundaries for launcher actions, note persistence, and splitter dragging.
-- Add tests first for layout math, controller behavior, splitter drag behavior, note persistence, launcher flow, and Playwright Electron end-to-end coverage.
+- Restructure the Electron app around business features instead of flat technical folders.
+- Keep Electron process boundaries explicit, but nest them under feature ownership where appropriate.
+- Move bootstrap and app wiring into `src/app/`.
+- Move renderer HTML files into `src/app/renderer/entries/`.
+- Extract browser-session and browser-security logic into a browser feature.
+- Keep reusable cross-feature types, IPC constants, and test helpers in `src/shared/`.
+- Add `electron/docs/architecture.md` with ASCII diagrams, a file tree, and responsibility notes.
+- Add `electron/README.md` and `electron/Justfile`.
 
 ### Options considered
 
-1. `BaseWindow` + three sibling `WebContentsView`s for notes, splitter, and browser
-   - aligns with `electron/research.md`
-   - keeps remote browser content in a native Electron view
-   - allows mouse dragging through a dedicated local splitter surface
+1. Keep the current mostly-flat structure and only improve docs
+   - lowest migration cost
+   - still weak on business ownership
+   - rejected
+
+2. Strict process-first structure only: `main/`, `preload/`, `renderer/`
+   - aligns with Electron runtime boundaries
+   - still scatters one feature across many folders
+   - better than current, but not preferred
+
+3. Feature-first, process-aware hybrid
+   - preserves Electron runtime boundaries
+   - groups business logic by domain
+   - removes renderer HTML files from the project root
    - recommended
-
-2. DOM layout with `<webview>` inside a standard renderer
-   - easier splitter dragging in pure HTML/CSS
-   - conflicts with the research direction against using `<webview>` as the primary design
-   - rejected
-
-3. `BrowserView`
-   - older examples exist
-   - deprecated in current Electron guidance
-   - rejected
 
 ## Files to be changed
 
 - `electron/package.json`
 - `electron/tsconfig.json`
-- `electron/vitest.config.ts`
-- `electron/src/main.ts`
-- `electron/src/preloads/launcher.ts`
-- `electron/src/preloads/notes.ts`
-- `electron/src/preloads/splitter.ts`
-- `electron/src/launcher/App.tsx`
-- `electron/src/notes/App.tsx`
-
-## Files to be added
-
-- `electron/docs/reference.md`
-- `electron/e2e/launcher-workspace.spec.ts`
-- `electron/e2e/splitter-drag.spec.ts`
-- `electron/e2e/persistence.spec.ts`
-- `electron/playwright.config.ts`
 - `electron/forge.config.ts`
 - `electron/vite.main.config.ts`
 - `electron/vite.preload.config.ts`
 - `electron/vite.renderer.config.ts`
-- `electron/src/shared/split-layout.ts`
-- `electron/src/shared/split-layout.test.ts`
+- `electron/vitest.config.ts`
+- `electron/playwright.config.js`
+- `electron/src/main.ts`
 - `electron/src/main/workspace-controller.ts`
 - `electron/src/main/workspace-controller.test.ts`
 - `electron/src/main/note-store.ts`
 - `electron/src/main/note-store.test.ts`
-- `electron/src/launcher/main.tsx`
+- `electron/src/preloads/launcher.ts`
+- `electron/src/preloads/workspace.ts`
+- `electron/src/launcher/App.tsx`
 - `electron/src/launcher/App.test.tsx`
-- `electron/src/notes/main.tsx`
+- `electron/src/launcher/main.tsx`
+- `electron/src/notes/App.tsx`
 - `electron/src/notes/App.test.tsx`
-- `electron/src/splitter/main.tsx`
+- `electron/src/notes/main.tsx`
 - `electron/src/splitter/SplitterHandle.tsx`
 - `electron/src/splitter/SplitterHandle.test.tsx`
-- `electron/launcher.html`
-- `electron/notes.html`
-- `electron/splitter.html`
+- `electron/src/splitter/main.tsx`
+- `electron/src/shared/split-layout.ts`
+- `electron/src/shared/split-layout.test.ts`
+- `electron/src/types.d.ts`
+
+## Files to be added
+
+- `electron/docs/architecture.md`
+- `electron/README.md`
+- `electron/Justfile`
+- `electron/src/app/main/index.ts`
+- `electron/src/app/main/create-launcher-window.ts`
+- `electron/src/app/main/create-workspace-window.ts`
+- `electron/src/app/main/register-ipc.ts`
+- `electron/src/app/preload/launcher.ts`
+- `electron/src/app/preload/workspace.ts`
+- `electron/src/app/renderer/entries/launcher.html`
+- `electron/src/app/renderer/entries/notes.html`
+- `electron/src/app/renderer/entries/splitter.html`
+- `electron/src/features/launcher/renderer/App.tsx`
+- `electron/src/features/launcher/renderer/App.test.tsx`
+- `electron/src/features/launcher/renderer/main.tsx`
+- `electron/src/features/workspace/main/WorkspaceController.ts`
+- `electron/src/features/workspace/main/WorkspaceController.test.ts`
+- `electron/src/features/workspace/shared/split-layout.ts`
+- `electron/src/features/workspace/shared/split-layout.test.ts`
+- `electron/src/features/notes/main/NoteStore.ts`
+- `electron/src/features/notes/main/NoteStore.test.ts`
+- `electron/src/features/notes/renderer/App.tsx`
+- `electron/src/features/notes/renderer/App.test.tsx`
+- `electron/src/features/notes/renderer/main.tsx`
+- `electron/src/features/browser/main/browser-session.ts`
+- `electron/src/features/browser/main/browser-session.test.ts`
+- `electron/src/features/splitter/renderer/SplitterHandle.tsx`
+- `electron/src/features/splitter/renderer/SplitterHandle.test.tsx`
+- `electron/src/features/splitter/renderer/main.tsx`
+- `electron/src/shared/ipc/channels.ts`
+- `electron/src/shared/types/workspace.ts`
+- `electron/src/shared/test/setup.ts`
 
 ## Verification Criteria
 
-- `electron/docs/reference.md` exists and contains the reusable Electron guidance extracted from `electron/research.md`.
-- The Electron app launches under Playwright Electron automation.
-- The launcher window renders one app card.
-- Clicking the app card opens a separate workspace window.
-- The workspace contains:
-  - left notes pane
-  - center draggable splitter
-  - right browser pane
-- Playwright can drag the splitter with the mouse and verify pane widths update live in both directions.
-- Splitter width is clamped to safe minimums and persisted across relaunch.
-- Notes persist across workspace close/reopen and full app relaunch.
-- Right-side browser content loads with the security constraints described in `electron/research.md`.
-- All newly added tests fail first, then pass after implementation.
+- The Electron source tree is reorganized around feature/domain ownership rather than flat technical folders.
+- Electron runtime boundaries remain explicit:
+  - main-only code is not imported into renderer code
+  - preload code stays narrow and safe
+  - renderer code stays UI-focused
+- Root HTML entry files are removed from `electron/` and replaced with renderer-owned entry files.
+- `electron/vite.renderer.config.ts` resolves the new renderer entrypoint locations correctly.
+- `electron/forge.config.ts` points at the new main and preload entrypoints correctly.
+- Existing behavior remains unchanged:
+  - launcher opens workspace
+  - workspace uses sibling `WebContentsView`s
+  - splitter drag updates layout
+  - notes persist
+  - browser URL navigation still works
+  - browser security restrictions still apply
+- `electron/docs/architecture.md` exists and includes:
+  - ASCII runtime diagrams
+  - file tree view
+  - file and folder responsibility descriptions
+- `electron/README.md` exists and reflects the new structure.
+- `electron/Justfile` exists and exposes the main development commands.
 - Lint, unit tests, Playwright E2E tests, and production build all succeed.
-- No manual verification step is required.
 
 ## Acceptance Criteria
 
-- `electron/plan.md` exists and reflects the current implementation scope only.
-- `electron/docs/reference.md` exists and holds the reusable Electron reference material extracted from `electron/research.md`.
-- The Electron workspace uses sibling `WebContentsView`s rather than `BrowserView` or a primary `<webview>` architecture.
-- The splitter is draggable by mouse left/right in the MVP.
-- The layout remains stable on window resize and on repeated splitter drags.
-- The notes pane saves and restores content from persistent storage.
-- The browser pane can navigate to external sites.
-- The app closes cleanly without leaving orphaned `webContents`.
-- The implementation is covered by automated tests for:
+- The Electron app uses a feature-first, process-aware directory structure.
+- Business logic is colocated with the feature it belongs to, not hidden in generic technical folders.
+- App bootstrap and wiring live in `src/app/`.
+- Feature code lives under `src/features/<feature-name>/`.
+- Shared cross-feature code is limited to genuinely shared types, IPC constants, and test helpers.
+- Renderer HTML entry files no longer live at the repo root.
+- The workspace still uses sibling `WebContentsView`s rather than `BrowserView` or a primary `<webview>` architecture.
+- The implementation remains covered by automated tests for:
   - layout math
   - splitter interaction
   - note persistence
   - launcher flow
   - workspace controller behavior
   - Electron end-to-end behavior with Playwright
+- `electron/docs/architecture.md` documents the implemented structure with a tree view and responsibilities.
+- `electron/README.md` and `electron/Justfile` are present and aligned with the new structure.
 - Work is not complete until all automated verification passes.
 
 ## Checklist of tasks to be done
 
-1. Create `electron/docs/reference.md` by extracting the stable Electron guidance and source citations from `electron/research.md`.
+1. Inspect the current Electron tree, build config, preload entrypoints, renderer entrypoints, and tests to lock down the exact flat structure being replaced.
 
-2. Keep `electron/plan.md` focused only on the present implementation, including draggable splitter support in MVP scope.
+2. Create the target folder map that separates:
+   - app bootstrap
+   - feature code
+   - shared cross-feature code
+   - renderer entry HTML files
 
-3. Scaffold a separate Electron app under `electron/` using the Forge/Vite direction already captured in `electron/research.md`.
+3. Write failing tests for any new extracted seams before moving code, especially where refactoring introduces new modules such as:
+   - browser security and session configuration
+   - launcher and workspace entry resolution
+   - IPC channel ownership
+   - any new shared workspace snapshot types
 
-4. Add test tooling before feature work:
-   - wire Vitest and React Testing Library in the Electron app
-   - add Playwright with Electron support
-   - define scripts for unit, renderer, E2E, and full verification runs
+4. Run those new tests immediately to confirm they actually fail; if they do not fail, tighten the assertions before moving code.
 
-5. Write failing tests for pure split-layout math first:
-   - default split width
-   - min/max clamping
-   - window resize recomputation
-   - bounds output for notes, splitter, and browser panes
+5. Refactor the pure logic first with minimal runtime risk:
+   - move split-layout logic into the target feature/shared location
+   - move note-store logic into the notes feature
+   - move browser session and security logic into the browser feature
 
-6. Run the split-layout tests immediately to prove they fail; if they do not fail, correct the tests before writing logic.
+6. Rerun the affected unit tests after each logic extraction and keep fixing imports until they pass again.
 
-7. Implement the shared split-layout module and rerun the tests until they pass.
+7. Write failing tests for any new app-bootstrap modules such as:
+   - launcher window creation
+   - workspace window creation
+   - IPC registration boundaries
 
-8. Write failing tests for the splitter handle renderer:
-   - pointer down starts drag
-   - pointer move emits the correct delta or absolute x
-   - pointer up stops drag
+8. Run those bootstrap/module tests to confirm failure first; if a test passes unexpectedly, correct the test before implementation.
 
-9. Run the splitter tests to verify they fail before implementation; if they pass unexpectedly, tighten the assertions.
+9. Move app-wiring code out of `src/main.ts` into `src/app/main/` entry modules and rerun tests to passing.
 
-10. Implement the splitter renderer and preload bridge, then rerun the tests to passing.
+10. Move preload bridges into `src/app/preload/` or feature-owned preload modules while keeping the exposed renderer API shape stable.
 
-11. Write failing tests for the workspace controller in the main process:
-   - creates three sibling views
-   - applies initial bounds
-   - updates bounds on drag
-   - updates bounds on window resize
-   - closes child `webContents` on teardown
+11. Write failing tests for the renderer entrypoint relocation if needed, such as path-resolution or config-level expectations around the moved HTML entry files.
 
-12. Run the workspace controller tests to confirm failure, then implement the controller and rerun to passing.
+12. Run the relevant tests or config validations immediately to verify the path assumptions fail before changing the Vite config; if they do not fail, strengthen the validation.
 
-13. Write failing tests for note persistence:
-   - saves note content
-   - reloads note content on reopen
-   - saves splitter width
-   - reloads splitter width on reopen
+13. Move `launcher.html`, `notes.html`, and `splitter.html` into a renderer-owned entries folder and update Vite and Forge configuration to load them from the new location.
 
-14. Run the persistence tests to verify they fail first, then implement the store against `userData` and rerun to passing.
+14. Rerun build-oriented checks after the HTML move to confirm entry resolution now works from the new structure.
 
-15. Write failing launcher UI tests:
-   - shows one app card
-   - clicking launch triggers the workspace-open API
+15. Move flat renderer feature code into business-owned folders:
+   - launcher
+   - notes
+   - splitter
+   - workspace
+   - browser
 
-16. Run the launcher tests to prove they fail first, then implement the launcher renderer and rerun to passing.
+16. After each feature move, run the directly related unit and renderer tests so regressions are caught while the change set is still small.
 
-17. Write failing notes UI tests:
-   - renders saved content
-   - updates content on edit
-   - triggers save flow
-   - surfaces saving state if included
+17. Add `electron/docs/architecture.md` with:
+   - runtime ASCII diagrams
+   - file tree view
+   - short responsibility notes for each important file and folder
 
-18. Run the notes tests to verify they fail first, then implement the notes renderer and rerun to passing.
+18. Add `electron/README.md` documenting:
+   - the new file structure
+   - how to run the app
+   - how to run tests
+   - how to reason about process boundaries and feature ownership
 
-19. Wire all IPC and preload surfaces together:
-   - launcher -> main open-workspace action
-   - splitter -> main drag updates
-   - notes -> main load/save actions
+19. Add `electron/Justfile` with the main commands used for development and verification.
 
-20. Implement remote browser security controls in the main process according to the constraints already captured in `electron/research.md`.
+20. Run `just --list` to confirm the Justfile parses; if it does not, fix the syntax before proceeding.
 
-21. Write failing Playwright Electron E2E tests for:
-   - launcher window renders
-   - app card opens workspace
-   - splitter drag changes pane widths
-   - window resize preserves valid pane layout
-   - note content persists across relaunch
-   - browser pane loads a configured URL
+21. If a browser skill is available, use it for smoke checks of any PR-visible UI or doc changes. No browser skill is available in this environment, so use the Playwright Electron coverage as the browser-level smoke baseline.
 
-22. Run the Playwright tests to verify they fail before implementation; if they do not fail, fix the assertions and rerun.
+22. Run lint after the structural refactor and doc additions to catch stale imports, dead files, config drift, and path mismatches.
 
-23. Implement any missing app wiring needed for the Playwright flows, then rerun E2E tests until they pass.
+23. Run the full unit and renderer test suite after the structural refactor to confirm behavior is unchanged.
 
-24. Run the full automated verification suite:
-   - lint
-   - unit tests
-   - renderer tests
-   - Playwright Electron E2E tests
-   - build
+24. Run Playwright Electron E2E tests after the refactor to verify:
+   - launcher still renders
+   - app card still opens workspace
+   - splitter drag still works in both directions
+   - resize stability still holds
+   - notes still persist across relaunch
+   - browser pane still loads the configured URL
 
-25. Stop only after every automated verification step passes.
+25. Run the production build and package flow and fix any remaining config or entrypoint issues.
+
+26. Stop only after the new structure is in place, docs are updated, all tests were proven to fail first where new seams were introduced, and every automated verification step passes.
