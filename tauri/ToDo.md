@@ -4,3 +4,5 @@
 4. Log file which is always available with browser and opencode etc logs if if start `just dev --debug`
 5. No imports like ../../
 6. No splitter next to opencode
+7. App specific opencode permissions
+8. We can sandbox ghostty web?
