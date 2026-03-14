@@ -1,4 +1,4 @@
-import type { WorkspaceSnapshot } from './main/note-store'
+import type { WorkspaceSnapshot } from './shared/types/workspace'
 
 export type LauncherApi = {
   openWorkspace: () => Promise<void>

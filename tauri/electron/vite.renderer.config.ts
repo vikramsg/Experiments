@@ -8,9 +8,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        launcher: path.resolve(import.meta.dirname, 'launcher.html'),
-        notes: path.resolve(import.meta.dirname, 'notes.html'),
-        splitter: path.resolve(import.meta.dirname, 'splitter.html'),
+        launcher: path.resolve(import.meta.dirname, 'src/app/renderer/entries/launcher.html'),
+        notes: path.resolve(import.meta.dirname, 'src/app/renderer/entries/notes.html'),
+        splitter: path.resolve(import.meta.dirname, 'src/app/renderer/entries/splitter.html'),
       },
     },
   },

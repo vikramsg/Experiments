@@ -2,7 +2,7 @@
   "name": "electron-workspace",
   "private": true,
   "version": "0.1.0",
-  "main": ".vite/build/main.js",
+  "main": ".vite/build/index.js",
   "scripts": {
     "start": "electron-forge start",
     "dev": "electron-forge start",

@@ -10,6 +10,10 @@ export type BrowserWebContentsLike = {
 }
 
 export function normalizeUrl(url: string) {
+  if (/^[a-z][a-z\d+.-]*:/i.test(url) && !/^https?:\/\//i.test(url)) {
+    throw new Error('Only http and https URLs are allowed')
+  }
+
   const candidate = /^https?:\/\//i.test(url) ? url : `https://${url}`
   const parsed = new URL(candidate)
 

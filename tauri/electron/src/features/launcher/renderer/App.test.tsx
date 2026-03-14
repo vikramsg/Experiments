@@ -5,10 +5,11 @@ import { App } from './App'
 
 describe('Launcher App', () => {
   it('shows a browser and notes launch card', () => {
-    render(<App openWorkspace={vi.fn()} />)
+    render(<App openWorkspace={vi.fn().mockResolvedValue(undefined)} />)
 
-    expect(screen.getByRole('heading', { name: /choose an app/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /launch browser \+ notes/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /choose an app/i })).toBeVisible()
+    expect(screen.getByRole('heading', { level: 2, name: /browser \+ notes/i })).toBeVisible()
+    expect(screen.getByRole('button', { name: /launch browser \+ notes/i })).toBeVisible()
   })
 
   it('opens the workspace when the launch button is clicked', async () => {

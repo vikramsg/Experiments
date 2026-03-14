@@ -1,8 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import type { WorkspaceSnapshot } from '../main/note-store'
-import type { WorkspaceApi } from '../types'
+import type { WorkspaceApi } from '../../../types'
+import type { WorkspaceSnapshot } from '../../../shared/types/workspace'
 import { App } from './App'
 
 function createApi(snapshot: WorkspaceSnapshot): WorkspaceApi {
