@@ -20,6 +20,11 @@ and then proceeding with implementation.
   - OpenCode-owned services live with OpenCode
   - `app/*` composes features
   - features must not import each other directly
+- Add real integration coverage for the browser MCP path so we verify:
+  - MCP server is connected inside OpenCode
+  - `browser_browser_context_current` is registered with OpenCode
+  - the model actually invokes the tool in a real session
+  - current mock-mode E2E does not stand in for real MCP verification
 - Preserve the existing browser security model, repo read-only OpenCode posture,
   and current Browser + Notes behavior.
 
@@ -95,6 +100,21 @@ BrowserMcpServer (Electron main)
    `--> returns text + screenshot attachment
 ```
 
+```text
+Verification flow for real MCP
+==============================
+
+OpenCodeService.initialize()
+   |
+   +--> GET /mcp
+   |      `--> assert browser MCP status is connected
+   |
+   +--> GET /experimental/tool/ids
+   |      `--> assert browser_browser_context_current exists
+   |
+   `--> only then allow browser-aware UX to be considered ready
+```
+
 ## Current Status
 
 - The current `OpenCode` launcher still opens a standalone full-window OpenCode
@@ -113,6 +133,9 @@ BrowserMcpServer (Electron main)
   browser/app-main domain.
 - The docs do not yet clearly state that services and adapters should always be
   owned by their domain and composed only from `app/*`.
+- Current end-to-end coverage relies on `ELECTRON_OPENCODE_MOCK=1`, which proves
+  window composition and mocked reply flow but does not prove real MCP
+  registration, real tool visibility, or real tool invocation.
 
 ## Short summary of changes
 
@@ -127,6 +150,10 @@ BrowserMcpServer (Electron main)
 - Introduce browser-owned or root-boundary browser IPC/contracts as needed so
   browser chrome can control the OpenCode window's browser without relying on
   `workspace:*` semantics.
+- Add explicit real-session MCP verification in app code and tests:
+  - check MCP connection status
+  - check tool registration
+  - record actual tool invocation for browser-aware asks
 - Update docs so the architecture explicitly enforces domain ownership and
   composition rules.
 
@@ -178,6 +205,7 @@ BrowserMcpServer (Electron main)
 - `electron/src/workspace-contract.ts`
 - `electron/src/workspace-model.ts`
 - `electron/e2e/opencode.spec.js`
+- `electron/e2e/opencode-real-mcp.spec.js`
 - `electron/e2e/launcher-workspace.spec.js`
 
 ## Files to be added
@@ -188,6 +216,7 @@ BrowserMcpServer (Electron main)
 - `electron/src/browser-model.ts`
 - `electron/src/app/preload/browser.ts`
 - `electron/e2e/opencode-browser-layout.spec.js`
+- `electron/e2e/opencode-mcp-registration.spec.js`
 
 ## Verification Criteria
 
@@ -197,6 +226,11 @@ BrowserMcpServer (Electron main)
 - The OpenCode window's browser chrome controls its own browser surface, not the
   Browser + Notes browser.
 - OpenCode can ask what it sees in the browser by calling the browser MCP tool.
+- OpenCode startup verifies that browser MCP is connected through `/mcp`.
+- OpenCode startup verifies that `browser_browser_context_current` is registered
+  through `/experimental/tool/ids`.
+- Real integration coverage proves the browser tool is actually invoked, not
+  just that a mocked answer mentions browser context.
 - The MCP server used for browser inspection is owned by the browser/app-main
   side, not by OpenCode feature ownership.
 - No feature imports another feature directly.
@@ -215,6 +249,8 @@ BrowserMcpServer (Electron main)
 - OpenCode explanations about the browser are based on the browser that is in
   the same window as OpenCode.
 - Browser MCP ownership is moved out of OpenCode and into the correct domain.
+- Real non-mock verification proves MCP is connected, the browser tool is
+  registered, and browser-aware prompts invoke it.
 - Browser + Notes still works as a separate launcher app.
 - Docs clearly state the rule that services/adapters belong to their domain and
   must be composed from `app/*`.
@@ -228,6 +264,7 @@ BrowserMcpServer (Electron main)
    - MCP server ownership moves to browser/app-main
    - browser/OpenCode composition stays in `app/*`
    - docs must explicitly require clean domain-based separation
+   - real MCP verification must not rely on mock mode
 
 2. Inspect the current seams in:
    - `electron/src/app/main/create-opencode-window.ts`
@@ -281,72 +318,100 @@ BrowserMcpServer (Electron main)
     - asking what OpenCode sees in the browser returns a browser-aware answer
 
 12. Run the targeted Playwright spec immediately to confirm the assertions fail
+     first; if they do not fail, tighten them before continuing.
+
+13. Write failing integration tests for real MCP registration, separate from UI
+    layout tests, that assert:
+    - `GET /mcp` reports the browser MCP client as connected
+    - `GET /experimental/tool/ids` contains `browser_browser_context_current`
+    - these checks run without `ELECTRON_OPENCODE_MOCK=1`
+
+14. Run those targeted MCP registration tests immediately to confirm they fail
     first; if they do not fail, tighten them before continuing.
 
-13. Move `BrowserMcpServer` into browser/app-main ownership, keeping screenshot
+15. Write failing integration tests for real tool invocation that assert:
+    - a browser-aware prompt causes the browser MCP tool invocation counter or
+      telemetry to increment
+    - the test does not pass purely because of a mocked answer string
+
+16. Run those targeted invocation tests immediately to confirm they fail first;
+    if they do not fail, strengthen the telemetry/assertions before continuing.
+
+17. Move `BrowserMcpServer` into browser/app-main ownership, keeping screenshot
     capture in browser-owned code and keeping OpenCode free of browser service
     ownership.
 
-14. Refactor `electron/src/app/main/create-opencode-window.ts` so it composes a
+18. Refactor `electron/src/app/main/create-opencode-window.ts` so it composes a
     split `BaseWindow` with:
     - OpenCode view
     - browser chrome view
     - browser content view
     - splitter if needed
 
-15. Reuse or extract the browser host/composition seam from
+19. Reuse or extract the browser host/composition seam from
     `electron/src/app/main/create-workspace-window.ts` so browser setup,
     security policy, and navigation sync do not get duplicated carelessly.
 
-16. Introduce a browser-owned or root-boundary browser contract/preload/IPC
+20. Introduce a browser-owned or root-boundary browser contract/preload/IPC
     path so the browser chrome renderer can control either launcher's browser
     surface without relying on notes-specific workspace semantics.
 
-17. Update `electron/src/app/main/index.ts` so the OpenCode launcher creates the
+21. Update `electron/src/app/main/index.ts` so the OpenCode launcher creates the
     split OpenCode window and wires the browser MCP server to that window's own
     browser view.
 
-18. Keep `electron/src/features/opencode/main/OpenCodeService.ts` limited to:
+22. Extend `electron/src/features/opencode/main/OpenCodeService.ts` so it:
+    - verifies MCP connection status through `/mcp`
+    - verifies tool registration through `/experimental/tool/ids`
+    - exposes a visible failure state if browser MCP is unavailable
+    - records or surfaces enough telemetry to confirm real tool invocation in
+      integration tests
+
+23. Keep `electron/src/features/opencode/main/OpenCodeService.ts` limited to:
     - OpenCode process lifecycle
     - MCP client config injection
     - read-only repo permission config
     and do not let it import browser feature services directly.
 
-19. Re-run the targeted browser MCP, composition, IPC, and renderer tests
+24. Re-run the targeted browser MCP, composition, IPC, renderer, registration,
+    and real invocation tests
     immediately after implementation; if they do not pass, fix the
     implementation before moving on.
 
-20. Re-run the targeted Playwright layout/browser-awareness spec immediately
+25. Re-run the targeted Playwright layout/browser-awareness spec immediately
     after implementation; if it does not pass, continue refining the split
     window wiring before moving on.
 
-21. Update `electron/README.md` so it explicitly states:
+26. Update `electron/README.md` so it explicitly states:
     - services, adapters, and integrations belong to their domain
     - cross-domain wiring belongs in `app/*`
     - features must not import other features directly
 
-22. Update `electron/docs/architecture.md` so it explicitly documents:
+27. Update `electron/docs/architecture.md` so it explicitly documents:
     - domain-based ownership for browser, OpenCode, and app composition
     - where MCP server ownership belongs
     - why feature-to-feature imports remain forbidden
 
-23. Add only the minimal necessary inline comments where browser host reuse,
+28. Add only the minimal necessary inline comments where browser host reuse,
     MCP ownership, or split-window composition would otherwise be non-obvious.
 
-24. If a browser skill is available, use it for browser-level smoke checks of
+29. If a browser skill is available, use it for browser-level smoke checks of
     the final OpenCode + Browser layout. No browser skill is available in this
     environment, so use Playwright Electron coverage as the browser-level smoke
     baseline.
 
-25. Run the full automated verification suite:
+30. Run the full automated verification suite:
    - lint
    - unit and renderer tests
+   - real MCP registration / invocation integration tests
    - Playwright Electron E2E tests
    - build/package flow
 
-26. Stop only after:
+31. Stop only after:
    - OpenCode launcher opens OpenCode + Browser in one window
    - Browser + Notes remains separate
    - browser MCP ownership is in the correct domain
+   - real MCP registration is verified through OpenCode APIs
+   - real tool invocation is verified without mock mode
    - docs clearly state clean domain-based separation rules
    - all automated verification passes
