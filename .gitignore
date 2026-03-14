@@ -10,3 +10,10 @@ old
 local_pgdata
 pgadmin-data
 .vscode
+
+# Node stuff
+node-modules
+.vite
+
+# Python stuff
+__pycache__
