@@ -51,11 +51,25 @@ test('launcher opens OpenCode and the chat responds', async () => {
 
     const prompt = openCodePage.getByRole('textbox', { name: /ask opencode/i })
     await prompt.fill('Where does the launcher live?')
-    await openCodePage.getByRole('button', { name: /send prompt/i }).click()
+    await prompt.press('Enter')
 
     await expect(openCodePage.getByText('Where does the launcher live?', { exact: true })).toBeVisible()
     await expect(openCodePage.getByText(/mock opencode reply/i)).toBeVisible()
     await expect(openCodePage.getByText(repoRoot, { exact: true })).toBeVisible()
+
+    await prompt.fill('Line one')
+    await prompt.press('Shift+Enter')
+    await expect(prompt).toHaveValue('Line one\n')
+    await prompt.fill('Overflow check')
+    await prompt.press('Enter')
+
+    for (let index = 0; index < 5; index += 1) {
+      await prompt.fill(`Prompt ${index}`)
+      await prompt.press('Enter')
+    }
+
+    await expect(openCodePage.getByRole('heading', { name: /opencode/i })).toBeVisible()
+    await expect(openCodePage.getByRole('button', { name: /send prompt/i })).toBeVisible()
   } finally {
     await electronApp?.close()
     await rm(userDataDir, { recursive: true, force: true })

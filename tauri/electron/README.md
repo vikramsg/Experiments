@@ -98,6 +98,15 @@ access, or unrestricted server handles to the renderer. The renderer can only:
 - send a prompt
 - subscribe to state updates
 
+## TODO / Follow-up
+
+- Render markdown and code blocks in OpenCode replies.
+- Improve auto-scroll behavior so it respects intentional user scroll position.
+- Add auto-growing prompt height instead of relying on manual textarea resize.
+- Polish loading feedback in the composer and messages.
+- Improve message differentiation with stronger visual separation or avatars.
+- Add quick-start prompts and a richer empty state for the first OpenCode session.
+
 ## Verification
 
 ```bash

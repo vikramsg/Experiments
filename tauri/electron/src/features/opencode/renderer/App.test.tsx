@@ -38,6 +38,59 @@ describe('OpenCode App', () => {
     expect(api.sendPrompt).toHaveBeenCalledWith('Summarize this repo')
   })
 
+  it('submits the prompt when Enter is pressed without Shift', async () => {
+    const user = userEvent.setup()
+    const api = createApi(createDefaultOpenCodeState('/repo/tauri'))
+
+    render(<App api={api} />)
+
+    const prompt = await screen.findByRole('textbox', { name: /ask opencode/i })
+    await user.type(prompt, 'Summarize this repo')
+    await user.keyboard('{Enter}')
+
+    expect(api.sendPrompt).toHaveBeenCalledWith('Summarize this repo')
+  })
+
+  it('keeps a newline and does not submit when Shift+Enter is pressed', async () => {
+    const user = userEvent.setup()
+    const api = createApi(createDefaultOpenCodeState('/repo/tauri'))
+
+    render(<App api={api} />)
+
+    const prompt = await screen.findByRole('textbox', { name: /ask opencode/i })
+    await user.type(prompt, 'Line one')
+    await user.keyboard('{Shift>}{Enter}{/Shift}')
+
+    expect(api.sendPrompt).not.toHaveBeenCalled()
+    expect(prompt).toHaveValue('Line one\n')
+  })
+
+  it('ignores empty trimmed prompts', async () => {
+    const user = userEvent.setup()
+    const api = createApi(createDefaultOpenCodeState('/repo/tauri'))
+
+    render(<App api={api} />)
+
+    const prompt = await screen.findByRole('textbox', { name: /ask opencode/i })
+    await user.type(prompt, '   ')
+    await user.keyboard('{Enter}')
+
+    expect(api.sendPrompt).not.toHaveBeenCalled()
+  })
+
+  it('uses a fixed-height shell with a compact send button', async () => {
+    const api = createApi(createDefaultOpenCodeState('/repo/tauri'))
+
+    render(<App api={api} />)
+
+    const heading = await screen.findByRole('heading', { name: /opencode/i })
+    const page = heading.closest('main')
+    const sendButton = screen.getByRole('button', { name: /send prompt/i })
+
+    expect(page).toHaveStyle({ height: '100vh', overflow: 'hidden' })
+    expect(sendButton).toHaveStyle({ height: '52px' })
+  })
+
   it('reacts to state updates and renders assistant replies', async () => {
     const api = createApi(createDefaultOpenCodeState('/repo/tauri'))
     let listener: ((state: OpenCodeState) => void) | undefined

@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type KeyboardEvent,
+} from 'react'
 
 import type { OpenCodeApi } from '../../../opencode-contract'
 import { createDefaultOpenCodeState, type OpenCodeState } from '../../../opencode-model'
@@ -29,6 +37,7 @@ function describeStatus(state: OpenCodeState): string {
 export function App({ api }: OpenCodeAppProps) {
   const [state, setState] = useState<OpenCodeState>(() => createDefaultOpenCodeState('Loading repo scope...'))
   const [prompt, setPrompt] = useState('')
+  const messageColumnRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     let active = true
@@ -55,11 +64,21 @@ export function App({ api }: OpenCodeAppProps) {
   }, [api])
 
   const status = useMemo(() => describeStatus(state), [state])
+  const isBusy = state.status === 'connecting' || state.status === 'responding'
 
-  const submitPrompt = (event: FormEvent) => {
-    event.preventDefault()
+  useEffect(() => {
+    const messageColumn = messageColumnRef.current
+    if (!messageColumn) {
+      return
+    }
+
+    messageColumn.scrollTop = messageColumn.scrollHeight
+  }, [state.messages])
+
+  const submitPrompt = (event?: FormEvent) => {
+    event?.preventDefault()
     const nextPrompt = prompt.trim()
-    if (!nextPrompt) {
+    if (!nextPrompt || isBusy) {
       return
     }
 
@@ -69,10 +88,19 @@ export function App({ api }: OpenCodeAppProps) {
     })
   }
 
+  const handlePromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey) {
+      return
+    }
+
+    event.preventDefault()
+    submitPrompt()
+  }
+
   return (
     <main style={styles.page}>
       <section style={styles.hero}>
-        <div>
+        <div style={styles.heroCopy}>
           <p style={styles.kicker}>OpenCode</p>
           <h1 style={styles.title}>OpenCode</h1>
           <p style={styles.lede}>Read-only repo chat with a local OpenCode server behind a narrow Electron bridge.</p>
@@ -85,7 +113,7 @@ export function App({ api }: OpenCodeAppProps) {
       </section>
 
       <section style={styles.chatShell}>
-        <div style={styles.messageColumn}>
+        <div ref={messageColumnRef} style={styles.messageColumn}>
           {state.messages.map((message) => (
             <article key={message.id} style={message.role === 'assistant' ? styles.assistantMessage : message.role === 'user' ? styles.userMessage : styles.systemMessage}>
               <p style={styles.messageRole}>{message.role}</p>
@@ -102,11 +130,12 @@ export function App({ api }: OpenCodeAppProps) {
               style={styles.promptInput}
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
+              onKeyDown={handlePromptKeyDown}
               placeholder="Ask about architecture, files, behavior, or where something lives in this repo."
             />
           </label>
-          <button style={styles.sendButton} type="submit" disabled={state.status === 'connecting' || state.status === 'responding'}>
-            Send Prompt
+          <button style={styles.sendButton} type="submit" disabled={isBusy}>
+            {isBusy ? 'Thinking...' : 'Send Prompt'}
           </button>
         </form>
       </section>
@@ -124,7 +153,7 @@ const messageCardBase: CSSProperties = {
 
 const styles: Record<string, CSSProperties> = {
   page: {
-    minHeight: '100vh',
+    height: '100vh',
     boxSizing: 'border-box',
     margin: 0,
     padding: '24px',
@@ -132,15 +161,20 @@ const styles: Record<string, CSSProperties> = {
       'radial-gradient(circle at top left, rgba(255, 226, 183, 0.55), transparent 32%), linear-gradient(180deg, #f7f0df 0%, #e7dcc5 100%)',
     color: '#2d261d',
     fontFamily: 'Georgia, serif',
-    display: 'flex',
-    flexDirection: 'column',
+    display: 'grid',
+    gridTemplateRows: 'auto minmax(0, 1fr)',
     gap: '20px',
+    overflow: 'hidden',
   },
   hero: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1.3fr) minmax(260px, 0.9fr)',
+    display: 'flex',
+    flexWrap: 'wrap',
     gap: '18px',
-    alignItems: 'stretch',
+    alignItems: 'flex-start',
+  },
+  heroCopy: {
+    flex: '1 1 420px',
+    minWidth: 0,
   },
   kicker: {
     margin: 0,
@@ -159,6 +193,7 @@ const styles: Record<string, CSSProperties> = {
     maxWidth: '52ch',
   },
   scopeCard: {
+    flex: '0 1 320px',
     borderRadius: '24px',
     padding: '18px 20px',
     background: 'rgba(255, 251, 242, 0.78)',
@@ -197,6 +232,7 @@ const styles: Record<string, CSSProperties> = {
     border: '1px solid rgba(75, 53, 26, 0.12)',
     boxShadow: '0 24px 64px rgba(69, 48, 23, 0.08)',
     padding: '20px',
+    overflow: 'hidden',
   },
   messageColumn: {
     display: 'flex',
@@ -204,6 +240,7 @@ const styles: Record<string, CSSProperties> = {
     gap: '14px',
     overflowY: 'auto',
     minHeight: 0,
+    paddingRight: '6px',
   },
   systemMessage: {
     ...messageCardBase,
@@ -238,20 +275,23 @@ const styles: Record<string, CSSProperties> = {
     whiteSpace: 'pre-wrap',
   },
   promptForm: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) auto',
+    display: 'flex',
+    flexWrap: 'wrap',
     gap: '16px',
-    alignItems: 'end',
+    alignItems: 'flex-end',
   },
   promptLabel: {
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
     fontWeight: 600,
+    flex: '1 1 360px',
+    minWidth: 0,
   },
   promptInput: {
     width: '100%',
-    minHeight: '108px',
+    minHeight: '96px',
+    maxHeight: '180px',
     boxSizing: 'border-box',
     resize: 'vertical',
     borderRadius: '20px',
@@ -264,11 +304,14 @@ const styles: Record<string, CSSProperties> = {
   sendButton: {
     border: 'none',
     borderRadius: '999px',
-    padding: '14px 22px',
+    height: '52px',
+    minWidth: '148px',
+    padding: '0 22px',
     background: '#6c4a1e',
     color: '#fff9f0',
     fontSize: '1rem',
+    fontWeight: 700,
     cursor: 'pointer',
-    alignSelf: 'stretch',
+    alignSelf: 'flex-end',
   },
 }
