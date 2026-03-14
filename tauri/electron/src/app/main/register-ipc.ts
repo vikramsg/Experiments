@@ -1,17 +1,27 @@
 import { ipcMain } from 'electron'
 
 import { normalizeUrl } from '../../features/browser/main/browser-session'
+import { createDefaultOpenCodeState } from '../../opencode-model'
 import { IPC_CHANNELS } from '../../ipc'
 import { DEFAULT_WORKSPACE_SNAPSHOT } from '../../workspace-model'
+import type { OpenCodeBundle } from './create-opencode-window'
 import type { WorkspaceBundle } from './create-workspace-window'
 
 export function registerIpc(input: {
   createWorkspace: () => Promise<void>
+  createOpenCode: () => Promise<void>
   getWorkspace: () => WorkspaceBundle | null
+  getOpenCode: () => OpenCodeBundle | null
   requireWorkspace: () => WorkspaceBundle
+  requireOpenCode: () => OpenCodeBundle
+  openCodeRepoRoot: string
 }) {
   ipcMain.handle(IPC_CHANNELS.launcherOpenWorkspace, async () => {
     await input.createWorkspace()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.launcherOpenOpenCode, async () => {
+    await input.createOpenCode()
   })
 
   ipcMain.handle(IPC_CHANNELS.workspaceGetState, async () => {
@@ -58,5 +68,23 @@ export function registerIpc(input: {
     const current = workspace.controller.getSnapshot()
     workspace.controller.setNotesWidth(current.notesWidth + delta)
     await workspace.store.save(workspace.controller.getSnapshot())
+  })
+
+  ipcMain.handle(IPC_CHANNELS.opencodeGetState, async () => {
+    const openCode = input.getOpenCode()
+    if (!openCode) {
+      return createDefaultOpenCodeState(input.openCodeRepoRoot)
+    }
+
+    try {
+      return await openCode.service.initialize()
+    } catch {
+      return openCode.service.getState()
+    }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.opencodeSendPrompt, async (_event, prompt: string) => {
+    const openCode = input.requireOpenCode()
+    await openCode.service.sendPrompt(prompt)
   })
 }
