@@ -1,3 +1,5 @@
+import type { WorkspaceSnapshot } from '../../../shared/types/workspace'
+
 export type PermissionSessionLike = {
   setPermissionRequestHandler: (
     handler: (_webContents: unknown, _permission: string, callback: (allowed: boolean) => void) => void,
@@ -7,6 +9,16 @@ export type PermissionSessionLike = {
 export type BrowserWebContentsLike = {
   setWindowOpenHandler: (handler: () => { action: 'deny' | 'allow' }) => void
   on: (event: 'will-navigate', listener: (event: { preventDefault: () => void }, url: string) => void) => void
+}
+
+export type BrowserNavigationWebContentsLike = {
+  getURL: () => string
+  canGoBack: () => boolean
+  canGoForward: () => boolean
+  on: (
+    event: 'did-navigate' | 'did-navigate-in-page',
+    listener: (...args: unknown[]) => void,
+  ) => void
 }
 
 export function normalizeUrl(url: string) {
@@ -40,4 +52,26 @@ export function applyBrowserSecurityPolicy(input: {
       event.preventDefault()
     }
   })
+}
+
+export function readBrowserNavigationState(
+  webContents: BrowserNavigationWebContentsLike,
+): Pick<WorkspaceSnapshot, 'browserUrl' | 'canGoBack' | 'canGoForward'> {
+  return {
+    browserUrl: normalizeUrl(webContents.getURL()),
+    canGoBack: webContents.canGoBack(),
+    canGoForward: webContents.canGoForward(),
+  }
+}
+
+export function subscribeToBrowserNavigation(input: {
+  webContents: BrowserNavigationWebContentsLike
+  onChange: (state: Pick<WorkspaceSnapshot, 'browserUrl' | 'canGoBack' | 'canGoForward'>) => void
+}) {
+  const publish = () => {
+    input.onChange(readBrowserNavigationState(input.webContents))
+  }
+
+  input.webContents.on('did-navigate', publish)
+  input.webContents.on('did-navigate-in-page', publish)
 }

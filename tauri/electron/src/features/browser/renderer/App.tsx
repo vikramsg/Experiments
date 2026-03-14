@@ -1,5 +1,6 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 
+import type { WorkspaceSnapshot } from '../../../shared/types/workspace'
 import type { WorkspaceApi } from '../../../types'
 
 export type BrowserChromeAppProps = {
@@ -8,6 +9,14 @@ export type BrowserChromeAppProps = {
 
 export function App({ api }: BrowserChromeAppProps) {
   const [browserUrl, setBrowserUrl] = useState('https://example.com')
+  const [canGoBack, setCanGoBack] = useState(false)
+  const [canGoForward, setCanGoForward] = useState(false)
+
+  const applySnapshot = useCallback((snapshot: WorkspaceSnapshot) => {
+    setBrowserUrl(snapshot.browserUrl)
+    setCanGoBack(snapshot.canGoBack)
+    setCanGoForward(snapshot.canGoForward)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -19,27 +28,33 @@ export function App({ api }: BrowserChromeAppProps) {
           return
         }
 
-        setBrowserUrl(snapshot.browserUrl)
+        applySnapshot(snapshot)
       })
       .catch(() => {
         // Workspace state can arrive through the subscription path during startup.
       })
 
     const unsubscribe = api.onStateChange((snapshot) => {
-      setBrowserUrl(snapshot.browserUrl)
+      applySnapshot(snapshot)
     })
 
     return () => {
       active = false
       unsubscribe()
     }
-  }, [api])
+  }, [api, applySnapshot])
 
   const navigate = () => void api.setBrowserUrl(browserUrl)
 
   return (
     <main style={styles.page}>
       <div style={styles.row}>
+        <button style={styles.navButton} type="button" onClick={() => void api.goBack()} disabled={!canGoBack}>
+          Back
+        </button>
+        <button style={styles.navButton} type="button" onClick={() => void api.goForward()} disabled={!canGoForward}>
+          Forward
+        </button>
         <label style={styles.label}>
           <span style={styles.caption}>Browser URL</span>
           <input
@@ -77,6 +92,7 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
+    minHeight: '68px',
   },
   label: {
     display: 'flex',
@@ -100,6 +116,18 @@ const styles: Record<string, CSSProperties> = {
     background: '#fffbf3',
     fontSize: '0.98rem',
     color: '#2c2418',
+  },
+  navButton: {
+    border: '1px solid #cdbd9f',
+    borderRadius: '999px',
+    padding: '10px 14px',
+    background: '#fff8ef',
+    color: '#5f4628',
+    cursor: 'pointer',
+    fontSize: '0.94rem',
+    flex: '0 0 auto',
+    whiteSpace: 'nowrap',
+    minWidth: '78px',
   },
   button: {
     border: 'none',

@@ -22,24 +22,31 @@ describe('NoteStore', () => {
       notes: '',
       notesWidth: 420,
       browserUrl: 'https://example.com',
+      canGoBack: false,
+      canGoForward: false,
     })
   })
 
-  it('persists notes, splitter width, and browser url', async () => {
+  it('persists notes, splitter width, and browser url without storing history flags', async () => {
     const store = new NoteStore(userDataPath)
 
     await store.save({
       notes: 'Saved from test',
       notesWidth: 512,
       browserUrl: 'https://example.org/docs',
+      canGoBack: true,
+      canGoForward: true,
     })
 
     await expect(store.load()).resolves.toEqual({
       notes: 'Saved from test',
       notesWidth: 512,
       browserUrl: 'https://example.org/docs',
+      canGoBack: false,
+      canGoForward: false,
     })
 
     await expect(readFile(join(userDataPath, 'workspace-state.json'), 'utf8')).resolves.toContain('Saved from test')
+    await expect(readFile(join(userDataPath, 'workspace-state.json'), 'utf8')).resolves.not.toContain('canGoBack')
   })
 })

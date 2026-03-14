@@ -1,6 +1,6 @@
 # Electron Architecture
 
-This document describes the implemented feature-first, process-aware structure for the Electron workspace app, including the browser-owned renderer surface in the right split.
+This document describes the implemented feature-first, process-aware structure for the Electron workspace app, including the browser-owned renderer surface in the right split and the main-process synchronization that keeps local browser controls aligned with the remote page.
 
 ## File Structure
 
@@ -40,7 +40,7 @@ electron/
     |   |   |   |-- browser-session.ts      # URL normalization and remote-content security rules
     |   |   |   `-- browser-session.test.ts # Tests for browser security/session behavior
     |   |   `-- renderer/
-    |   |       |-- App.tsx                 # Right-side local URL bar and Go action
+    |   |       |-- App.tsx                 # Right-side local back/forward controls, URL bar, and Go action
     |   |       |-- App.test.tsx            # Browser chrome renderer tests
     |   |       `-- main.tsx                # Browser chrome React entrypoint
     |   |-- launcher/
@@ -83,16 +83,16 @@ electron/
 
 ## Responsibility Map
 
-- `src/app/main/create-workspace-window.ts` owns composing the four sibling views, registering the workspace bundle early, and then loading the local/remote surfaces asynchronously.
+- `src/app/main/create-workspace-window.ts` owns composing the four sibling views, registering the workspace bundle early, loading the local/remote surfaces asynchronously, and publishing live browser navigation updates from the remote `webContents`.
 - `src/features/workspace/main/WorkspaceController.ts` is the layout authority for:
   - notes view
   - splitter view
   - browser chrome view
   - browser content view
-- `src/features/browser/main/browser-session.ts` owns URL normalization and remote-browser security policy.
-- `src/features/browser/renderer/` owns browser-specific local UI only.
+- `src/features/browser/main/browser-session.ts` owns URL normalization, browser navigation-state reading, and remote-browser security policy.
+- `src/features/browser/renderer/` owns browser-specific local UI only, including the back/forward controls and synchronized URL field.
 - `src/features/notes/renderer/` owns note-taking UI only.
-- `src/features/notes/main/NoteStore.ts` persists notes, browser URL, and splitter width into the workspace snapshot.
+- `src/features/notes/main/NoteStore.ts` persists notes, browser URL, and splitter width into the workspace snapshot while leaving history availability as live-only browser state.
 - `src/shared/types/workspace.ts` defines the shared state contract passed across process boundaries.
 
 ## Runtime Overview
@@ -160,17 +160,27 @@ workspace:get-state
 ```text
 Browser chrome renderer
    |
-   | window.workspace.setBrowserUrl(url)
+   | window.workspace.setBrowserUrl(url) / goBack() / goForward()
    v
 src/app/preload/workspace.ts
    |
    v
 src/app/main/register-ipc.ts
    |
-   +--> normalizeUrl(url)
-   +--> browserView.webContents.loadURL(url)
-   +--> persist snapshot
-   `--> publish workspace state
+   +--> setBrowserUrl(url) normalizes and loads the target URL
+   +--> goBack()/goForward() delegate to browser history actions
+   `--> browser navigation events publish the authoritative URL and history state
+```
+
+```text
+browserView.webContents
+   |
+   +--> did-navigate / did-navigate-in-page
+   |
+   +--> read getURL(), canGoBack(), canGoForward()
+   +--> WorkspaceController.setBrowserNavigationState(...)
+   +--> publish workspace state to notes/browser chrome renderers
+   `--> persist the latest durable workspace snapshot
 ```
 
 ## Persistence Flow
@@ -179,11 +189,12 @@ src/app/main/register-ipc.ts
 notes textarea edit ------------------------------+
                                                    |
 browser URL change ----------------------------+   |
-                                               |   |
-splitter drag ------------------------------+  |   |
-                                            |  |   |
-                                            v  v   v
-                                 WorkspaceController snapshot
+browser history/link navigation -----------+ |   |
+                                           | |   |
+splitter drag ------------------------------+|   |
+                                            ||   |
+                                            vv   v
+                                  WorkspaceController snapshot
                                             |
                                             v
                                   NoteStore.save(snapshot)

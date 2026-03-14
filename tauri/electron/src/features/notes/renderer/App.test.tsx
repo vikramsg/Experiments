@@ -21,6 +21,8 @@ describe('Notes App', () => {
       notes: 'Saved note',
       notesWidth: 420,
       browserUrl: 'https://example.com',
+      canGoBack: false,
+      canGoForward: false,
     })
 
     render(<App api={api} />)
@@ -35,6 +37,8 @@ describe('Notes App', () => {
       notes: '',
       notesWidth: 420,
       browserUrl: 'https://example.com',
+      canGoBack: false,
+      canGoForward: false,
     })
     let listener: (snapshot: WorkspaceSnapshot) => void = () => undefined
 
@@ -53,6 +57,8 @@ describe('Notes App', () => {
         notes: 'Recovered note',
         notesWidth: 420,
         browserUrl: 'https://example.com',
+        canGoBack: false,
+        canGoForward: false,
       })
     })
 
@@ -69,6 +75,8 @@ describe('Notes App', () => {
       notes: '',
       notesWidth: 420,
       browserUrl: 'https://example.com',
+      canGoBack: false,
+      canGoForward: false,
     })
 
     render(<App api={api} />)

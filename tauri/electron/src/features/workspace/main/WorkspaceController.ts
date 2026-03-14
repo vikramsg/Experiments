@@ -91,6 +91,14 @@ export class WorkspaceController {
     this.publishState()
   }
 
+  setBrowserNavigationState(input: Pick<WorkspaceSnapshot, 'browserUrl' | 'canGoBack' | 'canGoForward'>): void {
+    this.snapshot = {
+      ...this.snapshot,
+      ...input,
+    }
+    this.publishState()
+  }
+
   getSnapshot(): WorkspaceSnapshot {
     return this.snapshot
   }

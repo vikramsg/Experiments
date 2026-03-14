@@ -1,7 +1,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
-import { DEFAULT_WORKSPACE_SNAPSHOT, type WorkspaceSnapshot } from '../../../shared/types/workspace'
+import {
+  DEFAULT_WORKSPACE_SNAPSHOT,
+  toPersistedWorkspaceSnapshot,
+  type PersistedWorkspaceSnapshot,
+  type WorkspaceSnapshot,
+} from '../../../shared/types/workspace'
 
 export class NoteStore {
   private readonly filePath: string
@@ -13,9 +18,11 @@ export class NoteStore {
   async load(): Promise<WorkspaceSnapshot> {
     try {
       const raw = await readFile(this.filePath, 'utf8')
+      const persisted = JSON.parse(raw) as Partial<PersistedWorkspaceSnapshot>
+
       return {
         ...DEFAULT_WORKSPACE_SNAPSHOT,
-        ...(JSON.parse(raw) as Partial<WorkspaceSnapshot>),
+        ...persisted,
       }
     } catch {
       return DEFAULT_WORKSPACE_SNAPSHOT
@@ -24,6 +31,8 @@ export class NoteStore {
 
   async save(snapshot: WorkspaceSnapshot): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true })
-    await writeFile(this.filePath, JSON.stringify(snapshot, null, 2), 'utf8')
+    // History availability is derived from the live browser webContents on each
+    // launch, so only durable workspace fields are written to disk.
+    await writeFile(this.filePath, JSON.stringify(toPersistedWorkspaceSnapshot(snapshot), null, 2), 'utf8')
   }
 }
