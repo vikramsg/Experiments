@@ -29,7 +29,7 @@ export type ViewLike = {
 const SPLITTER_WIDTH = 12
 const MIN_NOTES_WIDTH = 280
 const MIN_BROWSER_WIDTH = 360
-const BROWSER_CHROME_HEIGHT = 64
+const BROWSER_CHROME_HEIGHT = 88
 
 export type WorkspaceViews = {
   notesView: ViewLike

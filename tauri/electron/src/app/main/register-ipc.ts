@@ -2,10 +2,12 @@ import { ipcMain } from 'electron'
 
 import { normalizeUrl } from '../../features/browser/main/browser-session'
 import { IPC_CHANNELS } from '../../shared/ipc/channels'
+import { DEFAULT_WORKSPACE_SNAPSHOT } from '../../shared/types/workspace'
 import type { WorkspaceBundle } from './create-workspace-window'
 
 export function registerIpc(input: {
   createWorkspace: () => Promise<void>
+  getWorkspace: () => WorkspaceBundle | null
   requireWorkspace: () => WorkspaceBundle
 }) {
   ipcMain.handle(IPC_CHANNELS.launcherOpenWorkspace, async () => {
@@ -13,8 +15,8 @@ export function registerIpc(input: {
   })
 
   ipcMain.handle(IPC_CHANNELS.workspaceGetState, async () => {
-    const workspace = input.requireWorkspace()
-    return workspace.controller.getSnapshot()
+    const workspace = input.getWorkspace()
+    return workspace ? workspace.controller.getSnapshot() : DEFAULT_WORKSPACE_SNAPSHOT
   })
 
   ipcMain.handle(IPC_CHANNELS.workspaceSaveNotes, async (_event, notes: string) => {

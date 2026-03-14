@@ -12,13 +12,18 @@ export function App({ api }: BrowserChromeAppProps) {
   useEffect(() => {
     let active = true
 
-    void api.loadState().then((snapshot) => {
-      if (!active) {
-        return
-      }
+    void api
+      .loadState()
+      .then((snapshot) => {
+        if (!active) {
+          return
+        }
 
-      setBrowserUrl(snapshot.browserUrl)
-    })
+        setBrowserUrl(snapshot.browserUrl)
+      })
+      .catch(() => {
+        // Workspace state can arrive through the subscription path during startup.
+      })
 
     const unsubscribe = api.onStateChange((snapshot) => {
       setBrowserUrl(snapshot.browserUrl)
@@ -62,7 +67,7 @@ const styles: Record<string, CSSProperties> = {
     minHeight: '100vh',
     boxSizing: 'border-box',
     margin: 0,
-    padding: '12px 16px',
+    padding: '10px 16px',
     background: 'linear-gradient(180deg, #f2ecdf 0%, #e6ddca 100%)',
     color: '#2c2418',
     fontFamily: 'Georgia, serif',
@@ -70,14 +75,15 @@ const styles: Record<string, CSSProperties> = {
   },
   row: {
     display: 'flex',
-    alignItems: 'end',
-    gap: '12px',
+    alignItems: 'center',
+    gap: '10px',
   },
   label: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
+    gap: '4px',
     flex: 1,
+    minWidth: 0,
   },
   caption: {
     fontSize: '0.72rem',
@@ -88,7 +94,7 @@ const styles: Record<string, CSSProperties> = {
   input: {
     width: '100%',
     boxSizing: 'border-box',
-    padding: '10px 12px',
+    padding: '9px 12px',
     borderRadius: '999px',
     border: '1px solid #cdbd9f',
     background: '#fffbf3',
@@ -103,6 +109,7 @@ const styles: Record<string, CSSProperties> = {
     color: '#fff8ef',
     cursor: 'pointer',
     fontSize: '0.98rem',
-    alignSelf: 'stretch',
+    flex: '0 0 auto',
+    whiteSpace: 'nowrap',
   },
 }

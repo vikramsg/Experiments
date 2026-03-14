@@ -46,6 +46,8 @@ test('launcher opens the split workspace', async () => {
 
     await expect(notesPage.getByRole('textbox', { name: /notes editor/i })).toBeVisible()
     await expect(notesPage.getByRole('textbox', { name: /browser url/i })).toHaveCount(0)
+    await expect(notesPage.getByText(/loading workspace/i)).toHaveCount(0)
+    await expect(notesPage.getByText(/auto-saving notes to your workspace/i)).toBeVisible()
     await expect(splitterPage.getByRole('separator', { name: /resize panes/i })).toBeVisible()
     await expect(browserChromePage.getByRole('textbox', { name: /browser url/i })).toBeVisible()
     await expect(browserChromePage.getByRole('button', { name: /^go$/i })).toBeVisible()

@@ -28,6 +28,10 @@ async function openWorkspace() {
   })
 }
 
+function getWorkspace() {
+  return workspaceBundle
+}
+
 function requireWorkspace() {
   if (!workspaceBundle) {
     throw new Error('Workspace is not open')
@@ -38,6 +42,7 @@ function requireWorkspace() {
 
 registerIpc({
   createWorkspace: openWorkspace,
+  getWorkspace,
   requireWorkspace,
 })
 

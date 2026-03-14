@@ -54,6 +54,7 @@ just dev
   - browser content
 - Main-process layout ownership lives in `src/features/workspace/main/WorkspaceController.ts`.
 - Browser URL updates are triggered from `src/features/browser/renderer/App.tsx` and applied in the main process.
+- Workspace startup now registers the window bundle before renderer page loads finish, which prevents transient `workspace:get-state` errors during initialization.
 - Notes, browser URL, and splitter width are persisted in `app.getPath('userData')/workspace-state.json`.
 
 For the detailed file tree, diagrams, and responsibilities, see `docs/architecture.md`.
