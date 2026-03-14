@@ -18,24 +18,29 @@ export type WorkspaceWindowLike = {
   }
 }
 
-export type BrowserViewLike = {
+export type ViewLike = {
   setBounds: (bounds: Rectangle) => void
   webContents: {
     close: () => void
   }
 }
 
-const HEADER_HEIGHT = 72
 const SPLITTER_WIDTH = 12
 const MIN_NOTES_WIDTH = 280
 const MIN_BROWSER_WIDTH = 360
+
+export type WorkspaceViews = {
+  notesView: ViewLike
+  splitterView: ViewLike
+  browserView: ViewLike
+}
 
 export class WorkspaceController {
   private snapshot: WorkspaceSnapshot
 
   constructor(
     private readonly window: WorkspaceWindowLike,
-    private readonly browserView: BrowserViewLike,
+    private readonly views: WorkspaceViews,
     snapshot: WorkspaceSnapshot,
   ) {
     this.snapshot = snapshot
@@ -45,7 +50,9 @@ export class WorkspaceController {
     })
 
     this.window.on('closed', () => {
-      this.browserView.webContents.close()
+      this.views.notesView.webContents.close()
+      this.views.splitterView.webContents.close()
+      this.views.browserView.webContents.close()
     })
 
     this.applyLayout()
@@ -100,11 +107,25 @@ export class WorkspaceController {
       notesWidth: layout.notesWidth,
     }
 
-    this.browserView.setBounds({
+    this.views.notesView.setBounds({
+      x: 0,
+      y: 0,
+      width: layout.notesWidth,
+      height: bounds.height,
+    })
+
+    this.views.splitterView.setBounds({
+      x: layout.splitterX,
+      y: 0,
+      width: SPLITTER_WIDTH,
+      height: bounds.height,
+    })
+
+    this.views.browserView.setBounds({
       x: layout.notesWidth + SPLITTER_WIDTH,
-      y: HEADER_HEIGHT,
+      y: 0,
       width: layout.browserWidth,
-      height: Math.max(0, bounds.height - HEADER_HEIGHT),
+      height: bounds.height,
     })
   }
 

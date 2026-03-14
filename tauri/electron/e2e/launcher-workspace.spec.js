@@ -1,13 +1,13 @@
-import { mkdtemp, rm } from 'node:fs/promises'
-import path from 'node:path'
-import { tmpdir } from 'node:os'
+const { mkdtemp, rm } = require('node:fs/promises')
+const path = require('node:path')
+const { tmpdir } = require('node:os')
 
-import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test'
+const { _electron: electron, expect, test } = require('@playwright/test')
 
-async function launchApp(userDataDir: string) {
+async function launchApp(userDataDir) {
   return electron.launch({
     args: ['.'],
-    cwd: path.resolve(import.meta.dirname, '..'),
+    cwd: path.resolve(__dirname, '..'),
     env: {
       ...process.env,
       ELECTRON_USER_DATA_DIR: userDataDir,
@@ -15,7 +15,7 @@ async function launchApp(userDataDir: string) {
   })
 }
 
-async function waitForPageByUrlPart(electronApp: ElectronApplication, urlPart: string) {
+async function waitForPageByUrlPart(electronApp, urlPart) {
   const existing = electronApp.context().pages().find((page) => page.url().includes(urlPart))
   if (existing) {
     return existing
@@ -28,7 +28,7 @@ async function waitForPageByUrlPart(electronApp: ElectronApplication, urlPart: s
 
 test('launcher opens the split workspace', async () => {
   const userDataDir = await mkdtemp(path.join(tmpdir(), 'electron-e2e-launcher-'))
-  let electronApp: ElectronApplication | undefined
+  let electronApp
 
   try {
     electronApp = await launchApp(userDataDir)
@@ -44,7 +44,7 @@ test('launcher opens the split workspace', async () => {
     await expect(notesPage.getByRole('textbox', { name: /notes editor/i })).toBeVisible()
     await expect(splitterPage.getByRole('separator', { name: /resize panes/i })).toBeVisible()
     await expect
-      .poll(async () => browserPage.url(), { timeout: 15_000 })
+      .poll(async () => browserPage.url(), { timeout: 15000 })
       .toContain('https://example.com')
   } finally {
     await electronApp?.close()

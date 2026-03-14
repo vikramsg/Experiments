@@ -5,7 +5,6 @@ import started from 'electron-squirrel-startup'
 
 import { NoteStore } from './main/note-store'
 import { WorkspaceController } from './main/workspace-controller'
-import { computeSplitLayout } from './shared/split-layout'
 
 if (started) {
   app.quit()
@@ -15,7 +14,6 @@ if (process.env.ELECTRON_USER_DATA_DIR) {
   app.setPath('userData', process.env.ELECTRON_USER_DATA_DIR)
 }
 
-const SPLITTER_WIDTH = 12
 const BROWSER_PARTITION = 'persist:workspace-browser'
 
 type WorkspaceBundle = {
@@ -25,7 +23,6 @@ type WorkspaceBundle = {
   browserView: WebContentsView
   controller: WorkspaceController
   store: NoteStore
-  syncLocalBounds: () => void
 }
 
 let launcherWindow: BrowserWindow | null = null
@@ -83,11 +80,14 @@ function createLauncherWindow() {
 }
 
 function normalizeUrl(url: string) {
-  if (/^https?:\/\//i.test(url)) {
-    return url
+  const candidate = /^https?:\/\//i.test(url) ? url : `https://${url}`
+  const parsed = new URL(candidate)
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Only http and https URLs are allowed')
   }
 
-  return `https://${url}`
+  return parsed.toString()
 }
 
 function configureBrowserSession() {
@@ -143,6 +143,14 @@ async function createWorkspace() {
     },
   })
 
+  browserView.webContents.on('will-navigate', (event, url) => {
+    try {
+      normalizeUrl(url)
+    } catch {
+      event.preventDefault()
+    }
+  })
+
   browserView.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 
   window.contentView.addChildView(notesView)
@@ -163,38 +171,19 @@ async function createWorkspace() {
     },
   }
 
-  const controller = new WorkspaceController(adapter, browserView, {
-    ...snapshot,
-    browserUrl: normalizeUrl(snapshot.browserUrl),
-  })
+  const controller = new WorkspaceController(
+    adapter,
+    {
+      notesView,
+      splitterView,
+      browserView,
+    },
+    {
+      ...snapshot,
+      browserUrl: normalizeUrl(snapshot.browserUrl),
+    },
+  )
 
-  const syncLocalBounds = () => {
-    const bounds = window.getContentBounds()
-    const layout = computeSplitLayout({
-      windowWidth: bounds.width,
-      windowHeight: bounds.height,
-      notesWidth: controller.getSnapshot().notesWidth,
-      splitterWidth: SPLITTER_WIDTH,
-      minNotesWidth: 280,
-      minBrowserWidth: 360,
-    })
-
-    notesView.setBounds({
-      x: 0,
-      y: 0,
-      width: layout.notesWidth,
-      height: bounds.height,
-    })
-
-    splitterView.setBounds({
-      x: layout.splitterX,
-      y: 0,
-      width: SPLITTER_WIDTH,
-      height: bounds.height,
-    })
-  }
-
-  window.on('resize', syncLocalBounds)
   window.on('closed', () => {
     workspaceBundle = null
   })
@@ -214,10 +203,7 @@ async function createWorkspace() {
     browserView,
     controller,
     store,
-    syncLocalBounds,
   }
-
-  syncLocalBounds()
 }
 
 function requireWorkspace() {
@@ -255,7 +241,6 @@ ipcMain.handle('workspace:adjust-splitter', async (_event, delta: number) => {
   const workspace = requireWorkspace()
   const current = workspace.controller.getSnapshot()
   workspace.controller.setNotesWidth(current.notesWidth + delta)
-  workspace.syncLocalBounds()
   await workspace.store.save(workspace.controller.getSnapshot())
 })
 

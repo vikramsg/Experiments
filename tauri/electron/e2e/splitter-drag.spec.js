@@ -1,13 +1,13 @@
-import { mkdtemp, rm } from 'node:fs/promises'
-import path from 'node:path'
-import { tmpdir } from 'node:os'
+const { mkdtemp, rm } = require('node:fs/promises')
+const path = require('node:path')
+const { tmpdir } = require('node:os')
 
-import { _electron as electron, expect, test, type ElectronApplication, type Page } from '@playwright/test'
+const { _electron: electron, expect, test } = require('@playwright/test')
 
-async function launchApp(userDataDir: string) {
+async function launchApp(userDataDir) {
   return electron.launch({
     args: ['.'],
-    cwd: path.resolve(import.meta.dirname, '..'),
+    cwd: path.resolve(__dirname, '..'),
     env: {
       ...process.env,
       ELECTRON_USER_DATA_DIR: userDataDir,
@@ -15,7 +15,7 @@ async function launchApp(userDataDir: string) {
   })
 }
 
-async function waitForPageByUrlPart(electronApp: ElectronApplication, urlPart: string) {
+async function waitForPageByUrlPart(electronApp, urlPart) {
   const existing = electronApp.context().pages().find((page) => page.url().includes(urlPart))
   if (existing) {
     return existing
@@ -28,7 +28,7 @@ async function waitForPageByUrlPart(electronApp: ElectronApplication, urlPart: s
 
 test('dragging the splitter changes pane widths in both directions', async () => {
   const userDataDir = await mkdtemp(path.join(tmpdir(), 'electron-e2e-splitter-'))
-  let electronApp: ElectronApplication | undefined
+  let electronApp
 
   try {
     electronApp = await launchApp(userDataDir)
@@ -43,19 +43,28 @@ test('dragging the splitter changes pane widths in both directions', async () =>
     const box = await separator.boundingBox()
 
     expect(box).not.toBeNull()
+    if (!box) {
+      throw new Error('Splitter handle did not render')
+    }
 
-    await splitterPage.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2)
+    await splitterPage.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
     await splitterPage.mouse.down()
-    await splitterPage.mouse.move(box!.x + box!.width / 2 + 120, box!.y + box!.height / 2, { steps: 8 })
+    await splitterPage.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, { steps: 8 })
     await splitterPage.mouse.up()
 
     await expect.poll(async () => notesPage.evaluate(() => window.innerWidth)).toBeGreaterThan(beforeWidth)
 
     const largerWidth = await notesPage.evaluate(() => window.innerWidth)
+    const movedBox = await separator.boundingBox()
 
-    await splitterPage.mouse.move(box!.x + box!.width / 2 + 120, box!.y + box!.height / 2)
+    expect(movedBox).not.toBeNull()
+    if (!movedBox) {
+      throw new Error('Splitter handle moved out of view')
+    }
+
+    await splitterPage.mouse.move(movedBox.x + movedBox.width / 2, movedBox.y + movedBox.height / 2)
     await splitterPage.mouse.down()
-    await splitterPage.mouse.move(box!.x + box!.width / 2 + 40, box!.y + box!.height / 2, { steps: 8 })
+    await splitterPage.mouse.move(movedBox.x + movedBox.width / 2 - 80, movedBox.y + movedBox.height / 2, { steps: 8 })
     await splitterPage.mouse.up()
 
     await expect.poll(async () => notesPage.evaluate(() => window.innerWidth)).toBeLessThan(largerWidth)
