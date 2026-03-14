@@ -91,6 +91,8 @@ Splitter drag ----persist width----> preload ----IPC----> main store
 ## Short summary of changes
 
 - Scaffold a separate Electron app under `electron/`.
+- Create `electron/docs/reference.md` by extracting stable Electron guidance and citations from `electron/research.md`.
+- Keep `electron/plan.md` as the implementation-only plan for the current app.
 - Create a launcher window with one app card, `Browser + Notes`.
 - Create a workspace window using sibling `WebContentsView`s for:
   - notes pane
@@ -101,7 +103,7 @@ Splitter drag ----persist width----> preload ----IPC----> main store
   - note content
   - splitter width
 - Add preload and IPC boundaries for launcher actions, note persistence, and splitter dragging.
-- Add tests first for layout math, controller behavior, splitter drag behavior, note persistence, and launcher flow.
+- Add tests first for layout math, controller behavior, splitter drag behavior, note persistence, launcher flow, and Playwright Electron end-to-end coverage.
 
 ### Options considered
 
@@ -135,6 +137,11 @@ Splitter drag ----persist width----> preload ----IPC----> main store
 
 ## Files to be added
 
+- `electron/docs/reference.md`
+- `electron/e2e/launcher-workspace.spec.ts`
+- `electron/e2e/splitter-drag.spec.ts`
+- `electron/e2e/persistence.spec.ts`
+- `electron/playwright.config.ts`
 - `electron/forge.config.ts`
 - `electron/vite.main.config.ts`
 - `electron/vite.preload.config.ts`
@@ -158,24 +165,26 @@ Splitter drag ----persist width----> preload ----IPC----> main store
 
 ## Verification Criteria
 
-- The Electron app launches to a local launcher window with one app card.
+- `electron/docs/reference.md` exists and contains the reusable Electron guidance extracted from `electron/research.md`.
+- The Electron app launches under Playwright Electron automation.
+- The launcher window renders one app card.
 - Clicking the app card opens a separate workspace window.
 - The workspace contains:
   - left notes pane
   - center draggable splitter
   - right browser pane
-- Dragging the splitter with the mouse updates pane widths live in both directions.
+- Playwright can drag the splitter with the mouse and verify pane widths update live in both directions.
 - Splitter width is clamped to safe minimums and persisted across relaunch.
 - Notes persist across workspace close/reopen and full app relaunch.
 - Right-side browser content loads with the security constraints described in `electron/research.md`.
 - All newly added tests fail first, then pass after implementation.
-- Lint, test, and production build all succeed.
-- Manual smoke check succeeds end-to-end.
-- No browser skill is available in this environment, so smoke verification must be manual rather than browser-skill automation.
+- Lint, unit tests, Playwright E2E tests, and production build all succeed.
+- No manual verification step is required.
 
 ## Acceptance Criteria
 
 - `electron/plan.md` exists and reflects the current implementation scope only.
+- `electron/docs/reference.md` exists and holds the reusable Electron reference material extracted from `electron/research.md`.
 - The Electron workspace uses sibling `WebContentsView`s rather than `BrowserView` or a primary `<webview>` architecture.
 - The splitter is draggable by mouse left/right in the MVP.
 - The layout remains stable on window resize and on repeated splitter drags.
@@ -188,87 +197,96 @@ Splitter drag ----persist width----> preload ----IPC----> main store
   - note persistence
   - launcher flow
   - workspace controller behavior
+  - Electron end-to-end behavior with Playwright
+- Work is not complete until all automated verification passes.
 
 ## Checklist of tasks to be done
 
-1. Scaffold a separate Electron app under `electron/` using the Forge/Vite direction already captured in `electron/research.md`.
+1. Create `electron/docs/reference.md` by extracting the stable Electron guidance and source citations from `electron/research.md`.
 
-2. Add test tooling before feature work:
+2. Keep `electron/plan.md` focused only on the present implementation, including draggable splitter support in MVP scope.
+
+3. Scaffold a separate Electron app under `electron/` using the Forge/Vite direction already captured in `electron/research.md`.
+
+4. Add test tooling before feature work:
    - wire Vitest and React Testing Library in the Electron app
-   - mirror the existing repo's testing approach from `hello-world/vitest.config.ts` and `hello-world/package.json`
+   - add Playwright with Electron support
+   - define scripts for unit, renderer, E2E, and full verification runs
 
-3. Write failing tests for pure split-layout math first:
+5. Write failing tests for pure split-layout math first:
    - default split width
    - min/max clamping
    - window resize recomputation
    - bounds output for notes, splitter, and browser panes
 
-4. Run the split-layout tests immediately to prove they fail; if they do not fail, correct the tests before writing logic.
+6. Run the split-layout tests immediately to prove they fail; if they do not fail, correct the tests before writing logic.
 
-5. Implement the shared split-layout module and rerun the tests until they pass.
+7. Implement the shared split-layout module and rerun the tests until they pass.
 
-6. Write failing tests for the splitter handle renderer:
+8. Write failing tests for the splitter handle renderer:
    - pointer down starts drag
    - pointer move emits the correct delta or absolute x
    - pointer up stops drag
 
-7. Run the splitter tests to verify they fail before implementation; if they pass unexpectedly, tighten the assertions.
+9. Run the splitter tests to verify they fail before implementation; if they pass unexpectedly, tighten the assertions.
 
-8. Implement the splitter renderer and preload bridge, then rerun the tests to passing.
+10. Implement the splitter renderer and preload bridge, then rerun the tests to passing.
 
-9. Write failing tests for the workspace controller in the main process:
+11. Write failing tests for the workspace controller in the main process:
    - creates three sibling views
    - applies initial bounds
    - updates bounds on drag
    - updates bounds on window resize
    - closes child `webContents` on teardown
 
-10. Run the workspace controller tests to confirm failure, then implement the controller and rerun to passing.
+12. Run the workspace controller tests to confirm failure, then implement the controller and rerun to passing.
 
-11. Write failing tests for note persistence:
+13. Write failing tests for note persistence:
    - saves note content
    - reloads note content on reopen
    - saves splitter width
    - reloads splitter width on reopen
 
-12. Run the persistence tests to verify they fail first, then implement the store against `userData` and rerun to passing.
+14. Run the persistence tests to verify they fail first, then implement the store against `userData` and rerun to passing.
 
-13. Write failing launcher UI tests:
+15. Write failing launcher UI tests:
    - shows one app card
    - clicking launch triggers the workspace-open API
-   - matches the existing launcher concept from `hello-world/src/features/app-shell/AppSelector.tsx`
 
-14. Run the launcher tests to prove they fail first, then implement the launcher renderer and rerun to passing.
+16. Run the launcher tests to prove they fail first, then implement the launcher renderer and rerun to passing.
 
-15. Write failing notes UI tests:
+17. Write failing notes UI tests:
    - renders saved content
    - updates content on edit
    - triggers save flow
    - surfaces saving state if included
 
-16. Run the notes tests to verify they fail first, then implement the notes renderer and rerun to passing.
+18. Run the notes tests to verify they fail first, then implement the notes renderer and rerun to passing.
 
-17. Wire all IPC and preload surfaces together:
+19. Wire all IPC and preload surfaces together:
    - launcher -> main open-workspace action
    - splitter -> main drag updates
    - notes -> main load/save actions
 
-18. Implement remote browser security controls in the main process according to the constraints already captured in `electron/research.md`.
+20. Implement remote browser security controls in the main process according to the constraints already captured in `electron/research.md`.
 
-19. Run the full automated suite:
+21. Write failing Playwright Electron E2E tests for:
+   - launcher window renders
+   - app card opens workspace
+   - splitter drag changes pane widths
+   - window resize preserves valid pane layout
+   - note content persists across relaunch
+   - browser pane loads a configured URL
+
+22. Run the Playwright tests to verify they fail before implementation; if they do not fail, fix the assertions and rerun.
+
+23. Implement any missing app wiring needed for the Playwright flows, then rerun E2E tests until they pass.
+
+24. Run the full automated verification suite:
    - lint
    - unit tests
    - renderer tests
+   - Playwright Electron E2E tests
    - build
 
-20. Launch the Electron app manually and perform smoke checks because no browser skill is available here:
-   - open launcher
-   - launch workspace
-   - drag splitter left and right several times
-   - resize the workspace window
-   - confirm panes keep correct bounds
-   - type notes, close workspace, reopen, and confirm content persists
-   - relaunch the app and confirm persisted note content and splitter width restore
-   - load at least one external site in the browser pane
-
-21. Only after all verification passes, mark the implementation complete.
+25. Stop only after every automated verification step passes.
