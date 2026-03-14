@@ -4,7 +4,7 @@ import { BrowserWindow } from 'electron'
 
 function getLauncherEntryUrl() {
   if (LAUNCHER_WINDOW_VITE_DEV_SERVER_URL) {
-    return new URL('launcher.html', LAUNCHER_WINDOW_VITE_DEV_SERVER_URL).toString()
+    return new URL('src/app/renderer/entries/launcher.html', LAUNCHER_WINDOW_VITE_DEV_SERVER_URL).toString()
   }
 
   return path.join(__dirname, `../renderer/${LAUNCHER_WINDOW_VITE_NAME}/src/app/renderer/entries/launcher.html`)

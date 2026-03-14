@@ -20,7 +20,7 @@ export type WorkspaceBundle = {
 
 function getWorkspaceAsset(page: 'notes.html' | 'splitter.html') {
   if (WORKSPACE_WINDOW_VITE_DEV_SERVER_URL) {
-    return new URL(page, WORKSPACE_WINDOW_VITE_DEV_SERVER_URL).toString()
+    return new URL(`src/app/renderer/entries/${page}`, WORKSPACE_WINDOW_VITE_DEV_SERVER_URL).toString()
   }
 
   return path.join(__dirname, `../renderer/${WORKSPACE_WINDOW_VITE_NAME}/src/app/renderer/entries/${page}`)
