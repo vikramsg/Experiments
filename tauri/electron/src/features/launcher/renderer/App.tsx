@@ -3,9 +3,10 @@ import type { CSSProperties } from 'react'
 export type LauncherAppProps = {
   openWorkspace: () => Promise<void>
   openOpenCode: () => Promise<void>
+  openTerminal: () => Promise<void>
 }
 
-export function App({ openWorkspace, openOpenCode }: LauncherAppProps) {
+export function App({ openWorkspace, openOpenCode, openTerminal }: LauncherAppProps) {
   return (
     <main style={styles.page}>
       <section style={styles.cardSection} aria-labelledby="launcher-title">
@@ -33,6 +34,17 @@ export function App({ openWorkspace, openOpenCode }: LauncherAppProps) {
             </p>
             <button style={styles.secondaryButton} type="button" onClick={() => void openOpenCode()}>
               Launch OpenCode
+            </button>
+          </article>
+
+          <article style={styles.terminalCard}>
+            <p style={styles.eyebrow}>Full local shell</p>
+            <h2 style={styles.cardTitle}>Terminal</h2>
+            <p style={styles.body}>
+              Launch a Ghostty-powered terminal surface backed by a main-process PTY with the same filesystem and PATH access as your local user account.
+            </p>
+            <button style={styles.terminalButton} type="button" onClick={() => void openTerminal()}>
+              Launch Terminal
             </button>
           </article>
         </div>
@@ -87,6 +99,15 @@ const styles: Record<string, CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
   },
+  terminalCard: {
+    background: 'rgba(231, 241, 236, 0.92)',
+    border: '1px solid rgba(24, 73, 52, 0.12)',
+    borderRadius: '24px',
+    padding: '24px',
+    boxShadow: '0 18px 48px rgba(24, 73, 52, 0.08)',
+    display: 'flex',
+    flexDirection: 'column',
+  },
   eyebrow: {
     margin: 0,
     color: '#6d7d71',
@@ -116,6 +137,15 @@ const styles: Record<string, CSSProperties> = {
     padding: '12px 20px',
     background: '#8a571a',
     color: '#fffaf2',
+    fontSize: '1rem',
+    cursor: 'pointer',
+  },
+  terminalButton: {
+    border: 'none',
+    borderRadius: '999px',
+    padding: '12px 20px',
+    background: '#184934',
+    color: '#f3f9f6',
     fontSize: '1rem',
     cursor: 'pointer',
   },

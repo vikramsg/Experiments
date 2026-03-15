@@ -6,3 +6,4 @@
 6. No splitter next to opencode
 7. App specific opencode permissions
 8. We can sandbox ghostty web?
+9. Make push, pull fast.

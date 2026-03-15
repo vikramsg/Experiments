@@ -1,6 +1,6 @@
 # Electron Reference
 
-This document captures the stable Electron guidance for the launcher-plus-split-workspace app: notes on the left, browser pane on the right.
+This document captures the stable Electron guidance for the multi-app Electron workspace: a local launcher, the split Browser + Notes workspace, the separate OpenCode app, and the separate Terminal app.
 
 ## Recommended Architecture
 
@@ -8,7 +8,15 @@ Build the app as a small local launcher window that opens a dedicated split-work
 
 ### Launcher window
 
-Use a normal local Electron window for the launcher UI and show one app tile such as `Browser + Notes`. Electron's quick start pattern is to create a window in `createWindow()` and load a local HTML entrypoint with a preload script. [F1]
+Use a normal local Electron window for the launcher UI and show local app tiles such as `Browser + Notes`, `OpenCode`, and `Terminal`. Electron's quick start pattern is to create a window in `createWindow()` and load a local HTML entrypoint with a preload script. [F1]
+
+### Dedicated local app windows
+
+Use separate local windows for `OpenCode` and `Terminal` rather than trying to blend those privileged local surfaces into the remote browser pane. Local app windows keep preload boundaries narrow and let the main process stay authoritative over server and PTY lifecycles.
+
+### Terminal font ownership
+
+Treat terminal font rendering as an Electron-owned appearance preference, not something that will automatically match a native terminal app. If you want the Electron terminal to start close to Ghostty, seed the default from Ghostty config once and then persist the Electron preference under `userData`.
 
 ### Notes persistence
 

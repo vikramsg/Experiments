@@ -18,6 +18,7 @@ import type { WorkspaceSnapshot } from './workspace-model'
 export type LauncherApi = {
   openWorkspace: () => Promise<void>
   openOpenCode: () => Promise<void>
+  openTerminal: () => Promise<void>
 }
 
 export type WorkspaceApi = {

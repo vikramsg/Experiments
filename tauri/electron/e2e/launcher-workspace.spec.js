@@ -3,6 +3,7 @@ const path = require('node:path')
 const { tmpdir } = require('node:os')
 
 const { _electron: electron, expect, test } = require('@playwright/test')
+const { closeElectronApp } = require('./helpers')
 
 async function launchApp(userDataDir) {
   return electron.launch({
@@ -85,7 +86,7 @@ test('launcher opens the split workspace', async () => {
     await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('iana.org')
     await expect(urlInput).toHaveValue(/iana\.org/i)
   } finally {
-    await electronApp?.close()
+    await closeElectronApp(electronApp)
     await rm(userDataDir, { recursive: true, force: true })
   }
 })

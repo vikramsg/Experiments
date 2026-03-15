@@ -3,6 +3,7 @@ const path = require('node:path')
 const { tmpdir } = require('node:os')
 
 const { _electron: electron, expect, test } = require('@playwright/test')
+const { closeElectronApp } = require('./helpers')
 
 const repoRoot = path.resolve(__dirname, '../..')
 
@@ -71,7 +72,7 @@ test('launcher opens OpenCode and the chat responds', async () => {
     await expect(openCodePage.getByRole('heading', { name: /opencode/i })).toBeVisible()
     await expect(openCodePage.getByRole('button', { name: /send prompt/i })).toBeVisible()
   } finally {
-    await electronApp?.close()
+    await closeElectronApp(electronApp)
     await rm(userDataDir, { recursive: true, force: true })
   }
 })

@@ -3,6 +3,7 @@ const path = require('node:path')
 const { tmpdir } = require('node:os')
 
 const { _electron: electron, expect, test } = require('@playwright/test')
+const { closeElectronApp } = require('./helpers')
 
 async function launchApp(userDataDir) {
   return electron.launch({
@@ -79,7 +80,7 @@ test('window resize keeps notes and browser panes within safe widths', async () 
     await expect.poll(async () => notesPage.evaluate(() => window.innerWidth)).toBeGreaterThan(280)
     await expect.poll(async () => browserPage.evaluate(() => window.innerWidth)).toBeGreaterThan(360)
   } finally {
-    await electronApp?.close()
+    await closeElectronApp(electronApp)
     await rm(userDataDir, { recursive: true, force: true })
   }
 })

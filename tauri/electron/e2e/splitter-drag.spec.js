@@ -3,6 +3,7 @@ const path = require('node:path')
 const { tmpdir } = require('node:os')
 
 const { _electron: electron, expect, test } = require('@playwright/test')
+const { closeElectronApp } = require('./helpers')
 
 async function launchApp(userDataDir) {
   return electron.launch({
@@ -71,7 +72,7 @@ test('dragging the splitter changes pane widths in both directions', async () =>
 
     await expect.poll(async () => notesPage.evaluate(() => window.innerWidth)).toBeLessThan(largerWidth)
   } finally {
-    await electronApp?.close()
+    await closeElectronApp(electronApp)
     await rm(userDataDir, { recursive: true, force: true })
   }
 })

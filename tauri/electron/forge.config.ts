@@ -4,7 +4,9 @@ import type { ForgeConfig } from '@electron-forge/shared-types'
 
 const config: ForgeConfig = {
   packagerConfig: {
-    asar: true,
+    asar: {
+      unpack: '**/*.node',
+    },
   },
   rebuildConfig: {},
   makers: [new MakerZIP({}, ['darwin'])],
@@ -31,6 +33,11 @@ const config: ForgeConfig = {
           config: 'vite.preload.config.ts',
           target: 'preload',
         },
+        {
+          entry: 'src/app/preload/terminal.ts',
+          config: 'vite.preload.config.ts',
+          target: 'preload',
+        },
       ],
       renderer: [
         {
@@ -43,6 +50,10 @@ const config: ForgeConfig = {
         },
         {
           name: 'opencode_window',
+          config: 'vite.renderer.config.ts',
+        },
+        {
+          name: 'terminal_window',
           config: 'vite.renderer.config.ts',
         },
       ],

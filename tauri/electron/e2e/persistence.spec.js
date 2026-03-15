@@ -3,6 +3,7 @@ const path = require('node:path')
 const { tmpdir } = require('node:os')
 
 const { _electron: electron, expect, test } = require('@playwright/test')
+const { closeElectronApp } = require('./helpers')
 
 async function launchApp(userDataDir) {
   return electron.launch({
@@ -74,7 +75,7 @@ test('notes, splitter width, and browser url persist across relaunch', async () 
       'Persist this note',
     )
 
-    await electronApp.close()
+    await closeElectronApp(electronApp)
     electronApp = await launchApp(userDataDir)
 
     const secondRun = await openWorkspace(electronApp, 'example.org')
@@ -84,7 +85,7 @@ test('notes, splitter width, and browser url persist across relaunch', async () 
     await expect.poll(async () => secondRun.notesPage.evaluate(() => window.innerWidth)).toBe(savedWidth)
     await expect.poll(async () => secondRun.browserPage.url(), { timeout: 15000 }).toContain('https://example.org/')
   } finally {
-    await electronApp?.close()
+    await closeElectronApp(electronApp)
     await rm(userDataDir, { recursive: true, force: true })
   }
 })

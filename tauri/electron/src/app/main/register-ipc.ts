@@ -1,20 +1,27 @@
 import { ipcMain } from 'electron'
 
 import { normalizeUrl } from '../../features/browser/main/browser-session'
+import { resolveTerminalShell } from '../../features/terminal/main/TerminalPtyService'
 import { createDefaultOpenCodeState } from '../../opencode-model'
 import { IPC_CHANNELS } from '../../ipc'
+import { createDefaultTerminalState } from '../../terminal-model'
 import { DEFAULT_WORKSPACE_SNAPSHOT } from '../../workspace-model'
 import type { OpenCodeBundle } from './create-opencode-window'
+import type { TerminalBundle } from './create-terminal-window'
 import type { WorkspaceBundle } from './create-workspace-window'
 
 export function registerIpc(input: {
   createWorkspace: () => Promise<void>
   createOpenCode: () => Promise<void>
+  createTerminal: () => Promise<void>
   getWorkspace: () => WorkspaceBundle | null
   getOpenCode: () => OpenCodeBundle | null
+  getTerminal: () => TerminalBundle | null
   requireWorkspace: () => WorkspaceBundle
   requireOpenCode: () => OpenCodeBundle
+  requireTerminal: () => TerminalBundle
   openCodeRepoRoot: string
+  terminalRepoRoot: string
 }) {
   ipcMain.handle(IPC_CHANNELS.launcherOpenWorkspace, async () => {
     await input.createWorkspace()
@@ -22,6 +29,10 @@ export function registerIpc(input: {
 
   ipcMain.handle(IPC_CHANNELS.launcherOpenOpenCode, async () => {
     await input.createOpenCode()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.launcherOpenTerminal, async () => {
+    await input.createTerminal()
   })
 
   ipcMain.handle(IPC_CHANNELS.workspaceGetState, async () => {
@@ -86,5 +97,34 @@ export function registerIpc(input: {
   ipcMain.handle(IPC_CHANNELS.opencodeSendPrompt, async (_event, prompt: string) => {
     const openCode = input.requireOpenCode()
     await openCode.service.sendPrompt(prompt)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.terminalGetState, async () => {
+    const terminal = input.getTerminal()
+    if (!terminal) {
+      return createDefaultTerminalState(input.terminalRepoRoot, resolveTerminalShell())
+    }
+
+    return terminal.service.getState()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.terminalConnect, async (_event, cols: number, rows: number) => {
+    const terminal = input.requireTerminal()
+    await terminal.service.connect(cols, rows)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.terminalWrite, async (_event, data: string) => {
+    const terminal = input.requireTerminal()
+    await terminal.service.write(data)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.terminalResize, async (_event, cols: number, rows: number) => {
+    const terminal = input.requireTerminal()
+    await terminal.service.resize(cols, rows)
+  })
+
+  ipcMain.handle(IPC_CHANNELS.terminalRestart, async (_event, cols: number, rows: number) => {
+    const terminal = input.requireTerminal()
+    await terminal.service.restart(cols, rows)
   })
 }

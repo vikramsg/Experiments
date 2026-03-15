@@ -7,12 +7,14 @@
  */
 import type { LauncherApi, WorkspaceApi } from './workspace-contract'
 import type { OpenCodeApi } from './opencode-contract'
+import type { TerminalApi } from './terminal-contract'
 
 declare global {
   interface Window {
     launcher: LauncherApi
     workspace: WorkspaceApi
     opencode: OpenCodeApi
+    terminal: TerminalApi
   }
 }
 

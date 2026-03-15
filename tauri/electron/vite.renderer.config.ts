@@ -13,6 +13,7 @@ export default defineConfig({
         splitter: path.resolve(import.meta.dirname, 'src/app/renderer/entries/splitter.html'),
         'browser-chrome': path.resolve(import.meta.dirname, 'src/app/renderer/entries/browser-chrome.html'),
         opencode: path.resolve(import.meta.dirname, 'src/app/renderer/entries/opencode.html'),
+        terminal: path.resolve(import.meta.dirname, 'src/app/renderer/entries/terminal.html'),
       },
     },
   },

@@ -1,9 +1,10 @@
 # Electron Workspace
 
-Electron app with a launcher window that opens two local apps:
+Electron app with a launcher window that opens three local apps:
 
 - `Browser + Notes` for the split notes/browser workspace
 - `OpenCode` for read-only chat against this repo through a local OpenCode server
+- `Terminal` for a full local shell rendered with `ghostty-web` and backed by a main-process PTY
 
 ## Requirements
 
@@ -46,6 +47,7 @@ just dev
   - `browser`
   - `splitter`
   - `opencode`
+  - `terminal`
 - `app/*` may compose feature entrypoints and root boundary files.
 - Features should depend on themselves plus shallow root runtime boundaries under `src/`; they should not import other features directly.
 - Shallow root boundary files own cross-cutting runtime contracts and models:
@@ -55,6 +57,8 @@ just dev
   - `src/test-setup.ts`
   - `src/opencode-contract.ts`
   - `src/opencode-model.ts`
+  - `src/terminal-contract.ts`
+  - `src/terminal-model.ts`
 - `src/types.d.ts` stays ambient-only so the global window bridge is declared in one place without becoming the primary owner of runtime API types.
 
 ## Architecture
@@ -75,8 +79,19 @@ just dev
 - The OpenCode bridge is intentionally read-only for the repo scope:
   - reads, globbing, listing, and search are allowed
   - edits, write-style tools, and destructive shell or git actions are denied
+- Terminal uses its own `BaseWindow` with one local `WebContentsView`, a dedicated preload bridge on `window.terminal`, and a main-process `TerminalPtyService` that owns the shell lifecycle.
+- The Terminal app starts in the repo root by default, but it is a full local shell:
+  - commands run with the current user account's filesystem permissions
+  - shell selection follows `process.env.SHELL` on macOS/Linux and `COMSPEC` on Windows
+  - host PATH tools such as `tmux` are available when installed
+  - the renderer stays sandboxed and only talks through a narrow preload bridge
+- Terminal appearance is Electron-owned and persisted under `app.getPath('userData')`:
+  - the window is intentionally full-bleed and terminal-first, with no visible settings UI
+  - first-run defaults can be seeded from Ghostty config, such as `font-family = JetBrains Mono`
+  - saved Electron preferences win over imported Ghostty defaults on later launches
 
 For the detailed file tree, diagrams, and responsibilities, see `docs/architecture.md`.
+For terminal-specific wiring, Ghostty rationale, and PTY behavior, see `docs/ghostty.md`.
 
 ## Browser Security
 
