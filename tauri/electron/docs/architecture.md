@@ -327,6 +327,7 @@ OpenCodeService
    +--> register the browser MCP server and allow `browser_*`
    +--> create a session
    +--> inject a no-reply instruction telling the model to call the browser tool when the user asks what it sees in the browser
+   +--> verify browser MCP connection status before browser-aware mode is considered ready
    +--> submit prompt messages over HTTP
    `--> publish renderer-facing chat state
 ```

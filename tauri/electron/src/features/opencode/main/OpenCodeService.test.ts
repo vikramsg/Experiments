@@ -52,6 +52,7 @@ describe('OpenCodeService', () => {
       .mockResolvedValueOnce(createJsonResponse({ healthy: true, version: '1.0.0' }))
       .mockResolvedValueOnce(createJsonResponse({ id: 'session-1' }))
       .mockResolvedValueOnce(createJsonResponse({ info: { id: 'message-1' }, parts: [] }))
+      .mockResolvedValueOnce(createJsonResponse({ browser: { status: 'connected' } }))
 
     const service = new OpenCodeService({
       repoRoot: '/repo/tauri',
@@ -59,12 +60,17 @@ describe('OpenCodeService', () => {
       spawn,
       fetchImpl: fetchMock,
       getPort: vi.fn().mockResolvedValue(4173),
+      browserMcp: {
+        url: 'http://127.0.0.1:4318/mcp',
+        headers: { authorization: 'Bearer test-token' },
+      },
     })
 
     await expect(service.initialize()).resolves.toMatchObject({
       status: 'ready',
       repoRoot: '/repo/tauri',
       sessionId: 'session-1',
+      browserToolStatus: 'ready',
     })
 
     expect(spawn).toHaveBeenCalledWith(
@@ -84,6 +90,7 @@ describe('OpenCodeService', () => {
       .mockResolvedValueOnce(createJsonResponse({ healthy: true, version: '1.0.0' }))
       .mockResolvedValueOnce(createJsonResponse({ id: 'session-1' }))
       .mockResolvedValueOnce(createJsonResponse({ info: { id: 'message-1' }, parts: [] }))
+      .mockResolvedValueOnce(createJsonResponse({ browser: { status: 'connected' } }))
       .mockResolvedValueOnce(
         createJsonResponse({
           parts: [
@@ -98,6 +105,10 @@ describe('OpenCodeService', () => {
       spawn,
       fetchImpl: fetchMock,
       getPort: vi.fn().mockResolvedValue(4174),
+      browserMcp: {
+        url: 'http://127.0.0.1:4318/mcp',
+        headers: { authorization: 'Bearer test-token' },
+      },
     })
 
     await service.initialize()
@@ -108,5 +119,83 @@ describe('OpenCodeService', () => {
       role: 'assistant',
       text: 'This repo contains an Electron app under tauri/electron.',
     })
+  })
+
+  it('verifies browser MCP availability before marking browser-aware mode ready', async () => {
+    const child = new EventEmitter() as EventEmitter & { kill: ReturnType<typeof vi.fn> }
+    child.kill = vi.fn()
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse({ healthy: true, version: '1.0.0' }))
+      .mockResolvedValueOnce(createJsonResponse({ id: 'session-1' }))
+      .mockResolvedValueOnce(createJsonResponse({ info: { id: 'message-1' }, parts: [] }))
+      .mockResolvedValueOnce(createJsonResponse({ browser: { status: 'failed', error: 'handshake failed' } }))
+
+    const service = new OpenCodeService({
+      repoRoot: '/repo/tauri',
+      mockMode: false,
+      spawn: vi.fn().mockReturnValue(child),
+      fetchImpl: fetchMock,
+      getPort: vi.fn().mockResolvedValue(4175),
+      browserMcp: {
+        url: 'http://127.0.0.1:4318/mcp',
+        headers: { authorization: 'Bearer test-token' },
+      },
+    })
+
+    await service.initialize()
+
+    expect(service.getState()).toMatchObject({
+      browserToolStatus: 'unavailable',
+      browserToolMessage: expect.stringMatching(/handshake failed/i),
+    })
+  })
+
+  it('retries browser-aware prompts with a stronger tool instruction and errors if the tool is never called', async () => {
+    const child = new EventEmitter() as EventEmitter & { kill: ReturnType<typeof vi.fn> }
+    child.kill = vi.fn()
+
+    const toolCallCount = 0
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse({ healthy: true, version: '1.0.0' }))
+      .mockResolvedValueOnce(createJsonResponse({ id: 'session-1' }))
+      .mockResolvedValueOnce(createJsonResponse({ info: { id: 'message-1' }, parts: [] }))
+      .mockResolvedValueOnce(createJsonResponse({ browser: { status: 'connected' } }))
+      .mockResolvedValueOnce(createJsonResponse({ parts: [{ type: 'text', text: 'I do not have the tool.' }] }))
+      .mockResolvedValueOnce(createJsonResponse({ parts: [{ type: 'text', text: 'Still no tool usage.' }] }))
+
+    const service = new OpenCodeService({
+      repoRoot: '/repo/tauri',
+      mockMode: false,
+      spawn: vi.fn().mockReturnValue(child),
+      fetchImpl: fetchMock,
+      getPort: vi.fn().mockResolvedValue(4176),
+      browserMcp: {
+        url: 'http://127.0.0.1:4318/mcp',
+        headers: { authorization: 'Bearer test-token' },
+      },
+      getBrowserToolCallCount: () => toolCallCount,
+    })
+
+    await service.initialize()
+
+    await expect(service.sendPrompt('What do you see in the browser?')).rejects.toThrow(/did not invoke the browser context tool/i)
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      'http://127.0.0.1:4176/session/session-1/message',
+      expect.objectContaining({
+        body: expect.stringContaining('Before answering, call the browser_browser_context_current tool'),
+      }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      6,
+      'http://127.0.0.1:4176/session/session-1/message',
+      expect.objectContaining({
+        body: expect.stringContaining('You must call the browser_browser_context_current tool exactly once'),
+      }),
+    )
   })
 })

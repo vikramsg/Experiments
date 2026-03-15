@@ -109,6 +109,9 @@ export function App({ api }: OpenCodeAppProps) {
         <div style={styles.scopeCard}>
           <p style={styles.scopeLabel}>Repo scope</p>
           <p style={styles.scopeValue}>{state.repoRoot}</p>
+          <p style={styles.scopeLabel}>Browser tool</p>
+          <p style={styles.scopeValue}>{state.browserToolStatus === 'ready' ? 'Ready' : state.browserToolStatus === 'checking' ? 'Checking...' : 'Unavailable'}</p>
+          {state.browserToolMessage ? <p style={styles.toolMessage}>{state.browserToolMessage}</p> : null}
           <p style={styles.status}>{status}</p>
         </div>
       </section>
@@ -227,6 +230,11 @@ const styles: Record<string, CSSProperties> = {
     margin: 0,
     color: '#5f4b30',
     lineHeight: 1.55,
+  },
+  toolMessage: {
+    margin: 0,
+    color: '#6f5533',
+    lineHeight: 1.5,
   },
   chatShell: {
     flex: 1,

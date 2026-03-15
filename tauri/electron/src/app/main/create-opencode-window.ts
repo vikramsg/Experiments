@@ -80,6 +80,7 @@ export async function createOpenCodeWindow(input: OpenCodeWindowOptions): Promis
     repoRoot: input.repoRoot,
     browserMcp,
     browserContextProvider: async () => await getBrowserContextSnapshot(browserHost.browserView.webContents),
+    getBrowserToolCallCount: () => browserMcpServer.getToolCallCount(),
   })
 
   const applyBounds = () => {

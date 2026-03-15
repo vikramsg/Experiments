@@ -111,6 +111,8 @@ describe('OpenCode App', () => {
         repoRoot: '/repo/tauri',
         sessionId: 'session-1',
         error: null,
+        browserToolStatus: 'ready',
+        browserToolMessage: 'Browser inspection is ready for this session.',
         messages: [
           ...createDefaultOpenCodeState('/repo/tauri').messages,
           { id: 'u1', role: 'user', text: 'What is this app?' },

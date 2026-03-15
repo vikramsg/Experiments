@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { randomUUID } from 'node:crypto'
+import { setTimeout as delay } from 'node:timers/promises'
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
@@ -65,6 +66,7 @@ export class BrowserMcpServer {
   private readonly transport: StreamableHTTPServerTransport
   private httpServer: Server | null = null
   private connection: BrowserMcpConnection | null = null
+  private toolCallCount = 0
 
   constructor(
     private readonly input: {
@@ -79,7 +81,7 @@ export class BrowserMcpServer {
       version: '0.1.0',
     })
     this.transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
+      sessionIdGenerator: () => randomUUID(),
     })
 
     this.mcpServer.registerTool(
@@ -127,6 +129,7 @@ export class BrowserMcpServer {
 
     const closeHttpServer = this.httpServer
       ? new Promise<void>((resolve, reject) => {
+          this.httpServer?.closeAllConnections?.()
           this.httpServer?.close((error) => {
             if (error) {
               reject(error)
@@ -141,12 +144,13 @@ export class BrowserMcpServer {
     await closeHttpServer
     this.httpServer = null
     this.connection = null
-    await this.transport.close()
-    await this.mcpServer.close()
+    await Promise.race([this.transport.close(), delay(5000)])
+    await Promise.race([this.mcpServer.close(), delay(5000)])
   }
 
   async handleBrowserContextTool(): Promise<CallToolResult> {
     try {
+      this.toolCallCount += 1
       const browserContext = await this.input.getBrowserContext()
 
       if (!browserContext) {
@@ -188,6 +192,14 @@ export class BrowserMcpServer {
         ],
       }
     }
+  }
+
+  getToolCallCount(): number {
+    return this.toolCallCount
+  }
+
+  resetToolCallCount(): void {
+    this.toolCallCount = 0
   }
 
   private async handleHttpRequest(request: IncomingMessage, response: ServerResponse) {

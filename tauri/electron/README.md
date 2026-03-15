@@ -83,6 +83,7 @@ just dev
 - The main-process `OpenCodeService` starts a local `opencode serve` process rooted at the `tauri/` repo scope, creates a chat session, and publishes renderer-facing state.
 - Electron main also hosts a localhost browser MCP server in the browser domain, so OpenCode can call a browser tool instead of relying on prompt-time screenshot injection.
 - The first browser MCP tool captures the current browser URL and a fresh screenshot of the browser pane when the model needs to explain what it sees.
+- OpenCode verifies that the browser MCP server is connected before browser-aware prompts are treated as ready, and integration tests exercise the real MCP registration and invocation path without mock mode.
 - The OpenCode bridge is intentionally read-only for the repo scope:
   - reads, globbing, listing, and search are allowed
   - edits, write-style tools, and destructive shell or git actions are denied

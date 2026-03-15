@@ -14,12 +14,16 @@ export type OpenCodeMessage = {
 
 export type OpenCodeStatus = 'idle' | 'connecting' | 'ready' | 'responding' | 'error'
 
+export type BrowserToolStatus = 'checking' | 'ready' | 'unavailable'
+
 export type OpenCodeState = {
   status: OpenCodeStatus
   repoRoot: string
   sessionId: string | null
   messages: OpenCodeMessage[]
   error: string | null
+  browserToolStatus: BrowserToolStatus
+  browserToolMessage: string | null
 }
 
 export function createDefaultOpenCodeState(repoRoot: string): OpenCodeState {
@@ -36,5 +40,7 @@ export function createDefaultOpenCodeState(repoRoot: string): OpenCodeState {
       },
     ],
     error: null,
+    browserToolStatus: 'checking',
+    browserToolMessage: null,
   }
 }
