@@ -35,6 +35,8 @@ experience through a narrow renderer bridge.
 - A main-process `TerminalPtyService` owns the actual shell process in a PTY.
 - A main-process `TerminalAppearanceStore` owns durable terminal appearance
   preferences such as font family, font size, and minimal chrome mode.
+- Electron renders the terminal with one bundled patched mono font so prompt
+  glyphs and terminal cell metrics come from the same face.
 - The renderer never gets raw Node.js APIs, a shell handle, or unrestricted
   `ipcRenderer` access.
 - The shell itself is a normal local shell session with the same effective user
@@ -122,17 +124,25 @@ That boundary is intentionally narrow.
 Terminal appearance is owned by Electron, not inherited automatically from the
 native Ghostty app window.
 
+Current product assumption:
+
+- The app has a hard dependency on assuming Ghostty is the terminal config
+  source.
+- This is not yet a terminal-agnostic font import system for iTerm2,
+  Terminal.app, WezTerm, Kitty, or other terminal apps.
+
 - Durable preferences are stored in `app.getPath('userData')/terminal-appearance.json`.
-- On first load, when no Electron preference exists yet, the app tries to parse
-  Ghostty config and import `font-family` as a seed value.
-- After that first save, the Electron-owned preference wins over later Ghostty
-  config changes unless the saved Electron preference is removed or replaced.
+- On load, the app reads Ghostty config for `font-family` and compares it to the
+  bundled Electron render font.
+- If Ghostty's configured font differs from the bundled Electron render font,
+  the main process logs a warning with `pino`.
+- Electron still renders the terminal with the bundled patched mono font.
 
 Precedence is:
 
 1. saved Electron appearance preference
-2. imported Ghostty `font-family` seed value
-3. Electron terminal fallback defaults
+2. bundled Electron render font
+3. Ghostty `font-family` comparison for logging only
 
 This is why the Electron terminal can diverge from the native Ghostty app if it
 uses a different configured font stack, even while the shell prompt itself is
@@ -150,9 +160,10 @@ Current behavior:
   initial prompt uses the persisted font instead of a temporary fallback.
 - Create a shared `Ghostty` instance.
 - Create a `ghostty-web` `Terminal` with initial columns and rows.
-- Apply the persisted font family and font size from terminal appearance state.
-- Expand the primary font into a browser-oriented font stack with symbol
-  fallbacks so prompt glyphs have a better chance of rendering in Electron.
+- Load the bundled patched mono font through the renderer before terminal
+  creation.
+- Apply the bundled render font and persisted font size from terminal appearance
+  state.
 - Open the terminal inside a DOM container.
 - Attach `FitAddon` so the terminal re-fits to the container.
 - Forward user input and resize events back through the preload API.
@@ -186,10 +197,11 @@ Current behavior:
 
 1. Try to read `terminal-appearance.json` from Electron `userData`.
 2. If it exists, merge it with the terminal appearance defaults.
-3. If it does not exist, try to parse Ghostty config for `font-family`.
-4. Resolve the final Electron-owned appearance preference.
-5. Persist that resolved preference so later launches use the same Electron
-   terminal appearance even if Ghostty config changes later.
+3. Always parse Ghostty config for `font-family` so the app can compare it to
+   the bundled Electron render font.
+4. Log a `pino` warning if Ghostty's configured font differs from the bundled
+   Electron render font.
+5. Persist the bundled Electron render font and terminal sizing preferences.
 
 ## Filesystem Access And Permissions
 
@@ -251,13 +263,14 @@ the usual cause is the renderer font configuration, not the shell itself.
 
 - The shell prompt emits the same characters in both places.
 - The native Ghostty app and the Electron renderer may still draw those
-  characters with different primary fonts or fallback glyph resolution.
+  characters with different font faces.
 - The Electron terminal now treats font configuration as an explicit terminal
-  preference and seeds the default from Ghostty config when possible.
+  preference, but renders with a bundled patched mono font for glyph coverage
+  and cell-metric stability.
 
 In practical terms, if Ghostty uses `font-family = JetBrains Mono`, the Electron
-terminal will seed `JetBrains Mono` on first run instead of keeping a separate
-hardcoded demo font stack.
+terminal will log that the configured Ghostty font differs and still render with
+the bundled `Hack Nerd Font Mono` font.
 
 ## Mock Mode
 

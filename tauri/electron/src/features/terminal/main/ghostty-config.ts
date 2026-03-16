@@ -38,6 +38,9 @@ function resolveGhosttyConfigPath(explicitPath?: string): string {
 
 export async function loadGhosttyConfigFontFamily(explicitPath?: string): Promise<string | null> {
   try {
+    // Current product assumption: Ghostty is the source of truth for the user's
+    // preferred terminal text font, even though Electron currently renders the
+    // terminal with one bundled patched mono font for consistent glyph coverage.
     const raw = await readFile(resolveGhosttyConfigPath(explicitPath), 'utf8')
     return parseGhosttyConfigFontFamily(raw)
   } catch {

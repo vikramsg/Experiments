@@ -51,6 +51,7 @@ electron/
     |-- app/
     |   |-- main/
     |   |   |-- index.ts                    # App bootstrap, launcher creation, workspace ownership, OpenCode ownership, Terminal ownership
+    |   |   |-- logger.ts                   # Shared main-process pino logger
     |   |   |-- create-launcher-window.ts   # BrowserWindow creation and launcher entry loading
     |   |   |-- create-workspace-window.ts  # BaseWindow + four sibling WebContentsView composition
     |   |   |-- create-opencode-window.ts   # BaseWindow + local OpenCode WebContentsView composition
@@ -107,9 +108,11 @@ electron/
     |   |-- terminal/
     |   |   |-- main/
     |   |   |   |-- TerminalPtyService.ts   # PTY lifecycle, shell spawn, resize, restart, and output publishing
+    |   |   |   |-- TerminalAppearanceStore.ts # Durable terminal appearance persistence plus Ghostty-vs-Electron font mismatch logging
+    |   |   |   |-- ghostty-config.ts       # Ghostty config parsing/import helpers
     |   |   |   `-- TerminalPtyService.test.ts
     |   |   `-- renderer/
-    |   |       |-- App.tsx                 # Terminal UI shell and Ghostty mount host
+    |   |       |-- App.tsx                 # Full-bleed terminal host with hidden status bridge only
     |   |       |-- App.test.tsx            # Terminal renderer tests
     |   |       |-- ghostty-runtime.ts      # ghostty-web adapter boundary
     |   |       `-- main.tsx                # Terminal React entrypoint
@@ -196,7 +199,8 @@ src/features/terminal/renderer/App.tsx
 - `src/opencode-contract.ts` owns the renderer-facing OpenCode API contract.
 - `src/opencode-model.ts` owns the OpenCode chat state model.
 - `src/terminal-contract.ts` owns the renderer-facing Terminal API contract.
-- `src/terminal-model.ts` owns the Terminal renderer state model.
+- `src/terminal-model.ts` owns the Terminal renderer state model plus durable appearance defaults and font-stack helpers.
+- `src/app/main/logger.ts` owns the shared main-process `pino` logger.
 - `src/app/main/create-workspace-window.ts` owns composing the four sibling views, loading local and remote surfaces, and wiring remote browser navigation back into workspace state.
 - `src/app/main/create-opencode-window.ts` owns composing the OpenCode app window and wiring service-driven state publication into the local renderer.
 - `src/app/main/create-terminal-window.ts` owns composing the Terminal app window and forwarding PTY state plus output into the local renderer.
@@ -205,6 +209,8 @@ src/features/terminal/renderer/App.tsx
 - `src/features/notes/main/NoteStore.ts` persists only durable workspace fields, while browser history availability remains live-only state derived from `webContents`.
 - `src/features/opencode/main/OpenCodeService.ts` owns the local OpenCode server lifecycle, session creation, prompt submission, and read-only repo boundary.
 - `src/features/terminal/main/TerminalPtyService.ts` owns PTY lifecycle, shell resolution, shell spawn, resize and restart behavior, shell output streaming, and full-shell state publication.
+- `src/features/terminal/main/TerminalAppearanceStore.ts` owns durable terminal appearance preferences and the Ghostty-vs-bundled-font mismatch warning.
+- `src/features/terminal/main/ghostty-config.ts` owns parsing Ghostty config files for seed values such as `font-family`.
 - `src/features/terminal/renderer/ghostty-runtime.ts` owns the `ghostty-web` adapter boundary so the React shell does not directly manage WASM and canvas internals.
 
 ## Launcher Overview
@@ -373,6 +379,7 @@ src/app/main/register-ipc.ts
 ```text
 ghostty-web renderer surface
    |
+   +--> load one bundled patched mono font for the terminal surface
    +--> open terminal into a DOM container
    +--> emit onData when the user types
    +--> emit onResize when fit/resize updates cols and rows
@@ -433,13 +440,15 @@ splitter drag ------------------------------+|   |
 terminal window creation ------------------------------------+
                                                              |
 Ghostty config import on first Electron launch ----------+   |
+Ghostty vs bundled render font comparison ------------+ |   |
                                                          |   |
 saved Electron terminal appearance ---------------------+ |   |
-                                                        | |   |
-                                                        vv   v
-                                          TerminalAppearanceStore.load()
-                                                        |
-                                                        +--> resolve durable appearance
+                                                         | |   |
+                                                         vvv   v
+                                           TerminalAppearanceStore.load()
+                                                         |
+                                                         +--> log font mismatch with pino when needed
+                                                         +--> resolve durable appearance
                                                         |
                                                         v
                                    app.getPath('userData')/terminal-appearance.json

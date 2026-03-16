@@ -87,8 +87,10 @@ just dev
   - the renderer stays sandboxed and only talks through a narrow preload bridge
 - Terminal appearance is Electron-owned and persisted under `app.getPath('userData')`:
   - the window is intentionally full-bleed and terminal-first, with no visible settings UI
-  - first-run defaults can be seeded from Ghostty config, such as `font-family = JetBrains Mono`
-  - saved Electron preferences win over imported Ghostty defaults on later launches
+  - the current implementation has a hard dependency on assuming Ghostty is the terminal config source
+  - Electron reads Ghostty `font-family` for comparison/logging only
+  - Electron renders the terminal with a bundled patched mono font for reliable prompt/file glyph coverage and cell metrics
+  - if Ghostty's configured font differs from the bundled Electron render font, the main process logs a warning through `pino`
 
 For the detailed file tree, diagrams, and responsibilities, see `docs/architecture.md`.
 For terminal-specific wiring, Ghostty rationale, and PTY behavior, see `docs/ghostty.md`.

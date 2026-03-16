@@ -1,31 +1,33 @@
-import { DEFAULT_TERMINAL_APPEARANCE, resolveTerminalAppearance, toGhosttyWebFontFamily } from '../../../terminal-model'
+import {
+  BUNDLED_TERMINAL_FONT_FAMILY,
+  DEFAULT_TERMINAL_APPEARANCE,
+  resolveTerminalAppearance,
+  toGhosttyWebFontFamily,
+} from '../../../terminal-model'
 
 describe('terminal appearance helpers', () => {
-  it('prefers saved Electron appearance over imported Ghostty defaults', () => {
+  it('upgrades saved appearance to the bundled render font while preserving size and chrome settings', () => {
     expect(
       resolveTerminalAppearance({
         saved: {
-          ...DEFAULT_TERMINAL_APPEARANCE,
           fontFamily: 'Iosevka Term',
+          fontSize: 15,
+          minimalChrome: false,
         },
-        importedFontFamily: 'JetBrains Mono',
       }),
     ).toEqual({
       ...DEFAULT_TERMINAL_APPEARANCE,
-      fontFamily: 'Iosevka Term',
+      fontFamily: BUNDLED_TERMINAL_FONT_FAMILY,
+      fontSize: 15,
+      minimalChrome: false,
     })
   })
 
-  it('uses imported Ghostty font-family when no saved Electron preference exists', () => {
-    expect(resolveTerminalAppearance({ importedFontFamily: 'JetBrains Mono' })).toEqual({
-      ...DEFAULT_TERMINAL_APPEARANCE,
-      fontFamily: 'JetBrains Mono',
-    })
+  it('keeps the bundled render font when there is no saved Electron preference', () => {
+    expect(resolveTerminalAppearance({})).toEqual(DEFAULT_TERMINAL_APPEARANCE)
   })
 
-  it('builds a Ghostty/Web font stack with symbol fallbacks for prompt glyphs', () => {
-    expect(toGhosttyWebFontFamily('JetBrains Mono')).toBe(
-      'JetBrains Mono, Symbols Nerd Font Mono, Symbols Nerd Font, Apple Color Emoji, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace',
-    )
+  it('builds a Ghostty/Web font family from the single bundled render font only', () => {
+    expect(toGhosttyWebFontFamily(DEFAULT_TERMINAL_APPEARANCE)).toBe(BUNDLED_TERMINAL_FONT_FAMILY)
   })
 })

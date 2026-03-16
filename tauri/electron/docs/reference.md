@@ -16,7 +16,7 @@ Use separate local windows for `OpenCode` and `Terminal` rather than trying to b
 
 ### Terminal font ownership
 
-Treat terminal font rendering as an Electron-owned appearance preference, not something that will automatically match a native terminal app. If you want the Electron terminal to start close to Ghostty, seed the default from Ghostty config once and then persist the Electron preference under `userData`.
+Treat terminal font rendering as an Electron-owned appearance preference, not something that will automatically match a native terminal app. In the current implementation the app assumes Ghostty is the terminal config source, logs when Ghostty's configured `font-family` differs from the bundled Electron render font, and uses one bundled patched mono font for terminal rendering instead of runtime fallback composition.
 
 ### Notes persistence
 

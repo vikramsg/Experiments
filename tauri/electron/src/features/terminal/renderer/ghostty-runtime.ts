@@ -1,5 +1,6 @@
 import { FitAddon, Ghostty, Terminal } from 'ghostty-web'
 import ghosttyWasmUrl from 'ghostty-web/ghostty-vt.wasm?url'
+import bundledTerminalFontUrl from '../../../assets/fonts/HackNerdFontMono-Regular.ttf?url'
 
 import { toGhosttyWebFontFamily, type TerminalAppearance } from '../../../terminal-model'
 
@@ -20,21 +21,33 @@ export type GhosttyRuntime = {
 }
 
 let ghosttyPromise: Promise<Ghostty> | null = null
+let bundledTerminalFontPromise: Promise<void> | null = null
 
 function loadGhostty() {
   ghosttyPromise ??= Ghostty.load(ghosttyWasmUrl)
   return ghosttyPromise
 }
 
+async function ensureBundledTerminalFont() {
+  bundledTerminalFontPromise ??= (async () => {
+    const font = new FontFace('Hack Nerd Font Mono', `url(${bundledTerminalFontUrl}) format("truetype")`)
+    await font.load()
+    document.fonts.add(font)
+  })()
+
+  await bundledTerminalFontPromise
+}
+
 export async function createGhosttyRuntime(input: GhosttyRuntimeInput): Promise<GhosttyRuntime> {
   const ghostty = await loadGhostty()
+  await ensureBundledTerminalFont()
   const terminal = new Terminal({
     cols: input.cols,
     rows: input.rows,
     ghostty,
     cursorBlink: true,
     fontSize: input.appearance.fontSize,
-    fontFamily: toGhosttyWebFontFamily(input.appearance.fontFamily),
+    fontFamily: toGhosttyWebFontFamily(input.appearance),
     theme: {
       background: '#101519',
       foreground: '#d8e5ea',

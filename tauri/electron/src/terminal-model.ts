@@ -13,8 +13,10 @@ export type TerminalAppearance = {
 
 export type PersistedTerminalAppearance = TerminalAppearance
 
+export const BUNDLED_TERMINAL_FONT_FAMILY = 'Hack Nerd Font Mono'
+
 export const DEFAULT_TERMINAL_APPEARANCE: TerminalAppearance = {
-  fontFamily: 'ui-monospace',
+  fontFamily: BUNDLED_TERMINAL_FONT_FAMILY,
   fontSize: 14,
   minimalChrome: true,
 }
@@ -35,27 +37,22 @@ export type TerminalState = {
 
 export function resolveTerminalAppearance(input: {
   saved?: Partial<TerminalAppearance> | null
-  importedFontFamily?: string | null
 }): TerminalAppearance {
   if (input.saved) {
     return {
       ...DEFAULT_TERMINAL_APPEARANCE,
       ...input.saved,
-    }
-  }
-
-  if (input.importedFontFamily) {
-    return {
-      ...DEFAULT_TERMINAL_APPEARANCE,
-      fontFamily: input.importedFontFamily,
+      fontFamily: BUNDLED_TERMINAL_FONT_FAMILY,
     }
   }
 
   return DEFAULT_TERMINAL_APPEARANCE
 }
 
-export function toGhosttyWebFontFamily(primaryFontFamily: string): string {
-  return `${primaryFontFamily}, Symbols Nerd Font Mono, Symbols Nerd Font, Apple Color Emoji, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace`
+export function toGhosttyWebFontFamily(appearance: TerminalAppearance): string {
+  // The Electron terminal renders with one bundled patched mono font so prompt
+  // glyphs and cell metrics come from the same face instead of mixed fallbacks.
+  return appearance.fontFamily
 }
 
 export function createDefaultTerminalState(
