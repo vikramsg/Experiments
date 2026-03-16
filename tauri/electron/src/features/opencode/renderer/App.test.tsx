@@ -22,7 +22,7 @@ describe('OpenCode App', () => {
 
     expect(await screen.findByRole('heading', { name: /opencode/i })).toBeVisible()
     expect(screen.getByText(/local opencode server behind a narrow electron bridge/i)).toBeVisible()
-    expect(screen.getByText(/repo scope/i)).toBeVisible()
+    expect(screen.getByText(/^repo scope$/i)).toBeVisible()
     expect(screen.getByDisplayValue('')).toBeVisible()
   })
 
