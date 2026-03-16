@@ -12,6 +12,7 @@ OpenCode server plus a main-process-owned browser MCP tool.
   - It should not absorb feature business logic.
 - Services, adapters, and transports should be owned by the domain they expose.
   - Browser inspection and browser MCP live with the browser or app-main side.
+  - Browser history and URL autocomplete live with the browser side.
   - OpenCode process lifecycle lives with OpenCode.
   - Cross-domain wiring belongs in `app/*`.
 - `src/features/` contains isolated business features.
@@ -54,6 +55,7 @@ electron/
     |   |   |-- index.ts                    # App bootstrap, launcher creation, workspace ownership, OpenCode ownership
     |   |   |-- create-launcher-window.ts   # BrowserWindow creation and launcher entry loading
     |   |   |-- browser-host.ts             # Shared browser chrome/content composition for both apps
+    |   |   |-- OpenCodeBrowserController.ts # OpenCode + Browser split layout authority
     |   |   |-- create-workspace-window.ts  # BaseWindow + four sibling WebContentsView composition
     |   |   |-- create-opencode-window.ts   # BaseWindow with OpenCode left and browser right
     |   |   `-- register-ipc.ts             # Central IPC handler registration
@@ -74,6 +76,8 @@ electron/
     |   |   |-- main/
     |   |   |   |-- BrowserMcpServer.ts      # Local MCP server that exposes browser inspection tools
     |   |   |   |-- BrowserMcpServer.test.ts # Browser MCP server tests
+    |   |   |   |-- BrowserHistoryStore.ts   # Shared last-10 URL autocomplete history
+    |   |   |   `-- BrowserHistoryStore.test.ts
     |   |   |   |-- browser-context.ts      # Current URL + screenshot capture for browser inspection
     |   |   |   `-- browser-context.test.ts # Browser context capture tests
     |   |   |   |-- browser-session.ts      # URL normalization, browser-state reading, security rules
@@ -179,11 +183,13 @@ src/features/opencode/renderer/App.tsx
 - `src/opencode-contract.ts` owns the renderer-facing OpenCode API contract.
 - `src/opencode-model.ts` owns the OpenCode chat state model.
 - `src/app/main/browser-host.ts` owns browser chrome/content view composition that can be reused by multiple app windows.
+- `src/app/main/OpenCodeBrowserController.ts` owns the draggable left/right split for the OpenCode launcher.
 - `src/app/main/create-workspace-window.ts` owns composing Browser + Notes and wiring browser navigation back into workspace state.
 - `src/app/main/create-opencode-window.ts` owns composing the OpenCode left pane with the browser right pane and wiring service-driven state publication into the local renderer.
 - `src/features/workspace/main/WorkspaceController.ts` is the layout authority and publisher of workspace snapshots.
 - `src/features/browser/main/browser-session.ts` owns URL normalization, browser navigation-state reading, and remote-browser security policy.
 - `src/features/browser/main/browser-context.ts` owns live browser URL inspection and `capturePage()`-based screenshot capture.
+- `src/features/browser/main/BrowserHistoryStore.ts` owns shared browser URL autocomplete history and persistence.
 - `src/features/browser/main/BrowserMcpServer.ts` owns the localhost MCP endpoint that exposes browser tools to OpenCode.
 - `src/features/notes/main/NoteStore.ts` persists only durable workspace fields, while browser history availability remains live-only state derived from `webContents`.
 - `src/features/opencode/main/OpenCodeService.ts` owns the local OpenCode server lifecycle, session creation, prompt submission, MCP configuration, and read-only repo boundary.
@@ -302,6 +308,20 @@ src/app/main/register-ipc.ts
    `--> sender-specific BrowserHost selected by app/main composition
 ```
 
+## Browser History Flow
+
+```text
+browser navigation or URL submit
+   |
+   v
+BrowserHistoryStore.remember(url)
+   |
+   +--> dedupe
+   +--> keep last 10
+   +--> persist to userData
+   `--> publish shared autocomplete suggestions to both browser surfaces
+```
+
 ## OpenCode Flow
 
 ```text
@@ -358,6 +378,7 @@ The OpenCode app is intentionally narrower than the full CLI experience.
 - Allowed: `browser_*` MCP browser inspection tools
 - Denied: `edit`, write-style operations, arbitrary `bash`, destructive git, and external directory access
 - The renderer never receives raw shell access or unrestricted filesystem handles
+- Recent browser URL history is not part of MCP context; OpenCode receives only the current browser tool result on demand.
 
 ## Persistence Flow
 

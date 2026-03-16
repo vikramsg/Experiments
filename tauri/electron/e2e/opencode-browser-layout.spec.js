@@ -43,13 +43,15 @@ test('OpenCode launcher opens a split OpenCode plus browser window', async () =>
     await launcher.getByRole('button', { name: /launch opencode/i }).click()
 
     const openCodePage = await waitForPageByUrlPart(electronApp, 'opencode.html')
+    const splitterPage = await waitForPageByUrlPart(electronApp, 'opencode-splitter.html')
     const browserChromePage = await waitForPageByUrlPart(electronApp, 'browser-chrome.html')
     const browserPage = await waitForPageByUrlPart(electronApp, 'example.com')
 
-    await expect(openCodePage.getByRole('heading', { name: /opencode/i })).toBeVisible()
-    await expect(browserChromePage.getByRole('textbox', { name: /browser url/i })).toBeVisible()
+    await expect(splitterPage.getByRole('separator', { name: /resize panes/i })).toHaveAttribute('aria-orientation', 'vertical')
+    await expect(openCodePage.getByRole('textbox', { name: /ask opencode/i })).toBeVisible()
+    await expect(browserChromePage.getByRole('combobox', { name: /browser url/i })).toBeVisible()
 
-    await browserChromePage.getByRole('textbox', { name: /browser url/i }).fill('https://example.org')
+    await browserChromePage.getByRole('combobox', { name: /browser url/i }).fill('https://example.org')
     await browserChromePage.getByRole('button', { name: /^go$/i }).click()
 
     await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('https://example.org')

@@ -46,13 +46,13 @@ test('launcher opens the split workspace', async () => {
     const browserPage = await waitForPageByUrlPart(electronApp, 'example.com')
 
     await expect(notesPage.getByRole('textbox', { name: /notes editor/i })).toBeVisible()
-    await expect(notesPage.getByRole('textbox', { name: /browser url/i })).toHaveCount(0)
+    await expect(notesPage.getByRole('combobox', { name: /browser url/i })).toHaveCount(0)
     await expect(notesPage.getByText(/loading workspace/i)).toHaveCount(0)
     await expect(notesPage.getByText(/auto-saving notes to your workspace/i)).toBeVisible()
     await expect(splitterPage.getByRole('separator', { name: /resize panes/i })).toBeVisible()
     const backButton = browserChromePage.getByRole('button', { name: /back/i })
     const forwardButton = browserChromePage.getByRole('button', { name: /forward/i })
-    const urlInput = browserChromePage.getByRole('textbox', { name: /browser url/i })
+    const urlInput = browserChromePage.getByRole('combobox', { name: /browser url/i })
 
     await expect(backButton).toBeVisible()
     await expect(forwardButton).toBeVisible()
@@ -60,7 +60,7 @@ test('launcher opens the split workspace', async () => {
     await expect(forwardButton).toHaveText('→')
     await expect(backButton).toBeDisabled()
     await expect(forwardButton).toBeDisabled()
-    await expect(browserChromePage.getByRole('textbox', { name: /browser url/i })).toBeVisible()
+    await expect(browserChromePage.getByRole('combobox', { name: /browser url/i })).toBeVisible()
     await expect(browserChromePage.getByRole('button', { name: /^go$/i })).toBeVisible()
     await expect
       .poll(async () => browserPage.url(), { timeout: 15000 })

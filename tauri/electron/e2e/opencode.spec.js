@@ -6,6 +6,10 @@ const { _electron: electron, expect, test } = require('@playwright/test')
 
 const repoRoot = path.resolve(__dirname, '../..')
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
 async function launchApp(userDataDir) {
   return electron.launch({
     executablePath: path.resolve(
@@ -48,9 +52,8 @@ test('launcher opens OpenCode with a browser on the right and the chat responds'
     const browserChromePage = await waitForPageByUrlPart(electronApp, 'browser-chrome.html')
     const browserPage = await waitForPageByUrlPart(electronApp, 'example.com')
 
-    await expect(openCodePage.getByRole('heading', { name: /opencode/i })).toBeVisible()
-    await expect(openCodePage.getByText(/local opencode server beside a live browser surface/i)).toBeVisible()
-    await expect(browserChromePage.getByRole('textbox', { name: /browser url/i })).toBeVisible()
+    await expect(openCodePage.getByRole('textbox', { name: /ask opencode/i })).toBeVisible()
+    await expect(browserChromePage.getByRole('combobox', { name: /browser url/i })).toBeVisible()
     await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('https://example.com')
 
     const prompt = openCodePage.getByRole('textbox', { name: /ask opencode/i })
@@ -59,7 +62,7 @@ test('launcher opens OpenCode with a browser on the right and the chat responds'
 
     await expect(openCodePage.getByText('Where does the launcher live?', { exact: true })).toBeVisible()
     await expect(openCodePage.getByText(/mock opencode reply/i)).toBeVisible()
-    await expect(openCodePage.getByText(repoRoot, { exact: true })).toBeVisible()
+    await expect(openCodePage.getByText(new RegExp(escapeRegExp(repoRoot)))).toBeVisible()
 
     await prompt.fill('Line one')
     await prompt.press('Shift+Enter')
@@ -72,7 +75,7 @@ test('launcher opens OpenCode with a browser on the right and the chat responds'
       await prompt.press('Enter')
     }
 
-    await expect(openCodePage.getByRole('heading', { name: /opencode/i })).toBeVisible()
+    await expect(openCodePage.getByRole('textbox', { name: /ask opencode/i })).toBeVisible()
     await expect(openCodePage.getByRole('button', { name: /send prompt/i })).toBeVisible()
   } finally {
     await electronApp?.close()

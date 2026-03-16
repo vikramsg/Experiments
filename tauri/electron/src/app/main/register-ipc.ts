@@ -87,4 +87,8 @@ export function registerIpc(input: {
     const openCode = input.requireOpenCode()
     await openCode.service.sendPrompt(prompt)
   })
+
+  ipcMain.handle(IPC_CHANNELS.opencodeAdjustSplit, async (_event, delta: number) => {
+    input.requireOpenCode().controller.adjustOpenCodeWidth(delta)
+  })
 }

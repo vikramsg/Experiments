@@ -5,6 +5,7 @@ import { WebContentsView, session } from 'electron'
 import type { BrowserSnapshot } from '../../browser-model'
 import { DEFAULT_BROWSER_SNAPSHOT } from '../../browser-model'
 import { IPC_CHANNELS } from '../../ipc'
+import type { BrowserHistoryStore } from '../../features/browser/main/BrowserHistoryStore'
 import {
   applyBrowserSecurityPolicy,
   normalizeUrl,
@@ -48,8 +49,10 @@ async function loadBrowserChromePage(view: WebContentsView) {
 export async function createBrowserHost(input: {
   partition: string
   initialUrl: string
+  historyStore: BrowserHistoryStore
   onStateChange?: (snapshot: BrowserSnapshot) => void
 }): Promise<BrowserHost> {
+  await input.historyStore.load()
   const browserSession = session.fromPartition(input.partition)
 
   const browserChromeView = new WebContentsView({
@@ -79,7 +82,19 @@ export async function createBrowserHost(input: {
   let snapshot: BrowserSnapshot = {
     ...DEFAULT_BROWSER_SNAPSHOT,
     browserUrl: normalizeUrl(input.initialUrl),
+    recentUrls: input.historyStore.getHistory(),
   }
+
+  const updateHistory = (history: string[]) => {
+    snapshot = {
+      ...snapshot,
+      recentUrls: history,
+    }
+    publishState()
+  }
+
+  const unsubscribeHistory = input.historyStore.subscribe(updateHistory)
+  let closed = false
 
   const publishState = () => {
     browserChromeView.webContents.send(IPC_CHANNELS.browserState, snapshot)
@@ -87,15 +102,22 @@ export async function createBrowserHost(input: {
   }
 
   const updateStateFromWebContents = () => {
-    snapshot = readBrowserNavigationState(browserView.webContents)
+    snapshot = {
+      ...snapshot,
+      ...readBrowserNavigationState(browserView.webContents),
+    }
     publishState()
   }
 
   subscribeToBrowserNavigation({
     webContents: browserView.webContents,
     onChange: (nextSnapshot) => {
-      snapshot = nextSnapshot
+      snapshot = {
+        ...snapshot,
+        ...nextSnapshot,
+      }
       publishState()
+      void input.historyStore.remember(nextSnapshot.browserUrl)
     },
   })
 
@@ -109,6 +131,7 @@ export async function createBrowserHost(input: {
   ])
 
   updateStateFromWebContents()
+  await input.historyStore.remember(snapshot.browserUrl)
 
   return {
     browserChromeView,
@@ -123,6 +146,7 @@ export async function createBrowserHost(input: {
       }
       publishState()
       await browserView.webContents.loadURL(normalized)
+      await input.historyStore.remember(normalized)
     },
     goBack: () => {
       if (browserView.webContents.canGoBack()) {
@@ -135,6 +159,12 @@ export async function createBrowserHost(input: {
       }
     },
     close: () => {
+      if (closed) {
+        return
+      }
+
+      closed = true
+      unsubscribeHistory()
       browserChromeView.webContents.close()
       browserView.webContents.close()
     },

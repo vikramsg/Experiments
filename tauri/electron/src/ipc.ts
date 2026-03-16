@@ -25,5 +25,6 @@ export const IPC_CHANNELS = {
   workspaceState: 'workspace:state',
   opencodeGetState: 'opencode:get-state',
   opencodeSendPrompt: 'opencode:send-prompt',
+  opencodeAdjustSplit: 'opencode:adjust-split',
   opencodeState: 'opencode:state',
 } as const

@@ -10,6 +10,7 @@ export type BrowserSnapshot = {
   browserUrl: string
   canGoBack: boolean
   canGoForward: boolean
+  recentUrls: string[]
 }
 
 export type BrowserScreenshot = {
@@ -28,4 +29,5 @@ export const DEFAULT_BROWSER_SNAPSHOT: BrowserSnapshot = {
   browserUrl: 'https://example.com',
   canGoBack: false,
   canGoForward: false,
+  recentUrls: [],
 }

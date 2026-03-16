@@ -46,7 +46,7 @@ test('OpenCode can explain what it sees in the browser', async () => {
     const browserPage = await waitForPageByUrlPart(electronApp, 'example.com')
 
     await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('https://example.com')
-    await browserChromePage.getByRole('textbox', { name: /browser url/i }).fill('https://example.com/docs')
+    await browserChromePage.getByRole('combobox', { name: /browser url/i }).fill('https://example.com/docs')
     await browserChromePage.getByRole('button', { name: /^go$/i }).click()
     await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('https://example.com/docs')
 

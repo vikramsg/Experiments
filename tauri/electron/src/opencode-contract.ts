@@ -11,5 +11,6 @@ import type { OpenCodeState } from './opencode-model'
 export type OpenCodeApi = {
   loadState: () => Promise<OpenCodeState>
   sendPrompt: (prompt: string) => Promise<void>
+  adjustSplit: (delta: number) => Promise<void>
   onStateChange: (listener: (state: OpenCodeState) => void) => () => void
 }

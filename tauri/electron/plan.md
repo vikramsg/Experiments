@@ -14,6 +14,13 @@ and then proceeding with implementation.
   second MCP client.
 - Move browser-facing MCP ownership to the browser/app-main side and keep
   feature wiring in `app/*`, not through feature-to-feature imports.
+- Add a real draggable splitter between OpenCode and the browser in the
+  OpenCode launcher window.
+- Store the last 10 visited browser URLs for shared browser-input autocomplete
+  across both Browser + Notes and OpenCode + Browser. This history is browser UX
+  only and must not be added to OpenCode MCP context.
+- Simplify the OpenCode pane so the left side renders only the chat thread and
+  composer, not dashboard-style headings or status cards.
 - Update `electron/README.md` and `electron/docs/architecture.md` so they
   explicitly require clean domain-based separation:
   - browser-owned services live with browser or app composition
@@ -49,12 +56,17 @@ Target OpenCode window
 
 BaseWindow
 +------------------------------------------------------------------+
-| OpenCode view                    | Browser chrome                |
+| OpenCode chat                    | Browser chrome                |
 | local renderer                   | local renderer                |
 |                                  +-------------------------------+
-| chat                             | Browser content               |
-| MCP-backed browser questions     | remote page                   |
+| chat thread                      | Browser content               |
+| composer                         | remote page                   |
+|                                  |                               |
 +------------------------------------------------------------------+
+
+splitter lives between the left and right panes and adjusts their widths.
+
+browser chrome input uses shared last-10 URL autocomplete.
 
 All child views remain siblings under one BaseWindow.
 ```
@@ -66,6 +78,7 @@ Ownership and composition
 features/browser/main
    +--> browser-session.ts
    +--> browser-context.ts
+   +--> BrowserHistoryStore.ts
    `--> BrowserMcpServer.ts
 
 features/opencode/main
@@ -115,6 +128,21 @@ OpenCodeService.initialize()
    `--> only then allow browser-aware UX to be considered ready
 ```
 
+```text
+Shared URL history flow
+=======================
+
+browser navigation or direct URL submit
+   |
+   v
+BrowserHistoryStore.remember(url)
+   |
+   +--> dedupe
+   +--> keep last 10
+   +--> persist to userData
+   `--> publish updated suggestions to all browser chrome surfaces
+```
+
 ## Current Status
 
 - The current `OpenCode` launcher still opens a standalone full-window OpenCode
@@ -154,6 +182,8 @@ OpenCodeService.initialize()
   - check MCP connection status
   - check tool registration
   - record actual tool invocation for browser-aware asks
+- Add a shared browser history store for URL autocomplete only.
+- Strip the OpenCode left pane down to chat messages and the prompt composer.
 - Update docs so the architecture explicitly enforces domain ownership and
   composition rules.
 
@@ -194,12 +224,13 @@ OpenCodeService.initialize()
 - `electron/src/features/browser/main/browser-session.test.ts`
 - `electron/src/features/browser/main/browser-context.ts`
 - `electron/src/features/browser/main/browser-context.test.ts`
+- `electron/src/features/browser/renderer/App.tsx`
+- `electron/src/features/browser/renderer/App.test.tsx`
 - `electron/src/features/opencode/main/OpenCodeService.ts`
 - `electron/src/features/opencode/main/OpenCodeService.test.ts`
 - `electron/src/features/opencode/renderer/App.tsx`
 - `electron/src/features/opencode/renderer/App.test.tsx`
-- `electron/src/features/browser/renderer/App.tsx`
-- `electron/src/features/browser/renderer/App.test.tsx`
+- `electron/src/features/splitter/renderer/main.tsx`
 - `electron/src/ipc.ts`
 - `electron/src/types.d.ts`
 - `electron/src/workspace-contract.ts`
@@ -212,9 +243,15 @@ OpenCodeService.initialize()
 
 - `electron/src/features/browser/main/BrowserMcpServer.ts`
 - `electron/src/features/browser/main/BrowserMcpServer.test.ts`
+- `electron/src/features/browser/main/BrowserHistoryStore.ts`
+- `electron/src/features/browser/main/BrowserHistoryStore.test.ts`
 - `electron/src/browser-contract.ts`
 - `electron/src/browser-model.ts`
 - `electron/src/app/preload/browser.ts`
+- `electron/src/app/main/OpenCodeBrowserController.ts`
+- `electron/src/app/main/opencode-splitter-preload.ts`
+- `electron/src/app/renderer/entries/opencode-splitter.html`
+- `electron/src/features/splitter/renderer/opencode-main.tsx`
 - `electron/e2e/opencode-browser-layout.spec.js`
 - `electron/e2e/opencode-mcp-registration.spec.js`
 
@@ -225,6 +262,12 @@ OpenCodeService.initialize()
 - The Browser + Notes launcher still opens the existing Browser + Notes app.
 - The OpenCode window's browser chrome controls its own browser surface, not the
   Browser + Notes browser.
+- The OpenCode window includes a draggable splitter between OpenCode and the
+  browser.
+- Browser URL inputs in both launchers offer shared autocomplete suggestions
+  from the last 10 visited URLs.
+- URL history stays in the browser UX domain only and is not added to MCP tool
+  context.
 - OpenCode can ask what it sees in the browser by calling the browser MCP tool.
 - OpenCode startup verifies that browser MCP is connected through `/mcp`.
 - OpenCode startup verifies that `browser_browser_context_current` is registered
@@ -252,6 +295,7 @@ OpenCodeService.initialize()
 - Real non-mock verification proves MCP is connected, the browser tool is
   registered, and browser-aware prompts invoke it.
 - Browser + Notes still works as a separate launcher app.
+- The OpenCode left pane shows only chat messages and the prompt composer.
 - Docs clearly state the rule that services/adapters belong to their domain and
   must be composed from `app/*`.
 - Work is not complete until all automated verification passes.
@@ -314,6 +358,7 @@ OpenCodeService.initialize()
     `electron/e2e/opencode-browser-layout.spec.js` that asserts:
     - launcher opens OpenCode
     - the OpenCode app opens with browser visible on the right
+    - a splitter is visible and draggable
     - browser chrome works in that same window
     - asking what OpenCode sees in the browser returns a browser-aware answer
 
@@ -341,77 +386,96 @@ OpenCodeService.initialize()
     capture in browser-owned code and keeping OpenCode free of browser service
     ownership.
 
-18. Refactor `electron/src/app/main/create-opencode-window.ts` so it composes a
+18. Add a browser-owned shared history store for the last 10 visited URLs and
+    wire it into all browser hosts for autocomplete only.
+
+19. Refactor `electron/src/app/main/create-opencode-window.ts` so it composes a
     split `BaseWindow` with:
     - OpenCode view
+    - splitter view
     - browser chrome view
     - browser content view
-    - splitter if needed
 
-19. Reuse or extract the browser host/composition seam from
+20. Reuse or extract the browser host/composition seam from
     `electron/src/app/main/create-workspace-window.ts` so browser setup,
     security policy, and navigation sync do not get duplicated carelessly.
 
-20. Introduce a browser-owned or root-boundary browser contract/preload/IPC
+21. Introduce a browser-owned or root-boundary browser contract/preload/IPC
     path so the browser chrome renderer can control either launcher's browser
     surface without relying on notes-specific workspace semantics.
 
-21. Update `electron/src/app/main/index.ts` so the OpenCode launcher creates the
+22. Add an OpenCode-specific splitter adjustment path and controller so the left
+    and right panes can be resized without notes-specific workspace IPC.
+
+23. Update `electron/src/app/main/index.ts` so the OpenCode launcher creates the
     split OpenCode window and wires the browser MCP server to that window's own
     browser view.
 
-22. Extend `electron/src/features/opencode/main/OpenCodeService.ts` so it:
+24. Extend `electron/src/features/opencode/main/OpenCodeService.ts` so it:
     - verifies MCP connection status through `/mcp`
     - verifies tool registration through `/experimental/tool/ids`
     - exposes a visible failure state if browser MCP is unavailable
     - records or surfaces enough telemetry to confirm real tool invocation in
       integration tests
 
-23. Keep `electron/src/features/opencode/main/OpenCodeService.ts` limited to:
+25. Simplify `electron/src/features/opencode/renderer/App.tsx` so the left pane
+    only renders the chat thread and prompt composer, with no dashboard headers
+    or side cards.
+
+26. Keep `electron/src/features/opencode/main/OpenCodeService.ts` limited to:
     - OpenCode process lifecycle
     - MCP client config injection
     - read-only repo permission config
     and do not let it import browser feature services directly.
 
-24. Re-run the targeted browser MCP, composition, IPC, renderer, registration,
+27. Re-run the targeted browser MCP, composition, splitter, browser-history,
+    IPC, renderer, registration,
     and real invocation tests
     immediately after implementation; if they do not pass, fix the
     implementation before moving on.
 
-25. Re-run the targeted Playwright layout/browser-awareness spec immediately
+28. Re-run the targeted Playwright layout/browser-awareness spec immediately
     after implementation; if it does not pass, continue refining the split
     window wiring before moving on.
 
-26. Update `electron/README.md` so it explicitly states:
+29. Update `electron/README.md` so it explicitly states:
     - services, adapters, and integrations belong to their domain
     - cross-domain wiring belongs in `app/*`
     - features must not import other features directly
+    - shared browser URL history powers autocomplete only and is not MCP context
 
-27. Update `electron/docs/architecture.md` so it explicitly documents:
+30. Update `electron/docs/architecture.md` so it explicitly documents:
     - domain-based ownership for browser, OpenCode, and app composition
     - where MCP server ownership belongs
+    - shared browser history ownership and persistence
+    - OpenCode splitter ownership
     - why feature-to-feature imports remain forbidden
 
-28. Add only the minimal necessary inline comments where browser host reuse,
-    MCP ownership, or split-window composition would otherwise be non-obvious.
+31. Add only the minimal necessary inline comments where browser host reuse,
+    browser history persistence, MCP ownership, or split-window composition
+    would otherwise be non-obvious.
 
-29. If a browser skill is available, use it for browser-level smoke checks of
+32. If a browser skill is available, use it for browser-level smoke checks of
     the final OpenCode + Browser layout. No browser skill is available in this
     environment, so use Playwright Electron coverage as the browser-level smoke
     baseline.
 
-30. Run the full automated verification suite:
+33. Run the full automated verification suite:
    - lint
    - unit and renderer tests
    - real MCP registration / invocation integration tests
    - Playwright Electron E2E tests
    - build/package flow
 
-31. Stop only after:
+34. Stop only after:
    - OpenCode launcher opens OpenCode + Browser in one window
+   - a splitter resizes OpenCode and browser panes
    - Browser + Notes remains separate
    - browser MCP ownership is in the correct domain
+   - shared browser autocomplete shows the last 10 visited URLs across both browser surfaces
+   - recent URL history is not added to MCP context
    - real MCP registration is verified through OpenCode APIs
    - real tool invocation is verified without mock mode
+   - the OpenCode left pane shows only chat and composer
    - docs clearly state clean domain-based separation rules
    - all automated verification passes

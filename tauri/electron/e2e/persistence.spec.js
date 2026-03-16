@@ -49,7 +49,7 @@ test('notes, splitter width, and browser url persist across relaunch', async () 
     const firstRun = await openWorkspace(electronApp, 'example.com')
 
     await firstRun.notesPage.getByRole('textbox', { name: /notes editor/i }).fill('Persist this note')
-    await firstRun.browserChromePage.getByRole('textbox', { name: /browser url/i }).fill('https://example.org/')
+    await firstRun.browserChromePage.getByRole('combobox', { name: /browser url/i }).fill('https://example.org/')
     await firstRun.browserChromePage.getByRole('button', { name: /^go$/i }).click()
 
     await expect
@@ -80,7 +80,7 @@ test('notes, splitter width, and browser url persist across relaunch', async () 
     const secondRun = await openWorkspace(electronApp, 'example.org')
 
     await expect(secondRun.notesPage.getByRole('textbox', { name: /notes editor/i })).toHaveValue('Persist this note')
-    await expect(secondRun.browserChromePage.getByRole('textbox', { name: /browser url/i })).toHaveValue('https://example.org/')
+    await expect(secondRun.browserChromePage.getByRole('combobox', { name: /browser url/i })).toHaveValue('https://example.org/')
     await expect.poll(async () => secondRun.notesPage.evaluate(() => window.innerWidth)).toBe(savedWidth)
     await expect.poll(async () => secondRun.browserPage.url(), { timeout: 15000 }).toContain('https://example.org/')
   } finally {

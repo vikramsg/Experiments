@@ -11,11 +11,13 @@ export function App({ api }: BrowserChromeAppProps) {
   const [browserUrl, setBrowserUrl] = useState('https://example.com')
   const [canGoBack, setCanGoBack] = useState(false)
   const [canGoForward, setCanGoForward] = useState(false)
+  const [recentUrls, setRecentUrls] = useState<string[]>([])
 
   const applySnapshot = useCallback((snapshot: BrowserSnapshot) => {
     setBrowserUrl(snapshot.browserUrl)
     setCanGoBack(snapshot.canGoBack)
     setCanGoForward(snapshot.canGoForward)
+    setRecentUrls(snapshot.recentUrls)
   }, [])
 
   useEffect(() => {
@@ -67,20 +69,25 @@ export function App({ api }: BrowserChromeAppProps) {
         >
           {'→'}
         </button>
-        <label style={styles.label}>
-          <span style={styles.caption}>Browser URL</span>
-          <input
-            aria-label="Browser URL"
-            style={styles.input}
-            value={browserUrl}
-            onChange={(event) => setBrowserUrl(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                navigate()
-              }
-            }}
-          />
-        </label>
+        <input
+          aria-label="Browser URL"
+          style={styles.input}
+          value={browserUrl}
+          list="browser-url-history"
+          onChange={(event) => setBrowserUrl(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              navigate()
+            }
+          }}
+        />
+        <datalist id="browser-url-history">
+          {recentUrls.map((url) => (
+            <option key={url} value={url}>
+              {url}
+            </option>
+          ))}
+        </datalist>
         <button style={styles.button} type="button" onClick={navigate}>
           Go
         </button>
@@ -106,21 +113,9 @@ const styles: Record<string, CSSProperties> = {
     gap: '10px',
     minHeight: '68px',
   },
-  label: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
+  input: {
     flex: 1,
     minWidth: 0,
-  },
-  caption: {
-    fontSize: '0.72rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.12em',
-    color: '#7b6442',
-  },
-  input: {
-    width: '100%',
     boxSizing: 'border-box',
     padding: '9px 12px',
     borderRadius: '999px',

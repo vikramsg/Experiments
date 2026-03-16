@@ -2,6 +2,7 @@ import path from 'node:path'
 
 import { BaseWindow, WebContentsView } from 'electron'
 
+import type { BrowserHistoryStore } from '../../features/browser/main/BrowserHistoryStore'
 import { createBrowserHost } from './browser-host'
 import { NoteStore } from '../../features/notes/main/NoteStore'
 import { WorkspaceController } from '../../features/workspace/main/WorkspaceController'
@@ -38,7 +39,10 @@ function loadLocalPage(view: WebContentsView, page: 'notes.html' | 'splitter.htm
   return view.webContents.loadFile(target)
 }
 
-export async function createWorkspaceWindow(userDataPath: string): Promise<WorkspaceBundle> {
+export async function createWorkspaceWindow(
+  userDataPath: string,
+  browserHistoryStore: BrowserHistoryStore,
+): Promise<WorkspaceBundle> {
   const store = new NoteStore(userDataPath)
   const snapshot = await store.load()
   let controller: WorkspaceController | null = null
@@ -71,6 +75,7 @@ export async function createWorkspaceWindow(userDataPath: string): Promise<Works
   const browserHost = await createBrowserHost({
     partition: BROWSER_PARTITION,
     initialUrl: snapshot.browserUrl,
+    historyStore: browserHistoryStore,
     onStateChange: (browserState) => {
       if (!controller) {
         return
@@ -121,6 +126,10 @@ export async function createWorkspaceWindow(userDataPath: string): Promise<Works
     loadLocalPage(notesView, 'notes.html'),
     loadLocalPage(splitterView, 'splitter.html'),
   ])
+
+  window.on('closed', () => {
+    browserHost.close()
+  })
 
   if (!controller) {
     throw new Error('Workspace controller did not initialize')

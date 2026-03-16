@@ -1,4 +1,4 @@
-import type { WorkspaceSnapshot } from '../../../workspace-model'
+import type { BrowserSnapshot } from '../../../browser-model'
 
 export type PermissionSessionLike = {
   setPermissionRequestHandler: (
@@ -56,7 +56,7 @@ export function applyBrowserSecurityPolicy(input: {
 
 export function readBrowserNavigationState(
   webContents: BrowserNavigationWebContentsLike,
-): Pick<WorkspaceSnapshot, 'browserUrl' | 'canGoBack' | 'canGoForward'> {
+): Pick<BrowserSnapshot, 'browserUrl' | 'canGoBack' | 'canGoForward'> {
   return {
     browserUrl: normalizeUrl(webContents.getURL()),
     canGoBack: webContents.canGoBack(),
@@ -66,7 +66,7 @@ export function readBrowserNavigationState(
 
 export function subscribeToBrowserNavigation(input: {
   webContents: BrowserNavigationWebContentsLike
-  onChange: (state: Pick<WorkspaceSnapshot, 'browserUrl' | 'canGoBack' | 'canGoForward'>) => void
+  onChange: (state: Pick<BrowserSnapshot, 'browserUrl' | 'canGoBack' | 'canGoForward'>) => void
 }) {
   const publish = () => {
     input.onChange(readBrowserNavigationState(input.webContents))

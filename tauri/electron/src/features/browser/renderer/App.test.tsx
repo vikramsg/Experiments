@@ -24,11 +24,12 @@ describe('Browser Chrome App', () => {
       browserUrl: 'https://example.com',
       canGoBack: false,
       canGoForward: false,
+      recentUrls: ['https://example.com', 'https://example.org/docs'],
     })
 
     render(<App api={api} />)
 
-    const input = await screen.findByRole('textbox', { name: /browser url/i })
+    const input = await screen.findByLabelText(/browser url/i)
     expect(input).toHaveValue('https://example.com')
     expect(screen.getByRole('button', { name: /back/i })).toHaveTextContent('←')
     expect(screen.getByRole('button', { name: /forward/i })).toHaveTextContent('→')
@@ -36,6 +37,7 @@ describe('Browser Chrome App', () => {
     expect(screen.queryByText(/^Forward$/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /back/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /forward/i })).toBeDisabled()
+    expect(document.querySelector('datalist option[value="https://example.org/docs"]')).not.toBeNull()
 
     await user.clear(input)
     await user.type(input, 'https://example.org/docs')
@@ -50,6 +52,7 @@ describe('Browser Chrome App', () => {
       browserUrl: 'https://example.com',
       canGoBack: true,
       canGoForward: true,
+      recentUrls: ['https://example.com'],
     })
 
     render(<App api={api} />)
@@ -66,6 +69,7 @@ describe('Browser Chrome App', () => {
       browserUrl: 'https://example.com',
       canGoBack: false,
       canGoForward: false,
+      recentUrls: ['https://example.com'],
     })
 
     let listener: ((snapshot: BrowserSnapshot) => void) | undefined
@@ -76,18 +80,20 @@ describe('Browser Chrome App', () => {
 
     render(<App api={api} />)
 
-    const input = await screen.findByRole('textbox', { name: /browser url/i })
+    const input = await screen.findByLabelText(/browser url/i)
 
     act(() => {
       listener?.({
         browserUrl: 'https://example.net/app',
         canGoBack: true,
         canGoForward: false,
+        recentUrls: ['https://example.net/app', 'https://example.com'],
       })
     })
 
     expect(input).toHaveValue('https://example.net/app')
     expect(screen.getByRole('button', { name: /back/i })).toBeEnabled()
     expect(screen.getByRole('button', { name: /forward/i })).toBeDisabled()
+    expect(document.querySelector('datalist option[value="https://example.com"]')).not.toBeNull()
   })
 })
