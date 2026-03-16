@@ -1,18 +1,16 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import type { WorkspaceApi } from '../../../workspace-contract'
-import type { WorkspaceSnapshot } from '../../../workspace-model'
+import type { BrowserApi } from '../../../browser-contract'
+import type { BrowserSnapshot } from '../../../browser-model'
 import { App } from './App'
 
-function createApi(snapshot: WorkspaceSnapshot): WorkspaceApi {
-  const api: WorkspaceApi = {
+function createApi(snapshot: BrowserSnapshot): BrowserApi {
+  const api: BrowserApi = {
     loadState: vi.fn().mockResolvedValue(snapshot),
-    saveNotes: vi.fn().mockResolvedValue(undefined),
     setBrowserUrl: vi.fn().mockResolvedValue(undefined),
     goBack: vi.fn().mockResolvedValue(undefined),
     goForward: vi.fn().mockResolvedValue(undefined),
-    adjustSplitter: vi.fn().mockResolvedValue(undefined),
     onStateChange: vi.fn().mockReturnValue(() => undefined),
   }
 
@@ -23,16 +21,15 @@ describe('Browser Chrome App', () => {
   it('loads the saved browser url and navigates on go', async () => {
     const user = userEvent.setup()
     const api = createApi({
-      notes: 'Saved note',
-      notesWidth: 420,
       browserUrl: 'https://example.com',
       canGoBack: false,
       canGoForward: false,
+      recentUrls: ['https://example.com', 'https://example.org/docs'],
     })
 
     render(<App api={api} />)
 
-    const input = await screen.findByRole('textbox', { name: /browser url/i })
+    const input = await screen.findByLabelText(/browser url/i)
     expect(input).toHaveValue('https://example.com')
     expect(screen.getByRole('button', { name: /back/i })).toHaveTextContent('←')
     expect(screen.getByRole('button', { name: /forward/i })).toHaveTextContent('→')
@@ -40,6 +37,7 @@ describe('Browser Chrome App', () => {
     expect(screen.queryByText(/^Forward$/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /back/i })).toBeDisabled()
     expect(screen.getByRole('button', { name: /forward/i })).toBeDisabled()
+    expect(document.querySelector('datalist option[value="https://example.org/docs"]')).not.toBeNull()
 
     await user.clear(input)
     await user.type(input, 'https://example.org/docs')
@@ -51,11 +49,10 @@ describe('Browser Chrome App', () => {
   it('calls the back and forward browser actions', async () => {
     const user = userEvent.setup()
     const api = createApi({
-      notes: '',
-      notesWidth: 420,
       browserUrl: 'https://example.com',
       canGoBack: true,
       canGoForward: true,
+      recentUrls: ['https://example.com'],
     })
 
     render(<App api={api} />)
@@ -69,14 +66,13 @@ describe('Browser Chrome App', () => {
 
   it('reacts to workspace state updates', async () => {
     const api = createApi({
-      notes: '',
-      notesWidth: 420,
       browserUrl: 'https://example.com',
       canGoBack: false,
       canGoForward: false,
+      recentUrls: ['https://example.com'],
     })
 
-    let listener: ((snapshot: WorkspaceSnapshot) => void) | undefined
+    let listener: ((snapshot: BrowserSnapshot) => void) | undefined
     vi.mocked(api.onStateChange).mockImplementation((nextListener) => {
       listener = nextListener
       return () => undefined
@@ -84,20 +80,20 @@ describe('Browser Chrome App', () => {
 
     render(<App api={api} />)
 
-    const input = await screen.findByRole('textbox', { name: /browser url/i })
+    const input = await screen.findByLabelText(/browser url/i)
 
     act(() => {
       listener?.({
-        notes: '',
-        notesWidth: 420,
         browserUrl: 'https://example.net/app',
         canGoBack: true,
         canGoForward: false,
+        recentUrls: ['https://example.net/app', 'https://example.com'],
       })
     })
 
     expect(input).toHaveValue('https://example.net/app')
     expect(screen.getByRole('button', { name: /back/i })).toBeEnabled()
     expect(screen.getByRole('button', { name: /forward/i })).toBeDisabled()
+    expect(document.querySelector('datalist option[value="https://example.com"]')).not.toBeNull()
   })
 })

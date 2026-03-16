@@ -1,12 +1,9 @@
 import path from 'node:path'
 
-import { BaseWindow, WebContentsView, session } from 'electron'
+import { BaseWindow, WebContentsView } from 'electron'
 
-import {
-  applyBrowserSecurityPolicy,
-  normalizeUrl,
-  subscribeToBrowserNavigation,
-} from '../../features/browser/main/browser-session'
+import type { BrowserHistoryStore } from '../../features/browser/main/BrowserHistoryStore'
+import { createBrowserHost } from './browser-host'
 import { NoteStore } from '../../features/notes/main/NoteStore'
 import { WorkspaceController } from '../../features/workspace/main/WorkspaceController'
 import { IPC_CHANNELS } from '../../ipc'
@@ -19,11 +16,12 @@ export type WorkspaceBundle = {
   splitterView: WebContentsView
   browserChromeView: WebContentsView
   browserView: WebContentsView
+  browserHost: Awaited<ReturnType<typeof createBrowserHost>>
   controller: WorkspaceController
   store: NoteStore
 }
 
-function getWorkspaceAsset(page: 'notes.html' | 'splitter.html' | 'browser-chrome.html') {
+function getWorkspaceAsset(page: 'notes.html' | 'splitter.html') {
   if (WORKSPACE_WINDOW_VITE_DEV_SERVER_URL) {
     return new URL(`src/app/renderer/entries/${page}`, WORKSPACE_WINDOW_VITE_DEV_SERVER_URL).toString()
   }
@@ -31,7 +29,7 @@ function getWorkspaceAsset(page: 'notes.html' | 'splitter.html' | 'browser-chrom
   return path.join(__dirname, `../renderer/${WORKSPACE_WINDOW_VITE_NAME}/src/app/renderer/entries/${page}`)
 }
 
-function loadLocalPage(view: WebContentsView, page: 'notes.html' | 'splitter.html' | 'browser-chrome.html') {
+function loadLocalPage(view: WebContentsView, page: 'notes.html' | 'splitter.html') {
   const target = getWorkspaceAsset(page)
 
   if (target.startsWith('http')) {
@@ -41,10 +39,13 @@ function loadLocalPage(view: WebContentsView, page: 'notes.html' | 'splitter.htm
   return view.webContents.loadFile(target)
 }
 
-export async function createWorkspaceWindow(userDataPath: string): Promise<WorkspaceBundle> {
+export async function createWorkspaceWindow(
+  userDataPath: string,
+  browserHistoryStore: BrowserHistoryStore,
+): Promise<WorkspaceBundle> {
   const store = new NoteStore(userDataPath)
   const snapshot = await store.load()
-  const browserSession = session.fromPartition(BROWSER_PARTITION)
+  let controller: WorkspaceController | null = null
 
   const window = new BaseWindow({
     width: 1400,
@@ -71,29 +72,20 @@ export async function createWorkspaceWindow(userDataPath: string): Promise<Works
     },
   })
 
-  const browserChromeView = new WebContentsView({
-    webPreferences: {
-      preload: path.join(__dirname, 'workspace.js'),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
+  const browserHost = await createBrowserHost({
+    partition: BROWSER_PARTITION,
+    initialUrl: snapshot.browserUrl,
+    historyStore: browserHistoryStore,
+    onStateChange: (browserState) => {
+      if (!controller) {
+        return
+      }
+
+      controller.setBrowserNavigationState(browserState)
+      void store.save(controller.getSnapshot())
     },
   })
-
-  const browserView = new WebContentsView({
-    webPreferences: {
-      session: browserSession,
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-      navigateOnDragDrop: false,
-    },
-  })
-
-  applyBrowserSecurityPolicy({
-    session: browserSession,
-    webContents: browserView.webContents,
-  })
+  const { browserChromeView, browserView } = browserHost
 
   window.contentView.addChildView(notesView)
   window.contentView.addChildView(splitterView)
@@ -106,12 +98,11 @@ export async function createWorkspaceWindow(userDataPath: string): Promise<Works
     webContents: {
       send: (channel: string, payload: typeof snapshot) => {
         notesView.webContents.send(channel, payload)
-        browserChromeView.webContents.send(channel, payload)
       },
     },
   }
 
-  const controller = new WorkspaceController(
+  controller = new WorkspaceController(
     adapter,
     {
       notesView,
@@ -121,35 +112,30 @@ export async function createWorkspaceWindow(userDataPath: string): Promise<Works
     },
     {
       ...snapshot,
-      browserUrl: normalizeUrl(snapshot.browserUrl),
+      browserUrl: browserHost.getSnapshot().browserUrl,
+      canGoBack: browserHost.getSnapshot().canGoBack,
+      canGoForward: browserHost.getSnapshot().canGoForward,
     },
   )
-
-  subscribeToBrowserNavigation({
-    webContents: browserView.webContents,
-    onChange: (browserState) => {
-      // The remote page can navigate without any renderer IPC, so the main
-      // process keeps the browser chrome state authoritative from webContents.
-      controller.setBrowserNavigationState(browserState)
-      void store.save(controller.getSnapshot())
-    },
-  })
 
   notesView.webContents.once('did-finish-load', () => {
     notesView.webContents.send(IPC_CHANNELS.workspaceState, controller.getSnapshot())
   })
 
-  browserChromeView.webContents.once('did-finish-load', () => {
-    browserChromeView.webContents.send(IPC_CHANNELS.workspaceState, controller.getSnapshot())
-  })
-
   void Promise.all([
     loadLocalPage(notesView, 'notes.html'),
     loadLocalPage(splitterView, 'splitter.html'),
-    loadLocalPage(browserChromeView, 'browser-chrome.html'),
   ])
 
-  void browserView.webContents.loadURL(normalizeUrl(snapshot.browserUrl))
+  window.on('closed', () => {
+    browserHost.close()
+  })
+
+  if (!controller) {
+    throw new Error('Workspace controller did not initialize')
+  }
+
+  const workspaceController = controller
 
   return {
     window,
@@ -157,7 +143,8 @@ export async function createWorkspaceWindow(userDataPath: string): Promise<Works
     splitterView,
     browserChromeView,
     browserView,
-    controller,
+    browserHost,
+    controller: workspaceController,
     store,
   }
 }

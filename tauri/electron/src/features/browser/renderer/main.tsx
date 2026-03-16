@@ -2,4 +2,4 @@ import { createRoot } from 'react-dom/client'
 
 import { App } from './App'
 
-createRoot(document.getElementById('root')!).render(<App api={window.workspace} />)
+createRoot(document.getElementById('root')!).render(<App api={window.browser} />)

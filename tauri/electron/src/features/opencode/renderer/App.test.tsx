@@ -20,10 +20,12 @@ describe('OpenCode App', () => {
 
     render(<App api={api} />)
 
-    expect(await screen.findByRole('heading', { name: /opencode/i })).toBeVisible()
-    expect(screen.getByText(/local opencode server behind a narrow electron bridge/i)).toBeVisible()
-    expect(screen.getByText(/repo scope/i)).toBeVisible()
+    await screen.findByRole('textbox', { name: /ask opencode/i })
+    expect(screen.queryByRole('heading', { name: /opencode/i })).not.toBeInTheDocument()
+    expect(screen.queryByText(/repo scope/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/browser tool/i)).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('')).toBeVisible()
+    expect(screen.getAllByText(/ask what opencode sees in the browser/i).length).toBeGreaterThan(0)
   })
 
   it('submits prompts through the renderer api', async () => {
@@ -83,8 +85,8 @@ describe('OpenCode App', () => {
 
     render(<App api={api} />)
 
-    const heading = await screen.findByRole('heading', { name: /opencode/i })
-    const page = heading.closest('main')
+    const prompt = await screen.findByRole('textbox', { name: /ask opencode/i })
+    const page = prompt.closest('main')
     const sendButton = screen.getByRole('button', { name: /send prompt/i })
 
     expect(page).toHaveStyle({ height: '100vh', overflow: 'hidden' })
@@ -102,7 +104,7 @@ describe('OpenCode App', () => {
 
     render(<App api={api} />)
 
-    await screen.findByRole('heading', { name: /opencode/i })
+    await screen.findByRole('textbox', { name: /ask opencode/i })
 
     act(() => {
       listener?.({
@@ -110,6 +112,8 @@ describe('OpenCode App', () => {
         repoRoot: '/repo/tauri',
         sessionId: 'session-1',
         error: null,
+        browserToolStatus: 'ready',
+        browserToolMessage: 'Browser inspection is ready for this session.',
         messages: [
           ...createDefaultOpenCodeState('/repo/tauri').messages,
           { id: 'u1', role: 'user', text: 'What is this app?' },

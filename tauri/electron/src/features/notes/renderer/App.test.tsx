@@ -9,10 +9,7 @@ function createApi(snapshot: WorkspaceSnapshot): WorkspaceApi {
   const api: WorkspaceApi = {
     loadState: vi.fn().mockResolvedValue(snapshot),
     saveNotes: vi.fn().mockResolvedValue(undefined),
-    setBrowserUrl: vi.fn().mockResolvedValue(undefined),
     adjustSplitter: vi.fn().mockResolvedValue(undefined),
-    goBack: vi.fn().mockResolvedValue(undefined),
-    goForward: vi.fn().mockResolvedValue(undefined),
     onStateChange: vi.fn().mockReturnValue(() => undefined),
   }
 

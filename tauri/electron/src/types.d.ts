@@ -6,11 +6,13 @@
  * globals the preload layer exposes on `window` inside renderer code.
  */
 import type { LauncherApi, WorkspaceApi } from './workspace-contract'
+import type { BrowserApi } from './browser-contract'
 import type { OpenCodeApi } from './opencode-contract'
 
 declare global {
   interface Window {
     launcher: LauncherApi
+    browser: BrowserApi
     workspace: WorkspaceApi
     opencode: OpenCodeApi
   }

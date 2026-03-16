@@ -41,7 +41,7 @@ test('window resize keeps notes and browser panes within safe widths', async () 
     const browserChromePage = await waitForPageByUrlPart(electronApp, 'browser-chrome.html')
     const browserPage = await waitForPageByUrlPart(electronApp, 'example.com')
 
-    await expect(browserChromePage.getByRole('textbox', { name: /browser url/i })).toBeVisible()
+    await expect(browserChromePage.getByRole('combobox', { name: /browser url/i })).toBeVisible()
 
     await electronApp.evaluate(async ({ BaseWindow }) => {
       const workspaceWindow = BaseWindow.getAllWindows().find((window) => window.getTitle() === 'Browser + Notes')

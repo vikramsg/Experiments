@@ -29,7 +29,7 @@ export function App({ openWorkspace, openOpenCode }: LauncherAppProps) {
             <p style={styles.eyebrow}>Read-only agent</p>
             <h2 style={styles.cardTitle}>OpenCode</h2>
             <p style={styles.body}>
-              Chat with this repo through a local OpenCode server that can inspect files and structure without editing them.
+              Chat with this repo through a local OpenCode server while inspecting the live browser surface that opens on the right.
             </p>
             <button style={styles.secondaryButton} type="button" onClick={() => void openOpenCode()}>
               Launch OpenCode

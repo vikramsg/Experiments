@@ -3,6 +3,7 @@ import path from 'node:path'
 import { app, BrowserWindow } from 'electron'
 import started from 'electron-squirrel-startup'
 
+import { BrowserHistoryStore } from '../../features/browser/main/BrowserHistoryStore'
 import { createOpenCodeWindow, type OpenCodeBundle } from './create-opencode-window'
 import { createLauncherWindow } from './create-launcher-window'
 import { createWorkspaceWindow, type WorkspaceBundle } from './create-workspace-window'
@@ -19,6 +20,7 @@ if (process.env.ELECTRON_USER_DATA_DIR) {
 let launcherWindow: BrowserWindow | null = null
 let workspaceBundle: WorkspaceBundle | null = null
 let openCodeBundle: OpenCodeBundle | null = null
+let browserHistoryStore: BrowserHistoryStore | null = null
 
 function resolveOpenCodeRepoRoot() {
   if (process.env.ELECTRON_OPENCODE_REPO_ROOT) {
@@ -28,13 +30,22 @@ function resolveOpenCodeRepoRoot() {
   return path.resolve(__dirname, '../../..')
 }
 
+async function getBrowserHistoryStore() {
+  if (!browserHistoryStore) {
+    browserHistoryStore = new BrowserHistoryStore(app.getPath('userData'))
+  }
+
+  await browserHistoryStore.load()
+  return browserHistoryStore
+}
+
 async function openWorkspace() {
   if (workspaceBundle) {
     workspaceBundle.window.show()
     return
   }
 
-  workspaceBundle = await createWorkspaceWindow(app.getPath('userData'))
+  workspaceBundle = await createWorkspaceWindow(app.getPath('userData'), await getBrowserHistoryStore())
   workspaceBundle.window.on('closed', () => {
     workspaceBundle = null
   })
@@ -46,7 +57,10 @@ async function openOpenCode() {
     return
   }
 
-  openCodeBundle = await createOpenCodeWindow(resolveOpenCodeRepoRoot())
+  openCodeBundle = await createOpenCodeWindow({
+    repoRoot: resolveOpenCodeRepoRoot(),
+    browserHistoryStore: await getBrowserHistoryStore(),
+  })
   openCodeBundle.window.on('closed', () => {
     openCodeBundle = null
   })
@@ -76,6 +90,18 @@ function requireOpenCode() {
   return openCodeBundle
 }
 
+function getBrowserHostForSender(webContentsId: number) {
+  if (workspaceBundle?.browserHost.chromeSenderId === webContentsId) {
+    return workspaceBundle.browserHost
+  }
+
+  if (openCodeBundle?.browserHost.chromeSenderId === webContentsId) {
+    return openCodeBundle.browserHost
+  }
+
+  return null
+}
+
 registerIpc({
   createWorkspace: openWorkspace,
   createOpenCode: openOpenCode,
@@ -83,6 +109,7 @@ registerIpc({
   getOpenCode,
   requireWorkspace,
   requireOpenCode,
+  getBrowserHostForSender,
   openCodeRepoRoot: resolveOpenCodeRepoRoot(),
 })
 

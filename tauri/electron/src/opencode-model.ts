@@ -14,12 +14,16 @@ export type OpenCodeMessage = {
 
 export type OpenCodeStatus = 'idle' | 'connecting' | 'ready' | 'responding' | 'error'
 
+export type BrowserToolStatus = 'checking' | 'ready' | 'unavailable'
+
 export type OpenCodeState = {
   status: OpenCodeStatus
   repoRoot: string
   sessionId: string | null
   messages: OpenCodeMessage[]
   error: string | null
+  browserToolStatus: BrowserToolStatus
+  browserToolMessage: string | null
 }
 
 export function createDefaultOpenCodeState(repoRoot: string): OpenCodeState {
@@ -31,9 +35,12 @@ export function createDefaultOpenCodeState(repoRoot: string): OpenCodeState {
       {
         id: 'system-welcome',
         role: 'system',
-        text: 'Read-only repo chat is ready. Ask about files, architecture, or behavior in this repo.',
+        text:
+          'Read-only repo chat is ready. Ask about files, architecture, behavior in this repo, or ask what OpenCode sees in the browser on the right.',
       },
     ],
     error: null,
+    browserToolStatus: 'checking',
+    browserToolMessage: null,
   }
 }

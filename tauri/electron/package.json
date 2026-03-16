@@ -16,9 +16,11 @@
     "verify": "npm run lint && npm run test && npm run e2e && npm run build"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "electron-squirrel-startup": "^1.0.1",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.10.2",

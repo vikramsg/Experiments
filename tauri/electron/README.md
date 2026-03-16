@@ -3,7 +3,7 @@
 Electron app with a launcher window that opens two local apps:
 
 - `Browser + Notes` for the split notes/browser workspace
-- `OpenCode` for read-only chat against this repo through a local OpenCode server
+- `OpenCode` for read-only chat against this repo with a browser pane on the right
 
 ## Requirements
 
@@ -48,7 +48,14 @@ just dev
   - `opencode`
 - `app/*` may compose feature entrypoints and root boundary files.
 - Features should depend on themselves plus shallow root runtime boundaries under `src/`; they should not import other features directly.
+- Services, adapters, and transports belong to the domain they expose.
+  - Browser screenshot capture and browser MCP services belong to the browser or app-main side.
+  - Browser history/autocomplete belongs to the browser domain only.
+  - OpenCode process lifecycle belongs to OpenCode.
+  - Cross-domain wiring belongs in `app/*`, not in feature-to-feature imports.
 - Shallow root boundary files own cross-cutting runtime contracts and models:
+  - `src/browser-contract.ts`
+  - `src/browser-model.ts`
   - `src/ipc.ts`
   - `src/workspace-contract.ts`
   - `src/workspace-model.ts`
@@ -65,16 +72,26 @@ just dev
   - splitter
   - browser chrome
   - browser content
+- OpenCode uses its own `BaseWindow` with sibling `WebContentsView`s for:
+  - OpenCode chat on the left
+  - a draggable splitter in the middle
+  - browser chrome on the right top
+  - browser content on the right bottom
 - Main-process layout ownership lives in `src/features/workspace/main/WorkspaceController.ts`.
 - Browser chrome actions in `src/features/browser/renderer/App.tsx` use arrow buttons with accessible back/forward names, plus a synchronized URL field.
 - Browser URL and history availability stay synchronized from the remote browser `webContents`, so the local chrome reflects link clicks, redirects, and in-page navigation.
 - Workspace startup registers the window bundle before renderer page loads finish, which prevents transient `workspace:get-state` errors during initialization.
 - Notes, browser URL, and splitter width are persisted in `app.getPath('userData')/workspace-state.json`, while browser history availability remains live-only state.
-- OpenCode uses its own `BaseWindow` with one local `WebContentsView` and a dedicated preload bridge on `window.opencode`.
 - The main-process `OpenCodeService` starts a local `opencode serve` process rooted at the `tauri/` repo scope, creates a chat session, and publishes renderer-facing state.
+- Electron main also hosts a localhost browser MCP server in the browser domain, so OpenCode can call a browser tool instead of relying on prompt-time screenshot injection.
+- The first browser MCP tool captures the current browser URL and a fresh screenshot of the browser pane when the model needs to explain what it sees.
+- OpenCode verifies that the browser MCP server is connected before browser-aware prompts are treated as ready, and integration tests exercise the real MCP registration and invocation path without mock mode.
+- Browser chrome stores the last 10 visited URLs and exposes them as shared autocomplete suggestions across both launcher apps.
+- Recent URL history is browser UX only; it is not sent into OpenCode MCP/browser context.
 - The OpenCode bridge is intentionally read-only for the repo scope:
   - reads, globbing, listing, and search are allowed
   - edits, write-style tools, and destructive shell or git actions are denied
+- The OpenCode config explicitly allows the `browser_*` MCP tool namespace while keeping the rest of the app's destructive tool surface denied.
 
 For the detailed file tree, diagrams, and responsibilities, see `docs/architecture.md`.
 
@@ -97,6 +114,17 @@ access, or unrestricted server handles to the renderer. The renderer can only:
 - load the current OpenCode state
 - send a prompt
 - subscribe to state updates
+
+Browser inspection happens through a separate main-process-owned MCP tool. That
+tool can:
+
+- read the current browser URL
+- capture a fresh screenshot of the browser pane
+- return both to OpenCode on demand
+
+Browser autocomplete history is separate from MCP inspection. The browser input
+keeps a shared last-10 URL list for suggestions, but OpenCode only sees the
+current live page when it calls the browser tool.
 
 ## TODO / Follow-up
 

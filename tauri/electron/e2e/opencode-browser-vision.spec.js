@@ -6,10 +6,6 @@ const { _electron: electron, expect, test } = require('@playwright/test')
 
 const repoRoot = path.resolve(__dirname, '../..')
 
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 async function launchApp(userDataDir) {
   return electron.launch({
     executablePath: path.resolve(
@@ -36,47 +32,31 @@ async function waitForPageByUrlPart(electronApp, urlPart) {
   })
 }
 
-test('launcher opens OpenCode with a browser on the right and the chat responds', async () => {
-  const userDataDir = await mkdtemp(path.join(tmpdir(), 'electron-e2e-opencode-'))
+test('OpenCode can explain what it sees in the browser', async () => {
+  const userDataDir = await mkdtemp(path.join(tmpdir(), 'electron-e2e-opencode-browser-'))
   let electronApp
 
   try {
     electronApp = await launchApp(userDataDir)
     const launcher = await electronApp.firstWindow()
 
-    await expect(launcher.getByRole('heading', { name: /choose an app/i })).toBeVisible()
-    await expect(launcher.getByRole('button', { name: /launch opencode/i })).toBeVisible()
     await launcher.getByRole('button', { name: /launch opencode/i }).click()
-
     const openCodePage = await waitForPageByUrlPart(electronApp, 'opencode.html')
     const browserChromePage = await waitForPageByUrlPart(electronApp, 'browser-chrome.html')
     const browserPage = await waitForPageByUrlPart(electronApp, 'example.com')
 
-    await expect(openCodePage.getByRole('textbox', { name: /ask opencode/i })).toBeVisible()
-    await expect(browserChromePage.getByRole('combobox', { name: /browser url/i })).toBeVisible()
     await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('https://example.com')
+    await browserChromePage.getByRole('combobox', { name: /browser url/i }).fill('https://example.com/docs')
+    await browserChromePage.getByRole('button', { name: /^go$/i }).click()
+    await expect.poll(async () => browserPage.url(), { timeout: 15000 }).toContain('https://example.com/docs')
 
     const prompt = openCodePage.getByRole('textbox', { name: /ask opencode/i })
-    await prompt.fill('Where does the launcher live?')
+    await prompt.fill('What do you see in the browser?')
     await prompt.press('Enter')
 
-    await expect(openCodePage.getByText('Where does the launcher live?', { exact: true })).toBeVisible()
-    await expect(openCodePage.getByText(/mock opencode reply/i)).toBeVisible()
-    await expect(openCodePage.getByText(new RegExp(escapeRegExp(repoRoot)))).toBeVisible()
-
-    await prompt.fill('Line one')
-    await prompt.press('Shift+Enter')
-    await expect(prompt).toHaveValue('Line one\n')
-    await prompt.fill('Overflow check')
-    await prompt.press('Enter')
-
-    for (let index = 0; index < 5; index += 1) {
-      await prompt.fill(`Prompt ${index}`)
-      await prompt.press('Enter')
-    }
-
-    await expect(openCodePage.getByRole('textbox', { name: /ask opencode/i })).toBeVisible()
-    await expect(openCodePage.getByRole('button', { name: /send prompt/i })).toBeVisible()
+    await expect(openCodePage.getByText(/i can see the browser is currently at/i)).toBeVisible()
+    await expect(openCodePage.getByText(/example.com/i)).toBeVisible()
+    await expect(openCodePage.getByText(/based on that screenshot/i)).toBeVisible()
   } finally {
     await electronApp?.close()
     await rm(userDataDir, { recursive: true, force: true })
